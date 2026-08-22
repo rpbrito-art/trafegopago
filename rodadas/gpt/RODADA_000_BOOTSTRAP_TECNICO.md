@@ -31,7 +31,7 @@ A execução só pode continuar se o diretório raiz for `trafegopago` e o remot
 
 Leia integralmente, nesta ordem:
 
-1. `ESTADO.md`;
+1. `estado.md`;
 2. `.gpt/PROJECT_PROMPT.md`;
 3. `README.md`;
 4. `docs/00-governanca/PROJECT_CHARTER.md`;
@@ -260,7 +260,7 @@ Informar se a base está ou não apta para a próxima rodada: Fundação Supabas
 
 ## 12. Atualização do estado
 
-Ao concluir a execução, atualize `ESTADO.md` apenas para registrar:
+Ao concluir a execução, atualize `estado.md` apenas para registrar:
 
 - status da Rodada 000 como `EXECUTADA — AGUARDANDO AUDITORIA GPT`;
 - branch e commit produzidos;
