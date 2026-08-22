@@ -1,0 +1,32 @@
+# Normalização de line endings — Tráfego Pago
+# Introduzido na Rodada 001A (ressalva não bloqueante da auditoria da Rodada 000).
+#
+# O índice do repositório já armazena 100% dos arquivos rastreados com LF
+# (verificado com `git ls-files --eol`: 43/43 = i/lf). Estas regras apenas
+# tornam esse comportamento explícito e independente do `core.autocrlf` local
+# de cada máquina, portanto NÃO produzem renormalização nem diff cosmético.
+
+# Padrão: Git detecta texto e grava LF no índice.
+* text=auto eol=lf
+
+# Formatos em que CRLF quebra execução ou ferramentas.
+*.sh   text eol=lf
+*.sql  text eol=lf
+
+# Formatos que exigem CRLF no Windows.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+# Binários: nunca normalizar nem tentar diff textual.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.avif  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.pdf   binary

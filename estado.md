@@ -48,17 +48,73 @@ Merge em `main`: `9f0f6aaa205fe5b774faab92c34e8373e4ef7d6c`.
 
 **RODADA 001A — BASELINE SUPABASE E SEGURANÇA**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
 Mandato vigente:
 
 `rodadas/gpt/RODADA_001A_BASELINE_SUPABASE_SEGURANCA.md`
 
-Relatório esperado:
+Relatório entregue:
 
 `rodadas/claude/RELATORIO_RODADA_001A_BASELINE_SUPABASE_SEGURANCA.md`
 
-O comando `/proxima` está autorizado a executar **somente** esta rodada.
+### Execução registrada
+
+- Branch: `claude/rodada-001a-baseline-supabase-seguranca`
+- Commit de implementação: `d802e8f02f2b520b4252fe3be70e6e161952507a`
+- Commit de handoff: head da branch (apenas `estado.md` e seção 11 do relatório)
+- Push: realizado em `origin`
+- Merge em `main`: **não realizado** (depende de auditoria e promoção)
+- CI da branch: **success** — run `32600593719` sobre `d802e8f`
+  (install, lint, typecheck, test, build todos verdes)
+
+### Gates
+
+| Gate | Resultado |
+|---|---|
+| `npm ci` | OK — 0 vulnerabilidades |
+| `npm run lint` | OK |
+| `npm run typecheck` | OK |
+| `npm test` | OK — 11 testes |
+| `npm run build` | OK — Next.js 16.3.2 |
+
+### Supabase — resultado
+
+- Project ref operado: `cbnxdoxpyioxjwgjhbtq` (único autorizado).
+- Migration aplicada: `20260822212544_harden_rls_auto_enable_privileges.sql`
+  (local e remoto idênticos em `supabase migration list --linked`).
+- ACL de `public.rls_auto_enable()`:
+  antes `=X/postgres | postgres=X | anon=X | authenticated=X | service_role=X`;
+  depois `postgres=X/postgres | service_role=X/postgres`.
+  `anon`, `authenticated` e `PUBLIC` não executam mais a função.
+- Event trigger `ensure_rls`: ativo, owner `postgres`, tags inalteradas.
+- Prova real de auto-enable RLS: tabela criada após o hardening recebeu
+  `relrowsecurity = true` automaticamente; prova transacional revertida,
+  tabela de teste não permaneceu no banco.
+- Security Advisor (security e performance, nível `info`): **2 WARN antes →
+  0 achados depois**.
+- Schema `public`: 0 tabelas. Nenhum domínio antecipado.
+
+### Ressalvas da Rodada 000 fechadas nesta rodada
+
+- `.claude/commands/proxima.md` versionado (sem edição — aderência ao protocolo
+  canônico verificada e confirmada).
+- `.gitattributes` adicionado, sem renormalização nem diff cosmético.
+
+### Pendências levadas à auditoria
+
+1. `service_role` mantém `EXECUTE` sobre `public.rls_auto_enable()` — decisão
+   deliberada e justificada no relatório (§9.1). GPT deve decidir se vira
+   política geral.
+2. `alter default privileges in schema public revoke execute on functions from
+   anon, authenticated, public` — trava preventiva recomendada pela documentação
+   oficial, **não executada** por ser decisão de política de schema que afeta
+   todas as rodadas futuras (§9.2). GPT deve decidir onde entra.
+3. Ressalvas 3, 4 e 5 da auditoria da Rodada 000 seguem abertas (ESLint
+   deprecated, `proxy.ts` de refresh, nomenclatura middleware/proxy) — todas
+   fora do escopo da 001A.
+
+Nenhum bloqueador identificado. Nenhuma rodada foi auto-aprovada ou promovida.
 
 ## 5. Objetivo da rodada corrente
 
