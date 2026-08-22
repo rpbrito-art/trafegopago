@@ -51,3 +51,43 @@ O usuário não precisa copiar e colar relatórios entre os agentes quando ambos
 - Camada própria de roteamento de IA multi-provedor
 
 n8n, Make ou outros orquestradores externos não fazem parte da fundação e só poderão ser adicionados se uma necessidade concreta provar que a implementação própria é inadequada.
+
+## Executar localmente
+
+Pré-requisitos: Node.js >= 20.9 e npm.
+
+```bash
+npm install
+cp .env.example .env.local   # preencher os valores
+npm run dev
+```
+
+Variáveis de ambiente: ver `.env.example`. Somente valores públicos podem usar
+o prefixo `NEXT_PUBLIC_`; credenciais privilegiadas são server-only e nunca
+entram no Git.
+
+### Gates de verificação
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+Os mesmos gates rodam na CI (`.github/workflows/ci.yml`) em todo push e pull
+request. O build não depende de credenciais Supabase.
+
+### Estrutura
+
+```text
+src/app/            App Router (rotas, layout, página inicial)
+src/lib/env/        validação e convenção de variáveis de ambiente
+src/lib/supabase/   clientes Supabase (browser e servidor)
+supabase/           configuração da CLI do projeto vinculado
+test/stubs/         stubs restritos ao ambiente de teste
+```
+
+O domínio do MVP (organizações, Meta, conteúdo, experimentos, leads, IA) ainda
+não foi implementado. A ordem de construção está em
+`docs/00-governanca/IMPLEMENTATION_ROADMAP.md`.
