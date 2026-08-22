@@ -36,8 +36,9 @@ export async function createSupabaseServerClient() {
             }
           } catch {
             // Chamado a partir de um Server Component, onde escrever cookies
-            // não é permitido. O refresh de sessão passará a ser feito por
-            // middleware na rodada de Auth; até lá não há sessão para renovar.
+            // não é permitido. Ignorar é seguro: o Proxy (`src/proxy.ts`) já
+            // renovou a sessão antes desta renderização e gravou os cookies
+            // atualizados na resposta.
           }
         },
       },

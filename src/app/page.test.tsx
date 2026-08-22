@@ -12,6 +12,6 @@ describe("smoke test da aplicação", () => {
 
   it("a página inicial identifica o projeto e a etapa corrente", () => {
     expect(APP_NAME).toBe("Tráfego Pago");
-    expect(BOOTSTRAP_STAGE).toContain("Rodada 000");
+    expect(BOOTSTRAP_STAGE).toContain("001B");
   });
 });

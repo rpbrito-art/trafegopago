@@ -1,0 +1,25 @@
+<!--
+  Template do e-mail de confirmação de cadastro.
+
+  O link aponta para o endpoint SSR `/auth/confirm` carregando `token_hash`, e
+  não para o `{{ .ConfirmationURL }}` padrão. Motivo: o fluxo padrão devolve a
+  sessão ao browser (fragmento ou code PKCE), o que não funciona quando quem
+  precisa gravar o cookie é o servidor. Com `token_hash`, o Route Handler troca
+  o token por sessão server-side e o token nunca chega à URL final.
+-->
+<h2>Confirme seu e-mail</h2>
+
+<p>Olá! Falta um passo para ativar sua conta no Tráfego Pago.</p>
+
+<p>
+  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup">
+    Confirmar meu e-mail
+  </a>
+</p>
+
+<p>
+  Se o botão não funcionar, copie e cole este endereço no navegador:<br />
+  {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup
+</p>
+
+<p>Se você não criou esta conta, ignore esta mensagem.</p>

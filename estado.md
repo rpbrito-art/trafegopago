@@ -68,7 +68,7 @@ O método foi otimizado após a 001A:
 
 **RODADA 001B — AUTH REAL**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
 Mandato vigente:
 
@@ -82,7 +82,24 @@ Relatório esperado:
 
 `rodadas/claude/RELATORIO_RODADA_001B_AUTH_REAL.md`
 
-O comando `/proxima` está autorizado a executar **somente** esta rodada.
+Relatório entregue: sim.
+
+Execução (Claude Code, 2026-08-22):
+
+- branch `claude/rodada-001b-auth-real` publicada; sem merge na `main`;
+- gates locais: lint, typecheck, `npm test` (188 testes) e build — todos verdes;
+- smoke test real contra `cbnxdoxpyioxjwgjhbtq` e a aplicação: 27/27 provas;
+- nenhuma migration, tabela, tenancy ou policy de domínio criada;
+- `.claude/commands/proxima.md` alinhado ao método por working set.
+
+**Bloqueio aberto — ação humana:** a configuração remota de Auth (template de
+confirmação apontando para `/auth/confirm` e redirect URLs) ainda não foi aplicada.
+O `supabase/config.toml` e `supabase/templates/confirmation.html` estão versionados;
+falta `supabase config push` (ou ajuste equivalente no Dashboard). Não executado pelo
+Claude porque `config push` envia o config.toml inteiro, não só o bloco `[auth]`.
+Detalhes na seção 5 do relatório.
+
+O comando `/proxima` não está autorizado a iniciar a 001C.
 
 ## 5. Objetivo da 001B
 
