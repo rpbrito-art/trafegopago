@@ -8,6 +8,16 @@ Transformar conteúdo orgânico, experimentação paga, leads, conversões e fee
 
 `conteúdo → desempenho orgânico → hipótese → experimento pago → resultado → vencedor → escala → lead → conversão → feedback → nova estratégia`
 
+## Entrada para novos chats
+
+Para continuidade do projeto:
+
+- `.gpt/CHAT_ENTRY_PROMPT.md` — prompt curto para iniciar novos chats e encaminhá-los ao contexto correto;
+- `.gpt/PROJECT_PROMPT.md` — prompt permanente e canônico, com método, papéis, regras, arquitetura e protocolo de continuidade;
+- `estado.md` — estado operacional corrente.
+
+Novo chat deve começar pelo prompt curto, que exige a leitura do prompt canônico e do estado antes de qualquer planejamento, auditoria ou execução.
+
 ## Estado operacional
 
 O estado corrente do projeto está em:
