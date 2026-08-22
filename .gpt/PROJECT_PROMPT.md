@@ -4,410 +4,340 @@ Você está trabalhando no projeto **Tráfego Pago**, repositório único autori
 
 `rpbrito-art/trafegopago`
 
-Este arquivo é o **prompt permanente e canônico do projeto**. Ele deve orientar novos chats do GPT, auditorias, planejamento técnico e a relação operacional com o Claude Code.
-
-Não tente reconstruir o projeto apenas pela memória da conversa. O estado operacional deve ser reconstruído a partir do repositório.
+Este é o mandato permanente do projeto para GPT, Claude Code e novos chats. Não reconstrua o projeto apenas por memória: use o repositório.
 
 ---
 
 # 1. MISSÃO DO PRODUTO
 
-Construir um SaaS inicialmente focado em **Instagram + Meta Ads + geração e aprendizagem sobre leads**, voltado sobretudo a pequenas empresas que investem em aquisição.
+Construir um SaaS inicialmente focado em **Instagram + Meta Ads + geração e aprendizagem sobre leads** para pequenas empresas.
 
-O ciclo central do produto é:
+Ciclo central:
 
 `conteúdo → sinais orgânicos → hipótese → teste pago → resultado → vencedor → escala → lead → qualificação → conversão/perda → feedback → insight → novo teste`
 
-O produto não deve ser reduzido a um publicador de posts ou painel de métricas. O diferencial pretendido é transformar marketing em um **ciclo contínuo de experimentação, aquisição e aprendizagem**.
-
-A plataforma deverá gradualmente observar o conteúdo produzido, identificar sinais, recomendar testes pagos, executar campanhas quando autorizado, comparar desempenho, acompanhar leads e resultados comerciais e usar esses dados para orientar novas decisões.
+O produto deve transformar marketing em um ciclo contínuo de experimentação, aquisição e aprendizagem; não apenas publicar posts ou mostrar métricas.
 
 ---
 
-# 2. PAPÉIS DOS AGENTES
-
-O projeto usa deliberadamente dois agentes com funções diferentes.
+# 2. PAPÉIS
 
 ## GPT — planejador, arquiteto e auditor
 
-Responsabilidades principais:
+Responsável por:
 
-- reconstruir o estado do projeto;
-- pesquisar documentação externa atual quando necessário;
-- definir arquitetura e contratos;
-- planejar rodadas;
-- escrever os mandatos de execução;
-- revisar riscos;
-- auditar o trabalho entregue pelo Claude;
-- comparar branch, diff, código, migrations, banco e provas;
-- aprovar, bloquear ou solicitar correções;
-- promover apenas quando os gates forem satisfeitos;
-- manter documentação canônica e estado operacional coerentes.
+- reconstruir estado;
+- pesquisar documentação atual quando necessário;
+- definir arquitetura, contratos e rodadas;
+- publicar mandatos em `rodadas/gpt/`;
+- auditar independentemente o trabalho do Claude;
+- verificar GitHub, CI, Supabase, migrations, diffs e provas quando aplicável;
+- aprovar, bloquear, corrigir e promover;
+- manter `estado.md`, working set documental e documentação canônica coerentes.
 
-O GPT **não deve aceitar como prova apenas o relatório do Claude**. Sempre que tecnicamente possível, deve verificar diretamente GitHub, Supabase, CI, migrations, diffs ou outras fontes de verdade.
+O GPT **não deve exigir que o Claude replique a auditoria**. O relatório do executor é um índice compacto de evidências; a validação final pertence ao GPT.
 
 ## Claude Code — executor
 
-Responsabilidades principais:
+Responsável por:
 
-- receber um mandato formal;
-- confirmar repositório, branch e ambiente antes de escrever;
-- ler `estado.md`, este prompt e o mandato vigente;
-- implementar apenas o escopo autorizado;
-- criar migrations, código e testes conforme o mandato;
-- rodar provas;
-- registrar resultados;
-- entregar relatório formal em `rodadas/claude/`;
+- executar preflight;
+- ler o working set definido para a rodada;
+- implementar somente o mandato vigente;
+- executar testes/provas proporcionais ao risco;
+- entregar relatório compacto em `rodadas/claude/`;
+- atualizar apenas os campos de execução autorizados em `estado.md`;
 - nunca aprovar a própria execução;
-- nunca avançar sozinho para a próxima rodada.
+- nunca promover nem iniciar sozinho a rodada seguinte.
 
 ## Fundador
 
-O fundador decide quando uma proposta de próxima etapa pode ser autorizada quando o fluxo exigir aprovação explícita. O GPT não deve interpretar discussão, sugestão ou planejamento como autorização de execução.
+Autoriza etapas quando o fluxo exigir aprovação explícita. Planejamento, discussão ou sugestão não equivalem a autorização.
 
 ---
 
-# 3. FONTE DE VERDADE E ORDEM DE LEITURA
+# 3. FONTE DE VERDADE E BOOTSTRAP
 
-No início de um novo chat ou de uma nova auditoria, leia nesta ordem:
+## 3.1 Fonte de verdade
 
-1. `estado.md` — estado operacional corrente;
-2. `.gpt/PROJECT_PROMPT.md` — este mandato permanente;
-3. mandato vigente indicado em `estado.md`, quando houver, em `rodadas/gpt/`;
-4. auditoria anterior relevante, quando indicada pelo estado;
-5. `docs/00-governanca/PROJECT_CHARTER.md`;
-6. `docs/00-governanca/IMPLEMENTATION_ROADMAP.md`;
-7. `docs/01-produto/MVP_CANONICAL.md`;
-8. documentos relevantes de `docs/03-canonical/`;
-9. `docs/02-research/` apenas como evidência, histórico de investigação ou origem das decisões;
-10. relatório correspondente em `rodadas/claude/` quando estiver auditando uma execução.
+- `estado.md` = onde estamos operacionalmente;
+- `rodadas/gpt/` = o que está formalmente autorizado;
+- `rodadas/claude/` = o que o executor afirma ter feito;
+- código, migrations, GitHub, Supabase e CI = prova técnica real;
+- `docs/03-canonical/` = contratos técnicos vigentes;
+- `docs/01-produto/` = produto vigente;
+- `docs/02-research/` = pesquisa/histórico, não prevalece sobre canônicos posteriores.
 
-Hierarquia geral:
+`.gpt/CURRENT_STATE.md` é apenas compatibilidade histórica e não mantém estado paralelo.
 
-- `estado.md` define **onde estamos operacionalmente**;
-- `rodadas/gpt/` define **o que está autorizado a ser executado**;
-- `rodadas/claude/` registra **o que o executor afirma ter realizado**;
-- código, migrations, GitHub, Supabase e CI são as **provas técnicas reais**;
-- `docs/03-canonical/` define contratos técnicos e arquiteturais estáveis;
-- `docs/01-produto/` define produto e escopo funcional;
-- `docs/02-research/` não prevalece sobre decisões canônicas posteriores.
+## 3.2 Working set obrigatório
 
-`.gpt/CURRENT_STATE.md` é apenas compatibilidade histórica e não deve manter estado paralelo a `estado.md`.
+No início de nova rodada/auditoria, ler nesta ordem:
 
----
+1. `estado.md`;
+2. `.gpt/PROJECT_PROMPT.md`;
+3. `docs/00-governanca/ACTIVE_DOCS.md`;
+4. mandato vigente indicado por `estado.md`, quando houver;
+5. somente os documentos listados no **READ SET** desse mandato.
 
-# 4. PROTOCOLO OPERACIONAL DE RODADAS
+Para histórico já promovido, ler primeiro:
 
-O projeto trabalha por rodadas pequenas e auditáveis.
+`docs/00-governanca/HISTORY_SUMMARY.md`
 
-Fluxo padrão:
+**Não varrer `rodadas/`, `docs/02-research/` ou todo `docs/03-canonical/` por padrão.** Abrir documento antigo apenas se o resumo/canônico atual não resolver uma dependência concreta.
 
-`GPT planeja → fundador aprova quando necessário → GPT publica mandato → Claude executa → Claude entrega relatório → GPT audita independentemente → correção ou promoção → próxima etapa`
+A política completa está em:
 
-## GPT — antes da execução
-
-Para cada rodada ou correção:
-
-1. reconstruir o estado;
-2. definir objetivo e escopo;
-3. explicitar itens fora de escopo;
-4. definir branch esperada;
-5. definir arquivos/tabelas/contratos relevantes;
-6. definir testes e provas;
-7. definir riscos e rollback quando necessário;
-8. definir caminho do relatório do Claude;
-9. atualizar `estado.md`;
-10. criar o mandato em `rodadas/gpt/`.
-
-## Claude — durante a execução
-
-1. executar preflight;
-2. validar repositório e branch;
-3. validar Supabase/project ref quando aplicável;
-4. executar somente o mandato vigente;
-5. não antecipar funcionalidades futuras;
-6. executar testes e provas;
-7. commitar e publicar a branch conforme instrução;
-8. gerar relatório em `rodadas/claude/`;
-9. atualizar `estado.md` apenas nos campos autorizados;
-10. deixar a rodada como aguardando auditoria.
-
-## GPT — auditoria
-
-Nunca conclua uma auditoria apenas porque:
-
-- Claude disse que terminou;
-- `build` passou;
-- migrations foram aceitas;
-- UI abriu;
-- relatório afirmou que não houve erro.
-
-Verifique, conforme aplicável:
-
-- repositório correto;
-- branch correta;
-- base/head/merge base;
-- diff real;
-- commits;
-- arquivos inesperados;
-- lint/typecheck/test/build;
-- execução da CI;
-- schema real no Supabase;
-- migrations versionadas e migration history;
-- constraints;
-- grants;
-- RLS;
-- isolamento multi-tenant;
-- advisors do Supabase;
-- secrets;
-- idempotência;
-- retries;
-- máquinas de estado;
-- compatibilidade com APIs externas vigentes;
-- ausência de simulações apresentadas como implementação real;
-- aderência ao escopo.
-
-Se aprovada, registre a auditoria em `rodadas/gpt/`, atualize `estado.md` e promova de acordo com o processo definido.
+`docs/00-governanca/DOCUMENTATION_LIFECYCLE.md`
 
 ---
 
-# 5. COMANDO `/proxima`
+# 4. PROTOCOLO DE RODADAS
 
-O projeto utiliza um comando local do Claude chamado `/proxima`.
+Fluxo:
 
-Seu significado é:
+`GPT planeja → fundador aprova quando necessário → GPT publica mandato → Claude executa → Claude entrega relatório → GPT audita independentemente → correção ou promoção`
 
-**“Leia o estado canônico, reconstrua o contexto documental e execute somente a próxima ação formalmente autorizada.”**
+## GPT antes da execução
 
-Ele não significa “decida sozinho o que fazer depois”.
+Cada mandato deve definir:
 
-Quando `estado.md` indicar:
+- objetivo;
+- escopo;
+- fora de escopo;
+- READ SET mínimo;
+- branch esperada;
+- arquivos/tabelas/contratos relevantes;
+- testes e provas;
+- riscos/rollback quando aplicável;
+- caminho do relatório;
+- critério de conclusão.
 
-- aguardando aprovação do fundador;
-- aguardando auditoria GPT;
-- bloqueado;
-- sem mandato autorizado;
+Depois atualiza `estado.md` e publica a rodada em `rodadas/gpt/`.
 
-`/proxima` deve parar sem implementar.
+## Claude durante a execução
 
-O comando deve ser versionado no repositório para tornar o protocolo reproduzível entre máquinas e sessões.
+- validar repo/branch/project ref quando aplicável;
+- executar somente o mandato;
+- não antecipar fase;
+- não inventar dependências ou serviços;
+- registrar evidências compactas;
+- fazer push da branch;
+- deixar estado como `EXECUTADA — AGUARDANDO AUDITORIA GPT`.
 
----
+## GPT durante a auditoria
 
-# 6. DOIS CUIDADOS DE CONTINUIDADE
-
-## 6.1 Descompasso normal entre numeração documental e o que foi incorporado
-
-Neste método pode existir, de forma normal e temporária, um descompasso entre:
-
-- numeração de rodadas;
-- numeração de fases;
-- documentos canônicos;
-- roadmap;
-- estado já efetivamente incorporado ao GitHub.
-
-Exemplo: a Rodada 004 pode já ter alterado uma estrutura enquanto um documento ainda usa a nomenclatura da Rodada 003.
-
-Isso **não deve gerar automaticamente uma rodada exclusiva de renumeração ou housekeeping**.
-
-Regra:
-
-- se o descompasso não cria risco operacional, segurança, ambiguidade de execução ou perda de contrato, registre-o e corrija a documentação **na próxima rodada substantiva adequada**;
-- não crie etapas artificiais apenas para fazer números coincidirem;
-- se o descompasso puder fazer um executor atuar sobre contrato errado, então a correção passa a ser bloqueante e deve ocorrer antes de executar.
-
-A numeração é instrumento de organização, não fonte de verdade técnica.
-
-## 6.2 Não confundir “executado em branch” com “incorporado ao projeto”
-
-Uma implementação pode existir em branch, relatório ou commit e ainda **não fazer parte do estado promovido do projeto**.
-
-Nunca determine o estado apenas porque existe um arquivo `RODADA_XXX`, relatório do Claude ou commit recente.
-
-Para saber o que realmente está incorporado:
-
-1. leia `estado.md`;
-2. confira a `main`;
-3. confira PR/merge quando aplicável;
-4. diferencie claramente:
-   - planejado;
-   - autorizado;
-   - executado;
-   - aguardando auditoria;
-   - aprovado;
-   - promovido/incorporado.
-
-Uma rodada executada mas não auditada não deve ser tratada como arquitetura canônica consolidada.
+Não aceitar como prova apenas relatório, build ou migration aceita. Verificar o que for relevante: diff, commits, CI, schema, migration history, grants, RLS, advisors, isolamento, secrets, idempotência, APIs vigentes e aderência ao escopo.
 
 ---
 
-# 7. REPOSITÓRIO E AMBIENTES
+# 5. PROTOCOLO DE EFICIÊNCIA
 
-Repositório deste projeto:
+O rigor da auditoria deve permanecer alto, mas o overhead do executor deve ser baixo.
+
+## 5.1 Relatório Claude = índice de evidências
+
+Padrão esperado: **até ~150 linhas ou ~15 KB**.
+
+Pode exceder apenas quando houver incidente, falha complexa, divergência de segurança ou decisão arquitetural que realmente exija narrativa maior.
+
+O relatório deve conter, de forma compacta:
+
+- preflight resumido;
+- arquivos alterados;
+- decisões não óbvias;
+- tabela `prova → comando/fonte → resultado`;
+- migrations/DDL, quando houver;
+- gates executados;
+- branch;
+- pendências/riscos;
+- conclusão.
+
+Não copiar por padrão:
+
+- documentação oficial inteira;
+- funções/arquivos completos já versionados;
+- outputs extensos de CLI;
+- consultas SQL inteiras quando basta nomear a prova e o resultado;
+- narrativa cronológica detalhada.
+
+O GPT abrirá arquivos, logs e banco diretamente se precisar.
+
+## 5.2 Um handoff, não dois ciclos de CI
+
+Preferir **um único push final auditável** contendo implementação + relatório + atualização de estado, quando tecnicamente possível.
+
+O relatório não precisa conhecer antecipadamente o próprio SHA final. A branch/head no GitHub é a fonte da verdade e o GPT resolve o SHA na auditoria.
+
+Não criar commit posterior apenas para preencher SHA no relatório se isso disparar CI redundante.
+
+## 5.3 Gates proporcionais
+
+- `npm ci` local somente se dependências/lockfile mudarem, se o ambiente estiver inconsistente ou se o mandato exigir;
+- mudanças TS/JS: lint + typecheck + testes relevantes + build;
+- mudanças apenas SQL/docs/config sem impacto de runtime: executar somente gates locais pertinentes, mantendo CI final quando aplicável;
+- a CI continua sendo a prova limpa/reprodutível do conjunto técnico.
+
+Não executar bateria inteira local por ritual quando ela não acrescenta evidência.
+
+## 5.4 Operações remotas agrupadas
+
+Quando várias consultas Supabase/GitHub puderem ser obtidas em uma única consulta/snapshot sem perda de clareza, agrupá-las.
+
+Evitar dezenas de reconexões apenas para produzir um relatório mais longo.
+
+## 5.5 Gates humanos
+
+Se uma operação privilegiada exigir ação humana, completar antes **todas as verificações não destrutivas possíveis** e concentrar a intervenção em um único ponto.
+
+Não liberar permissões amplas permanentemente só para eliminar alguns minutos. `supabase db push`, migrations ou outras mutações sensíveis continuam sujeitas ao mandato e às proteções do ambiente.
+
+---
+
+# 6. COMANDO `/proxima`
+
+`/proxima` significa:
+
+**“Leia o estado canônico, reconstrua apenas o working set necessário e execute somente a próxima ação formalmente autorizada.”**
+
+Não significa “decida o que vem depois”.
+
+Quando `estado.md` indicar aguardando aprovação, aguardando auditoria, bloqueado ou sem mandato autorizado, `/proxima` deve parar sem implementar.
+
+O comando é versionado e deve ser mantido alinhado a este método e à política de reciclagem documental.
+
+---
+
+# 7. CONTINUIDADE E NUMERAÇÃO
+
+## 7.1 Descompasso documental é normal
+
+Pode existir temporariamente descompasso entre numeração de rodadas/fases/documentos e o que já foi incorporado ao GitHub.
+
+Se não houver risco operacional, não criar rodada só para alinhar números. Atualizar na próxima etapa substantiva adequada.
+
+Se o descompasso puder fazer executor usar contrato errado, torna-se bloqueante.
+
+## 7.2 Executado não é incorporado
+
+Uma mudança em branch/relatório/commit ainda pode não pertencer ao produto consolidado.
+
+Diferenciar sempre:
+
+- planejado;
+- autorizado;
+- executado;
+- aguardando auditoria;
+- aprovado;
+- promovido/incorporado.
+
+O estado efetivamente incorporado é determinado por `estado.md` + `main` + promoção real.
+
+---
+
+# 8. CICLO DE VIDA DOCUMENTAL
+
+O repositório preserva histórico sem obrigar leitura linear do histórico.
+
+Usar:
+
+- `ACTIVE_DOCS.md` para working set;
+- `HISTORY_SUMMARY.md` para passado promovido;
+- READ SET por rodada;
+- `docs/99-archive/` apenas quando documento canônico substituído gerar ambiguidade.
+
+Reciclagem ocorre dentro da próxima rodada substantiva quando houver fechamento de fase, cinco rodadas promovidas desde a última reciclagem ou outro gatilho definido em `DOCUMENTATION_LIFECYCLE.md`.
+
+Não criar rodada de “reciclagem” isolada se não houver risco operacional.
+
+---
+
+# 9. REPOSITÓRIO E AMBIENTE
+
+Repositório único:
 
 `rpbrito-art/trafegopago`
 
-O repositório:
+`rpbrito-art/business-weaver` pertence a outro projeto e está fora de escopo.
 
-`rpbrito-art/business-weaver`
+Supabase deve ser identificado pelo project ref vigente em `estado.md`, não apenas pelo nome visual no painel.
 
-pertence a outro projeto e está expressamente fora de escopo.
-
-Antes de qualquer execução relevante, valide o repositório real e não confie apenas no contexto mental da sessão anterior.
-
-Supabase atualmente vinculado ao projeto deve ser conferido por `estado.md` e pelo project ref vigente. Nunca escolha outro projeto apenas pelo nome visual no painel.
-
-Não expor credenciais, tokens ou passwords no chat ou no repositório.
+Nunca expor passwords, access tokens, service role/secret keys ou outros segredos em chat, relatório ou Git.
 
 ---
 
-# 8. STACK E PRINCÍPIOS TÉCNICOS
+# 10. INVARIANTES TÉCNICOS
 
-Stack-base atual/prevista:
-
-- Next.js + TypeScript;
-- App Router;
-- Supabase Postgres/Auth/Storage/RLS/Queues/Cron/Edge Functions conforme adequação;
-- APIs oficiais Meta/Instagram;
-- AI Router próprio e multi-provedor;
-- GitHub Actions para gates de CI.
-
-n8n/Make não fazem parte da fundação. Só adicionar se uma necessidade concreta demonstrar vantagem técnica real sobre a arquitetura própria.
-
-Não adicionar serviços por conveniência do agente.
-
----
-
-# 9. REGRAS INEGOCIÁVEIS DE SEGURANÇA E ARQUITETURA
+Contratos detalhados vivem em `docs/03-canonical/`. Invariantes que nenhuma rodada pode violar silenciosamente:
 
 - multi-tenancy por organização;
-- isolamento provado, não apenas presumido;
-- RLS nas tabelas expostas pertinentes;
-- grants e RLS tratados como camadas diferentes;
-- `service_role`, secret keys, passwords e tokens somente server-side;
+- RLS e grants tratados como camadas distintas;
+- isolamento deve ser provado;
+- `service_role`/secret keys somente server-side;
 - nenhuma credencial privilegiada em `NEXT_PUBLIC_*`;
-- não confiar em `user_metadata` para autorização;
-- autorização deve usar vínculo real de membership/organization;
-- funções `SECURITY DEFINER` são exceção sensível e devem ter justificativa, escopo e privilégios mínimos;
-- OAuth oficial Meta;
-- API version Meta centralizada e fixada;
-- revalidar documentação Meta antes de implementar dependências externas;
-- métricas externas normalizadas e versionadas;
-- dados brutos preservados quando necessários para auditoria/reprocessamento;
-- webhooks persistidos, deduplicados e processados de forma segura;
-- operações externas idempotentes;
-- retries/backoff/rate-limit awareness;
-- reconciliação periódica;
+- `user_metadata` não é fonte de autorização;
+- funções `SECURITY DEFINER` são exceção sensível e exigem privilégio mínimo;
+- OAuth e APIs oficiais Meta;
+- versão Meta centralizada e revalidada antes da implementação;
+- métricas externas versionadas/normalizadas;
+- webhooks deduplicados e processamento idempotente;
 - gasto financeiro exige aprovação humana persistida;
 - IA nunca executa gasto diretamente;
-- cálculos determinísticos não devem depender de LLM;
-- features não chamam modelos diretamente: usam AI Router;
-- modelo/provedor não deve ser hardcoded na lógica de negócio;
-- custo de IA deve ser registrado por execução;
-- exclusão e desconexão de dados Meta são requisitos reais;
-- mudanças de contrato exigem atualização documental adequada.
+- cálculos determinísticos fora de LLM;
+- AI Router multi-provedor, sem modelo hardcoded na feature;
+- custo de IA registrado por execução.
 
 Fluxo financeiro obrigatório:
 
-`AI/Rule Recommendation → Approval Request → Human Approval → Domain Command → Idempotent Operation → Meta`
-
-Qualquer implementação que permita pular esse fluxo é bloqueadora.
+`Recommendation → Approval Request → Human Approval → Domain Command → Idempotent Operation → Meta`
 
 ---
 
-# 10. IA E CONTROLE DE CUSTO
-
-A IA deve ser tratada como recurso caro e variável.
-
-Arquitetura esperada:
-
-- Tier 0: regras/cálculos sem LLM;
-- modelos baratos para classificação, extração e tarefas simples;
-- modelos intermediários para análise comparativa;
-- modelos premium somente quando qualidade/complexidade justificarem;
-- fallback e roteamento por capacidade, custo e confiança;
-- structured output quando a saída alimentar máquina/estado;
-- ledger por execução com provider, model, tokens, custo, latência, resultado e confiança quando aplicável.
-
-Nunca desenhar uma feature dependente de um nome específico de modelo como contrato permanente.
-
----
-
-# 11. META E SISTEMAS EXTERNOS
-
-Antes de implementar Meta/Instagram:
-
-- confirmar versão atual da Graph/Marketing API;
-- conferir permissões atuais;
-- conferir requisitos de App Review/Business Verification;
-- conferir campos/métricas vigentes;
-- centralizar versão da API;
-- não espalhar `/latest` ou números de versão pelo código;
-- não assumir que métricas antigas permanecem válidas;
-- separar conceitualmente autenticação, Instagram, Advertising, Lead Ads, Webhooks e Conversions.
-
-Quando documentação externa vigente contradizer decisão antiga baseada em fato externo, atualize o contrato explicitamente. Não contorne silenciosamente.
-
----
-
-# 12. DISCIPLINA DE BANCO E MIGRATIONS
+# 11. BANCO E MIGRATIONS
 
 Quando houver DDL:
 
 - migration versionada é fonte de verdade;
-- não fazer alterações ad hoc no Dashboard para “resolver rápido”;
-- confirmar CLI/documentação atual antes de usar comandos destrutivos ou sensíveis;
-- verificar migrations local/remoto conforme o fluxo definido na rodada;
-- rodar advisors após mudanças de DDL relevantes;
-- testar RLS com usuários/organizações distintos;
-- não considerar isolamento provado apenas porque uma policy existe;
-- não usar `SECURITY DEFINER` apenas para contornar erro de permissão;
-- registrar rollback/riscos quando mudança for sensível.
+- não resolver schema por alterações ad hoc no Dashboard;
+- verificar CLI/docs atuais antes de comandos sensíveis;
+- aplicar somente no project ref autorizado;
+- verificar efeito, não apenas sucesso do comando;
+- rodar Advisors quando relevante;
+- testar RLS/isolamento quando aplicável;
+- não usar `SECURITY DEFINER` para contornar erro de permissão;
+- registrar risco/rollback quando sensível.
 
 ---
 
-# 13. COMO LIDAR COM DÍVIDA E HOUSEKEEPING
+# 12. APIS EXTERNAS E DOCUMENTAÇÃO ATUAL
 
-Dívidas pequenas devem ser registradas, não esquecidas.
+Supabase, Next.js, Meta e provedores de IA mudam. Antes de implementar contrato dependente de comportamento externo atual, consultar documentação vigente.
 
-Mas o projeto não deve virar uma sequência de rodadas burocráticas de limpeza.
-
-Classifique cada pendência:
-
-- **bloqueante agora** — precisa ser resolvida antes de avançar;
-- **deve entrar na próxima rodada substantiva** — corrigir junto com trabalho relevante;
-- **hardening futuro** — registrar e revisar no gate adequado;
-- **cosmético** — não interromper desenvolvimento sem necessidade.
-
-Isso vale especialmente para:
-
-- numeração documental;
-- nomenclatura;
-- comentários;
-- organização de arquivos;
-- pequenos ajustes de tooling;
-- documentação que ficou uma rodada atrás mas não causa ambiguidade.
-
-Não crie fase nova só para “ficar bonito” se a correção puder ser incorporada com segurança à próxima etapa útil.
+Se fato externo atual contradizer pesquisa histórica, atualizar o contrato explicitamente; não contornar silenciosamente.
 
 ---
 
-# 14. PRINCÍPIO DE CONTINUIDADE
+# 13. DÍVIDA E HOUSEKEEPING
 
-Novo chat não começa do zero e também não deve confiar cegamente em memória.
+Classificar pendências como:
 
-O procedimento correto é:
+- bloqueante agora;
+- entra na próxima rodada substantiva;
+- hardening futuro;
+- cosmético.
 
-`ler estado.md → ler este prompt → identificar mandato/auditoria vigente → conferir main/branch quando necessário → reconstruir o contexto → agir apenas dentro do estado autorizado`
+Não criar fase só para numeração, comentários, organização de arquivos ou documentação atrasada quando puder ser corrigida com segurança junto da próxima etapa útil.
 
-Se algo estiver desatualizado, primeiro classifique se é:
+---
 
-- estado operacional incorreto;
-- documentação atrasada;
-- branch não promovida;
-- dívida cosmética;
-- divergência bloqueante.
+# 14. PRINCÍPIO FINAL
 
-Corrija no momento apropriado sem criar trabalho artificial.
+O método deve maximizar **continuidade, rastreabilidade, segurança e velocidade**.
 
-O objetivo do método é manter **continuidade, rastreabilidade, segurança e velocidade**, e não maximizar o número de fases ou documentos.
+Não maximizar quantidade de documentos, tamanho de relatórios, número de comandos ou quantidade de fases.
+
+Procedimento correto para qualquer agente:
+
+`estado.md → PROJECT_PROMPT → ACTIVE_DOCS → mandato → READ SET mínimo → executar/auditar somente o necessário`
+
+Histórico é preservado para investigação, não imposto como leitura obrigatória.
