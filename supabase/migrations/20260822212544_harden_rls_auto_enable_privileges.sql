@@ -1,0 +1,43 @@
+-- Rodada 001A — Baseline Supabase e Segurança
+-- Mandato: rodadas/gpt/RODADA_001A_BASELINE_SUPABASE_SEGURANCA.md
+--
+-- Contexto
+-- --------
+-- public.rls_auto_enable() é a função SECURITY DEFINER que dá suporte ao event
+-- trigger `ensure_rls`, responsável por habilitar RLS automaticamente em toda
+-- nova tabela criada no schema `public`. Ela reproduz literalmente o padrão
+-- oficial documentado pelo Supabase em
+-- https://supabase.com/docs/guides/database/postgres/row-level-security
+-- ("Auto-enable RLS for new tables").
+--
+-- Baseline auditado antes desta migration (proacl de pg_proc):
+--   =X/postgres | postgres=X/postgres | anon=X/postgres
+--   | authenticated=X/postgres | service_role=X/postgres
+--
+-- Ou seja: EXECUTE concedido a PUBLIC, anon e authenticated. Isso expõe a
+-- função em POST /rest/v1/rpc/rls_auto_enable e dispara os lints
+--   0028_anon_security_definer_function_executable
+--   0029_authenticated_security_definer_function_executable
+-- do Supabase Database Advisor.
+--
+-- Correção
+-- --------
+-- Revogar EXECUTE de PUBLIC, anon e authenticated, conforme a remediação
+-- oficial dos lints 0028/0029. PUBLIC precisa ser revogado explicitamente
+-- porque é onde vive o default grant do Postgres para funções.
+--
+-- Não alteramos a lógica da função, não trocamos para SECURITY INVOKER (o
+-- trigger precisa dos privilégios do owner para executar ALTER TABLE) e não
+-- removemos nem desabilitamos o event trigger `ensure_rls`.
+--
+-- Event triggers não consultam o ACL de EXECUTE no momento do disparo: a
+-- função é invocada pelo mecanismo de event trigger, não por uma chamada
+-- direta. A revogação, portanto, fecha apenas a superfície REST/GraphQL.
+-- A prova em execução real está registrada no relatório da rodada.
+--
+-- Idempotência: REVOKE de um privilégio inexistente é no-op no Postgres,
+-- então esta migration pode ser reaplicada com segurança.
+
+revoke execute on function public.rls_auto_enable() from public;
+revoke execute on function public.rls_auto_enable() from anon;
+revoke execute on function public.rls_auto_enable() from authenticated;
