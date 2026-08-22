@@ -2,7 +2,7 @@
 
 Atualizado: 2026-08-22
 
-Este é o **estado operacional canônico**. Para histórico promovido, usar `docs/00-governanca/HISTORY_SUMMARY.md`; não reler relatórios antigos por padrão.
+Este é o **estado operacional canônico da execução corrente**. Para histórico promovido, usar `docs/00-governanca/HISTORY_SUMMARY.md`; não reler relatórios antigos por padrão.
 
 ## 1. Repositório e ambiente autorizados
 
@@ -15,140 +15,107 @@ Este é o **estado operacional canônico**. Para histórico promovido, usar `doc
 
 Promovido e disponível:
 
+- Rodada 000 — Bootstrap Técnico;
+- Rodada 001A — Baseline Supabase e Segurança;
 - Next.js 16.3.2 + React 19.2.8 + TypeScript;
 - App Router;
 - lint, typecheck, Vitest, build e GitHub Actions CI;
-- clientes Supabase browser/server com `@supabase/ssr` e publishable key;
-- convenção de env/secrets;
+- clientes Supabase browser/server com `@supabase/ssr`;
 - migration `20260822212544_harden_rls_auto_enable_privileges.sql` aplicada/versionada;
-- `public.rls_auto_enable()` sem EXECUTE para `PUBLIC`, `anon` e `authenticated`;
-- `ensure_rls` ativo;
-- Security Advisor sem achados após 001A;
+- `ensure_rls` ativo e Security Advisor sem achados após 001A;
 - schema `public` sem tabelas de domínio;
 - `/proxima` e `.gitattributes` versionados.
 
-Rodadas promovidas:
+Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
-- Rodada 000 — Bootstrap Técnico;
-- Rodada 001A — Baseline Supabase e Segurança.
-
-Detalhes históricos: `docs/00-governanca/HISTORY_SUMMARY.md`.
-
-Ainda não existem:
-
-- Auth funcional do produto;
-- organizations/memberships;
-- RLS de domínio;
-- onboarding;
-- Meta/Instagram;
-- campanhas/leads;
-- IA de produto;
-- deploy de produção.
-
-## 3. Método operacional vigente
-
-O método foi otimizado após a 001A:
-
-- bootstrap por working set, não por varredura documental;
-- `docs/00-governanca/ACTIVE_DOCS.md` define documentos ativos;
-- cada mandato tem READ SET mínimo;
-- `HISTORY_SUMMARY.md` substitui leitura rotineira de relatórios antigos;
-- política de reciclagem: `docs/00-governanca/DOCUMENTATION_LIFECYCLE.md`;
-- relatório Claude alvo ≤150 linhas/15 KB;
-- evidência por referência, sem transcrever logs/documentação inteira;
-- gates locais proporcionais ao tipo de alteração;
-- `npm ci` local apenas quando justificável;
-- operações remotas agrupadas;
-- preferir um único handoff/push auditável para evitar CI redundante;
-- GPT resolve branch/head/SHA e faz auditoria independente.
-
-Última reciclagem documental: após a Rodada 001A.
-
-## 4. Estado corrente
+## 3. Estado corrente
 
 **RODADA 001B — AUTH REAL**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **001B EXECUTADA COM CORREÇÃO — AGUARDANDO AUDITORIA GPT**.
 
-Mandato vigente:
-
-`rodadas/gpt/RODADA_001B_AUTH_REAL.md`
-
-Branch esperada:
+Branch corrente:
 
 `claude/rodada-001b-auth-real`
 
-Relatório esperado:
+Mandato original:
+
+`rodadas/gpt/RODADA_001B_AUTH_REAL.md`
+
+Correção vigente:
+
+`rodadas/gpt/CORRECAO_RODADA_001B_01_FECHAR_AUTH_REAL.md`
+
+Adendo à correção:
+
+`rodadas/gpt/ADENDO_CORRECAO_001B_01_SMTP_FREE.md`
+
+Relatório:
 
 `rodadas/claude/RELATORIO_RODADA_001B_AUTH_REAL.md`
 
-O comando `/proxima` está autorizado a executar **somente** esta rodada.
+A correção 001B-01 foi executada. Não há mandato executável pendente: `/proxima` deve
+parar até o GPT auditar.
 
-## 5. Objetivo da 001B
+Nenhuma 001C está autorizada.
 
-Provar identidade e sessão reais com Supabase Auth:
+## 4. Resultado da auditoria parcial
 
-- cadastro e-mail/senha;
-- confirmação de e-mail SSR;
-- login;
-- logout;
-- sessão em cookies;
-- `proxy.ts` conforme padrão vigente Next.js 16/Supabase;
-- verificação server-side segura de identidade;
-- rota protegida mínima;
-- bloqueio de open redirect;
-- smoke test real do fluxo;
-- alinhamento de `/proxima` ao método eficiente/reciclagem documental.
+Confirmado independentemente pelo GPT:
 
-Não há migration de tenancy/domínio planejada nesta rodada.
+- branch correta e sem antecipação de Organizations/tenancy/domínio;
+- CI final do head `a18210bbfeee8817248b011548844acd87f7dbc0` verde em install/lint/typecheck/test/build;
+- 188 testes informados e estrutura de Auth coerente;
+- padrão atual `@supabase/ssr` + Next.js 16 `proxy.ts` implementado;
+- identidade protegida server-side com `getClaims()`, sem confiar em `getSession()`;
+- endpoint `/auth/confirm` usa `verifyOtp` e redirect sanitizado/allowlisted;
+- rota `/conta` faz guard server-side independente do Proxy;
+- logs reais do Supabase confirmam signup/verify/login/logout/revogação exercitados no smoke;
+- schema `public` continua sem tabelas de domínio;
+- Security Advisor continua sem achados.
 
-## 6. Fora de escopo da 001B
+## 5. Gaps da auditoria parcial — fechados pela correção 001B-01
 
-- `organizations`;
-- `organization_members`;
-- profiles próprios;
-- migrations/policies RLS de domínio;
-- onboarding empresarial;
+1. **Template remoto de Confirm signup** — aplicado no projeto `cbnxdoxpyioxjwgjhbtq` no
+   padrão oficial `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`.
+   Template versionado ajustado de `type=signup` para `type=email`.
+2. **E2E real pela UI** — passagem humana única concluída: cadastro → e-mail real →
+   confirmação → `/conta` → logout → bloqueio → login posterior → `/conta`, 9/9 passos.
+   Correlacionada nos logs de Auth do Supabase. `scripts/smoke-auth.mjs` permanece como
+   prova complementar, agora declarado smoke de integração, não E2E da UI.
+
+Evidências no adendo do relatório. A verificação final pertence ao GPT.
+
+## 6. Pendências abertas para a auditoria
+
+1. **SMTP Brevo Free** configurado no Dashboard conforme o adendo, como SMTP provisório
+   de desenvolvimento. Foi pré-requisito do gap 1: projetos Free criados após 2026-06-03
+   com SMTP padrão não podem editar templates de Auth. Não define o provedor de produção
+   — antes do deploy, decidir domínio autenticado e política de e-mail transacional.
+2. Security Advisor deixou de estar zerado: 1 WARN `auth_leaked_password_protection`.
+   Não é regressão de código; aparece com o Auth em uso real. Hardening, não bloqueante.
+3. Usuários de teste remanescentes no projeto. Limpeza sugerida para a próxima rodada
+   substantiva; não removidos por estarem fora do escopo autorizado.
+
+Gates executados na correção: lint, typecheck, 188/188 testes. Build e `npm ci` não
+executados por nenhum código executável ter mudado; a CI do head final é a prova limpa.
+
+## 7. Fora de escopo
+
+Continua fora da 001B e da correção:
+
+- organizations/memberships/profiles próprios;
+- migrations/RLS de domínio;
+- onboarding;
 - Meta/Instagram;
 - campanhas/leads;
 - IA;
 - pagamentos;
 - deploy;
-- social login, MFA, recuperação de senha e magic link como feature de produto.
+- MFA, recuperação de senha, social login.
 
-## 7. Pendências futuras já conhecidas
-
-- `service_role` ainda executa `public.rls_auto_enable()`; definir política geral de privilégio mínimo antes de funções privilegiadas próprias;
-- decidir default privileges para futuras funções em schema exposto antes da primeira função própria de domínio;
-- warning de tooling/ESLint segue não bloqueante.
-
-Não criar rodada isolada para essas pendências se puderem entrar com segurança na próxima etapa substantiva apropriada.
-
-## 8. Regras de handoff
-
-### Claude Code
-
-Ao receber `/proxima`:
-
-1. confirmar repo/project ref;
-2. ler `estado.md`, `.gpt/PROJECT_PROMPT.md`, `ACTIVE_DOCS.md` e o mandato;
-3. respeitar READ SET;
-4. executar somente 001B;
-5. entregar relatório compacto;
-6. atualizar status para `EXECUTADA — AGUARDANDO AUDITORIA GPT`;
-7. não promover nem iniciar 001C.
-
-### GPT
-
-Após entrega:
-
-1. auditar branch/diff/código/CI e Supabase Auth real quando aplicável;
-2. não depender apenas do relatório Claude;
-3. corrigir ou promover;
-4. atualizar `estado.md`, `ACTIVE_DOCS.md` e histórico resumido quando necessário.
-
-## 9. Continuidade
+## 8. Continuidade
 
 Descompasso temporário de numeração/documentação é normal e deve ser corrigido na próxima etapa substantiva quando não houver risco operacional.
 
-Branch/relatório existente não significa mudança incorporada. Estado real = `estado.md` + conteúdo promovido na `main`.
+Branch/relatório existente não significa mudança incorporada. Estado promovido continua sendo a `main`; esta branch permanece em auditoria até a correção ser fechada e reaudita pelo GPT.

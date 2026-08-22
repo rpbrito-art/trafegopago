@@ -12,7 +12,8 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "smoke:auth": "node scripts/smoke-auth.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.4",
