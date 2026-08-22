@@ -261,7 +261,8 @@ Não iniciei a 001C nem qualquer trabalho de Organizations/Membership/RLS.
 
 # ADENDO — CORREÇÃO 001B-01 (FECHAR AUTH REAL)
 
-Mandato: `rodadas/gpt/CORRECAO_RODADA_001B_01_FECHAR_AUTH_REAL.md`. Branch inalterada.
+Mandatos: `rodadas/gpt/CORRECAO_RODADA_001B_01_FECHAR_AUTH_REAL.md` e o adendo
+`rodadas/gpt/ADENDO_CORRECAO_001B_01_SMTP_FREE.md`. Branch inalterada.
 Preflight repetido e aprovado (remote `rpbrito-art/trafegopago`, tree limpa, ref
 `cbnxdoxpyioxjwgjhbtq`).
 
@@ -311,11 +312,13 @@ reproduzidos — a correlação usa `actor_id`. Sem migrations: schema `public` 
 
 ## A4. Configuração remota
 
-- Confirm signup substituído pelo template versionado (`type=email`) — **aplicado**;
-- **SMTP customizado (Brevo Free)** configurado pelo fundador como SMTP provisório de dev
-  para viabilizar a entrega real. Não previsto no mandato; registrado por ser mudança
-  remota com efeito de runtime, não versionada, e que **exige decisão do GPT** antes da
-  promoção (provedor de produção, domínio remetente, limites);
+- **SMTP customizado (Brevo Free)** configurado pelo fundador no Dashboard, conforme o
+  adendo. Foi pré-requisito, não conveniência: projetos Free criados após 2026-06-03 com
+  o SMTP padrão do Supabase não podem editar templates de Auth — sem SMTP próprio o gap 1
+  era intransponível sem plano pago. Credenciais inseridas apenas no Dashboard, não
+  versionadas e não expostas aqui;
+- Confirm signup substituído pelo template versionado (`type=email`) — **aplicado**, já
+  com os campos reabilitados pelo SMTP próprio;
 - Redirect URLs: nenhuma alteração necessária (A2).
 
 ## A5. Gates e pendências
@@ -327,7 +330,9 @@ Pendências novas:
 
 1. Security Advisor deixou de estar zerado: 1 WARN `auth_leaked_password_protection`.
    Não é regressão de código — aparece com o Auth em uso real. Hardening, não bloqueante.
-2. SMTP Brevo provisório e não versionado (A4).
+2. SMTP Brevo é provisório de desenvolvimento, conforme o adendo §2: **não define o
+   provedor de produção**. Antes do deploy, escolher domínio autenticado e política
+   definitiva de e-mail transacional. Limite atual do plano: 300 envios/dia.
 3. Usuários de teste remanescentes, incluindo tentativas anteriores ao SMTP. Não removidos
    por estarem fora do escopo; sugiro limpeza na próxima rodada substantiva.
 4. Pendências herdadas em §7 seguem abertas e intocadas.

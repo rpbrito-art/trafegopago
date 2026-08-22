@@ -46,6 +46,10 @@ Correção vigente:
 
 `rodadas/gpt/CORRECAO_RODADA_001B_01_FECHAR_AUTH_REAL.md`
 
+Adendo à correção:
+
+`rodadas/gpt/ADENDO_CORRECAO_001B_01_SMTP_FREE.md`
+
 Relatório:
 
 `rodadas/claude/RELATORIO_RODADA_001B_AUTH_REAL.md`
@@ -84,10 +88,10 @@ Evidências no adendo do relatório. A verificação final pertence ao GPT.
 
 ## 6. Pendências abertas para a auditoria
 
-1. **SMTP Brevo Free** configurado no projeto como SMTP provisório de desenvolvimento,
-   para viabilizar a entrega real do e-mail. Não estava previsto no mandato, não é
-   configuração versionada e exige decisão do GPT antes da promoção (provedor de
-   produção, domínio remetente, limites).
+1. **SMTP Brevo Free** configurado no Dashboard conforme o adendo, como SMTP provisório
+   de desenvolvimento. Foi pré-requisito do gap 1: projetos Free criados após 2026-06-03
+   com SMTP padrão não podem editar templates de Auth. Não define o provedor de produção
+   — antes do deploy, decidir domínio autenticado e política de e-mail transacional.
 2. Security Advisor deixou de estar zerado: 1 WARN `auth_leaked_password_protection`.
    Não é regressão de código; aparece com o Auth em uso real. Hardening, não bloqueante.
 3. Usuários de teste remanescentes no projeto. Limpeza sugerida para a próxima rodada
