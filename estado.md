@@ -32,7 +32,7 @@ Este é o **estado operacional canônico** do projeto. GPT e Claude Code devem l
 - Etapa 3 — consolidação canônica e estruturação documental: concluída.
 - Rodada 000 — Bootstrap Técnico: **APROVADA E PROMOVIDA**.
 
-Auditoria:
+Auditoria da Rodada 000:
 
 `rodadas/gpt/AUDITORIA_RODADA_000_BOOTSTRAP_TECNICO.md`
 
@@ -46,58 +46,78 @@ Merge em `main`: `9f0f6aaa205fe5b774faab92c34e8373e4ef7d6c`.
 
 ## 4. Estado corrente
 
-**PRÓXIMA FASE EM PLANEJAMENTO — AGUARDANDO APROVAÇÃO DO FUNDADOR**
+**RODADA 001A — BASELINE SUPABASE E SEGURANÇA**
 
-Nenhum mandato executável de Rodada 001 está autorizado neste momento.
+Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
 
-O GPT deve apresentar o planejamento da próxima fase ao fundador. Somente após aprovação explícita poderá criar o mandato em `rodadas/gpt/`, atualizar este arquivo e autorizar `/proxima` a executar.
+Mandato vigente:
 
-## 5. Próxima fase proposta
+`rodadas/gpt/RODADA_001A_BASELINE_SUPABASE_SEGURANCA.md`
 
-**Fundação Supabase — Auth + Organizations + Membership + RLS**.
+Relatório esperado:
 
-Objetivos propostos:
+`rodadas/claude/RELATORIO_RODADA_001A_BASELINE_SUPABASE_SEGURANCA.md`
 
-- autenticação Supabase com e-mail/senha e confirmação de e-mail;
-- integração SSR correta para Next.js 16 usando Proxy (`proxy.ts`) para refresh de sessão;
-- `organizations` e `organization_members` como raiz de tenancy;
-- bootstrap seguro da primeira organização do usuário;
-- RLS explícita e testada;
-- grants explícitos para Data API conforme defaults atuais do Supabase;
-- provas de isolamento entre duas organizações/dois usuários;
-- tratamento inicial de logout/sessão;
-- migrations versionadas como fonte de verdade.
+O comando `/proxima` está autorizado a executar **somente** esta rodada.
 
-O planejamento ainda precisa ser aprovado pelo fundador antes da execução.
+## 5. Objetivo da rodada corrente
 
-## 6. Achados obrigatórios para a próxima fase
+Preparar e endurecer a fundação Supabase antes de Auth/Organizations:
+
+- inventariar o baseline remoto;
+- versionar a primeira migration de hardening quando necessária;
+- corrigir privilégios indevidos de `public.rls_auto_enable()` sem quebrar `ensure_rls`;
+- provar em execução real que novas tabelas `public` continuam recebendo RLS automaticamente;
+- reexecutar Security Advisor;
+- versionar `.claude/commands/proxima.md`;
+- adicionar normalização de line endings sem diff cosmético massivo;
+- manter Auth, Organizations, Membership e domínio fora de escopo.
+
+## 6. Achados obrigatórios desta rodada
 
 ### Supabase — `rls_auto_enable`
 
 O Security Advisor encontrou `public.rls_auto_enable()` como `SECURITY DEFINER` com `EXECUTE` concedido a `PUBLIC`, `anon` e `authenticated`.
 
-A função integra o event trigger `ensure_rls`, que ativa RLS automaticamente em novas tabelas `public`. O mecanismo deve ser preservado, mas os privilégios indevidos precisam ser corrigidos e provados antes da exposição do domínio.
+A função integra o event trigger `ensure_rls`, que ativa RLS automaticamente em novas tabelas `public`. A Rodada 001A deve endurecer os privilégios e provar que o trigger continua funcional.
 
-A próxima rodada deve:
+Critérios mínimos:
 
-1. revisar os privilégios da função;
-2. remover capacidade de execução indevida por papéis públicos quando tecnicamente seguro;
-3. provar que o event trigger continua habilitando RLS em novas tabelas;
-4. executar o Supabase Security Advisor novamente;
-5. não considerar a fundação de RLS aprovada enquanto houver warning relevante sem justificativa.
+1. consultar documentação oficial vigente antes do DDL;
+2. registrar ACL anterior;
+3. aplicar hardening via migration versionada;
+4. provar RLS automático em tabela de teste reversível;
+5. confirmar limpeza da tabela de prova;
+6. rodar Security Advisor novamente;
+7. não encerrar a rodada com warning relevante não justificado.
 
-### Auth Next.js 16
+### Protocolo `/proxima`
 
-A documentação atual usa `proxy.ts`/Proxy, não o antigo `middleware.ts`, para refresh da sessão SSR. Proteção de identidade deve usar `supabase.auth.getClaims()` em vez de confiar em `getSession()` para autorização server-side.
+`.claude/commands/proxima.md` existe localmente e deve ser versionado nesta rodada após verificar aderência ao protocolo canônico.
 
-## 7. Housekeeping pendente não bloqueante
+## 7. Explicitamente ainda fora de escopo
 
-- `.claude/commands/proxima.md` existe apenas localmente e deve ser versionado para tornar o protocolo reproduzível.
-- adicionar `.gitattributes`/normalização de line endings deve ser considerado.
-- secret scanning automatizado em CI permanece hardening futuro.
-- monitorar atualização compatível do ESLint; não fazer upgrade cego.
+- cadastro/login;
+- confirmação de e-mail;
+- `proxy.ts` de Auth;
+- Organizations;
+- Membership;
+- policies RLS de domínio;
+- onboarding;
+- Meta/Instagram;
+- campanhas/leads;
+- IA;
+- deploy.
 
-## 8. Regras de handoff
+Nenhuma Rodada 001B está autorizada.
+
+## 8. Próxima fase planejada, mas NÃO autorizada
+
+Após aprovação da 001A, a próxima rodada prevista é **001B — Auth real**, incluindo e-mail/senha, confirmação de e-mail, logout, callback e refresh SSR com o padrão vigente do Next.js 16/Supabase.
+
+Ela só poderá ser criada após auditoria GPT da 001A e nova autorização do fundador conforme o processo vigente.
+
+## 9. Regras de handoff
 
 ### GPT
 
@@ -112,15 +132,17 @@ Ao planejar uma rodada ou correção:
 
 Ao iniciar `/proxima`:
 
-1. ler `estado.md`;
-2. ler `.gpt/PROJECT_PROMPT.md`;
-3. só executar se existir mandato vigente explicitamente autorizado;
-4. se o estado estiver aguardando aprovação/auditoria, não implementar nada;
-5. escrever relatório no caminho indicado pela rodada;
-6. nunca promover a própria execução.
+1. confirmar repositório/project ref;
+2. ler `estado.md`;
+3. ler `.gpt/PROJECT_PROMPT.md`;
+4. abrir integralmente o mandato vigente;
+5. executar somente a Rodada 001A;
+6. escrever o relatório no caminho indicado;
+7. atualizar o estado para `EXECUTADA — AGUARDANDO AUDITORIA GPT` ao concluir;
+8. nunca promover a própria execução ou iniciar 001B.
 
-## 9. Regra contra ambiguidade
+## 10. Regra contra ambiguidade
 
-Se houver conflito entre este arquivo e um relatório antigo, vale o `estado.md` mais recente.
+Se houver conflito entre este arquivo e relatório antigo, vale o `estado.md` mais recente.
 
-Se houver conflito entre uma rodada em `rodadas/gpt/` e documentos canônicos de produto/arquitetura, o executor deve parar e reportar a inconsistência; não deve escolher silenciosamente uma interpretação.
+Se houver conflito entre o mandato vigente e documentos canônicos de produto/arquitetura, o executor deve parar e reportar a inconsistência; não deve escolher silenciosamente uma interpretação.
