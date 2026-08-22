@@ -26,12 +26,8 @@ Resultado promovido:
 - nenhum schema de domínio antecipado.
 
 Auditoria: `rodadas/gpt/AUDITORIA_RODADA_000_BOOTSTRAP_TECNICO.md`
-
 Relatório original: `rodadas/claude/RELATORIO_RODADA_000_BOOTSTRAP_TECNICO.md`
-
 PR: #1. Merge: `9f0f6aaa205fe5b774faab92c34e8373e4ef7d6c`.
-
-Pendências que sobreviveram: Auth real, tenancy, RLS de domínio; tooling ESLint com warning não bloqueante.
 
 ## Rodada 001A — Baseline Supabase e Segurança
 
@@ -43,21 +39,41 @@ Resultado promovido:
 - `postgres` e `service_role` permanecem com EXECUTE;
 - event trigger `ensure_rls` continua habilitando RLS automaticamente em novas tabelas `public`;
 - prova transacional confirmou auto-enable de RLS sem deixar tabela residual;
-- Supabase Security Advisor ficou sem achados;
 - `.claude/commands/proxima.md` e `.gitattributes` versionados.
 
 Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001A_BASELINE_SUPABASE_SEGURANCA.md`
-
 Relatório original: `rodadas/claude/RELATORIO_RODADA_001A_BASELINE_SUPABASE_SEGURANCA.md`
-
 PR: #2. Merge: `fb9bc62e6cf25e03e39255bff7042e330a80e1d6`.
 
-Pendências que sobreviveram:
+## Rodada 001B — Auth Real
 
-- definir política de privilégios mínimos para funções próprias antes da primeira função privilegiada de domínio;
-- decidir `ALTER DEFAULT PRIVILEGES ... REVOKE EXECUTE ...` antes da primeira função própria em schema exposto;
-- Auth real continua inexistente.
+Resultado promovido:
+
+- autenticação real por e-mail/senha com Supabase Auth;
+- confirmação de e-mail obrigatória;
+- endpoint SSR `/auth/confirm` usando `token_hash` + `verifyOtp`;
+- template de confirmação versionado e remoto com `type=email`;
+- sessão SSR em cookies com `@supabase/ssr`;
+- Next.js 16 `proxy.ts` para refresh/propagação da sessão;
+- autorização mínima de página protegida com `getClaims()` server-side;
+- proteção contra open redirect;
+- cadastro, confirmação, logout, bloqueio pós-logout e login posterior validados por passagem E2E humana 9/9;
+- smoke de integração real mantido como prova complementar, sem ser rotulado como E2E de UI;
+- SMTP Brevo Free configurado apenas para desenvolvimento, permitindo customização de template no plano Free;
+- nenhuma tabela, organization, membership ou RLS de domínio antecipada;
+- CI final verde no head auditado `ea886def6face318e032f2ae940a7044a1ce0552`.
+
+Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001B_AUTH_REAL.md`
+Relatório original: `rodadas/claude/RELATORIO_RODADA_001B_AUTH_REAL.md`
+PR: #3. Merge: `4819875007784f9bc016abd57202fe1fe9a7063b`.
+
+Pendências que sobrevivem:
+
+- `auth_leaked_password_protection` desabilitado: hardening antes de clientes reais/produção;
+- SMTP de produção/domínio autenticado ainda não definido;
+- default privileges para futuras funções próprias antes de função sensível em schema exposto;
+- rate limiting próprio quando necessário além do provider.
 
 ## Estado após esta reciclagem
 
-A próxima etapa substantiva é Auth real. Não é necessário ler os relatórios completos das Rodadas 000/001A para implementá-la, salvo se surgir uma dúvida histórica concreta não resolvida pelos contratos canônicos ou por este resumo.
+Auth real está promovido. A próxima direção planejada é **Organizations + Membership**, seguida da fundação de RLS/isolamento de domínio. Não é necessário reler relatórios completos das Rodadas 000/001A/001B por padrão; consultar este resumo e abrir evidência histórica apenas quando surgir dependência concreta.
