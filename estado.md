@@ -27,51 +27,64 @@ Promovido e disponível:
 - autenticação real por e-mail/senha;
 - confirmação SSR via `/auth/confirm` + `token_hash` + `verifyOtp`;
 - sessão SSR/cookies, `proxy.ts`, guard server-side com `getClaims()`;
-- cadastro, confirmação, logout, bloqueio de rota e login posterior validados em E2E humano real;
-- SMTP Brevo Free configurado apenas como infraestrutura provisória de desenvolvimento;
-- schema `public` sem tabelas de domínio;
+- fluxo real cadastro → confirmação → sessão → logout → login validado;
+- SMTP Brevo Free apenas como infraestrutura provisória de desenvolvimento;
+- schema `public` ainda sem tabelas de domínio antes da execução da 001C;
 - `/proxima`, `.gitattributes` e método documental enxuto versionados.
 
 Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 ## 3. Estado corrente
 
-**RODADA 001B — AUTH REAL**
+**RODADA 001C — ORGANIZATIONS + MEMBERSHIP**
 
-Status: **APROVADA E PROMOVIDA**.
+Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
 
-PR: #3
-Merge: `4819875007784f9bc016abd57202fe1fe9a7063b`
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001B_AUTH_REAL.md`
+Mandato vigente:
 
-Não há mandato executável pendente.
+`rodadas/gpt/RODADA_001C_ORGANIZATIONS_MEMBERSHIP.md`
 
-`/proxima` deve parar aguardando nova autorização.
+Branch esperada:
 
-Nenhuma 001C está autorizada.
+`claude/rodada-001c-organizations-membership`
 
-## 4. Provas consolidadas da 001B
+Relatório esperado:
 
-- head final auditado: `ea886def6face318e032f2ae940a7044a1ce0552`;
-- CI run `32605498009`: success;
-- template versionado/remoto: `type=email`;
-- fluxo real: cadastro → e-mail → confirmação → `/conta` → logout → bloqueio → login → `/conta`, 9/9;
-- logs Supabase: signup 200 e verify 200 no teste final;
-- `auth.users` na auditoria final: 1 usuário total, 1 confirmado, 0 smoke users, 0 não confirmados;
-- nenhuma tabela/tenancy/domínio criada.
+`rodadas/claude/RELATORIO_RODADA_001C_ORGANIZATIONS_MEMBERSHIP.md`
 
-## 5. Pendências não bloqueantes
+`/proxima` está autorizado a executar **somente a Rodada 001C**.
 
-1. `auth_leaked_password_protection` está desabilitado e aparece como WARN no Security Advisor. Tratar como hardening antes de clientes reais/produção.
-2. Brevo Free é somente SMTP provisório de desenvolvimento. Antes de deploy, decidir provedor definitivo, domínio autenticado e política de e-mail transacional.
-3. Definir default privileges para futuras funções próprias antes da primeira função sensível em schema exposto.
-4. Rate limiting próprio continua futuro conforme `SECURITY_MODEL.md` quando houver necessidade além do provider.
+Nenhuma 001D está autorizada.
 
-## 6. Próxima direção planejada, ainda não autorizada
+## 4. Escopo autorizado da 001C
 
-Rodada 001C — Organizations + Membership, com fundação de tenancy e preparação para RLS de domínio.
+Criar somente a fundação relacional de tenancy:
 
-A 001C deve ser planejada e explicitamente autorizada antes de `/proxima` executar qualquer implementação.
+- `public.organizations`;
+- `public.organization_members`;
+- constraints, FKs e índice por `user_id`;
+- migration versionada/aplicada;
+- RLS explicitamente habilitado nas duas tabelas;
+- zero policies ao final desta rodada;
+- acesso funcional de `anon`/`authenticated` fechado até a 001D;
+- provas transacionais das constraints sem resíduos.
+
+Não criar `business_profiles`, onboarding, policies de membership, UI de organizações, convites ou funções `SECURITY DEFINER`.
+
+## 5. Pendências não bloqueantes conhecidas
+
+1. `auth_leaked_password_protection` desabilitado no Advisor — hardening antes de clientes reais/produção; não é regressão da 001C se permanecer inalterado.
+2. Brevo Free é apenas SMTP provisório de desenvolvimento.
+3. Default privileges para funções próprias devem ser resolvidos imediatamente antes da primeira função sensível em schema exposto; a 001C não cria funções próprias.
+4. Rate limiting próprio permanece futuro conforme `SECURITY_MODEL.md`.
+
+## 6. Próxima direção após 001C
+
+Planejada, mas **não autorizada**:
+
+Rodada 001D — grants + RLS policies + prova adversarial 2 usuários × 2 organizações.
+
+Ela só poderá iniciar após execução, auditoria e promoção da 001C, seguida de nova autorização explícita.
 
 ## 7. Continuidade
 
