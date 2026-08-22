@@ -18,86 +18,77 @@ Promovido e disponível:
 - Rodada 000 — Bootstrap Técnico;
 - Rodada 001A — Baseline Supabase e Segurança;
 - Rodada 001B — Auth Real;
+- Rodada 001C — Organizations + Membership;
 - Next.js 16.3.2 + React 19.2.8 + TypeScript;
-- App Router;
-- lint, typecheck, Vitest, build e GitHub Actions CI;
-- clientes Supabase browser/server com `@supabase/ssr`;
-- migration `20260822212544_harden_rls_auto_enable_privileges.sql` aplicada/versionada;
-- `ensure_rls` ativo;
-- autenticação real por e-mail/senha;
-- confirmação SSR via `/auth/confirm` + `token_hash` + `verifyOtp`;
-- sessão SSR/cookies, `proxy.ts`, guard server-side com `getClaims()`;
-- fluxo real cadastro → confirmação → sessão → logout → login validado;
-- SMTP Brevo Free apenas como infraestrutura provisória de desenvolvimento;
-- schema `public` ainda sem tabelas de domínio antes da execução da 001C;
-- `/proxima`, `.gitattributes` e método documental enxuto versionados.
+- Auth real por e-mail/senha com confirmação SSR, sessão/cookies e rota protegida;
+- `public.organizations` e `public.organization_members` criadas por migration versionada;
+- constraints/FKs/índice de membership conforme contrato;
+- RLS explicitamente habilitado nas duas tabelas;
+- zero policies de domínio até a próxima rodada;
+- `anon` e `authenticated` sem privilégios funcionais nas duas tabelas atuais;
+- `ensure_rls` permanece ativo;
+- CI do head final da 001C verde.
 
-Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
+A reciclagem de `HISTORY_SUMMARY.md` pode incorporar a 001C junto da próxima etapa substantiva; não criar housekeeping isolado apenas para isso.
 
 ## 3. Estado corrente
 
 **RODADA 001C — ORGANIZATIONS + MEMBERSHIP**
 
-Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+Status: **APROVADA E PROMOVIDA**.
 
-Mandato vigente:
+PR: #4
+Merge: `a6b2e912f8d54005d1decf69cb4e4bf8335d31ec`
+Head auditado: `a599d68220095d2fb147529684410ec137949435`
+CI final: run `32606516377` — success
+Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001C_ORGANIZATIONS_MEMBERSHIP.md`
+Migration: `20260822234354_create_organizations_and_members.sql`
 
-`rodadas/gpt/RODADA_001C_ORGANIZATIONS_MEMBERSHIP.md`
+Não há mandato executável pendente.
 
-Branch entregue:
-
-`claude/rodada-001c-organizations-membership`
-
-Relatório entregue:
-
-`rodadas/claude/RELATORIO_RODADA_001C_ORGANIZATIONS_MEMBERSHIP.md`
-
-Migration aplicada no ref `cbnxdoxpyioxjwgjhbtq`:
-
-`20260822234354_create_organizations_and_members.sql`
-
-Commit: head da branch acima no GitHub (SHA resolvido pelo GPT na auditoria).
-
-Bloqueios: nenhum. Gate humano: não foi necessário.
-
-`/proxima` não tem mais execução autorizada até a auditoria do GPT.
+`/proxima` deve parar aguardando nova autorização.
 
 Nenhuma 001D está autorizada.
 
-## 4. Escopo autorizado da 001C
+## 4. Provas consolidadas da 001C
 
-Criar somente a fundação relacional de tenancy:
+- migration local/remota registrada;
+- somente `organizations` e `organization_members` foram adicionadas ao schema `public`;
+- PKs, FKs, CHECKs, defaults e índice `organization_members_user_id_idx` conferidos diretamente;
+- `relrowsecurity=true` nas duas tabelas;
+- zero policies nas duas tabelas, deliberadamente;
+- ACL final das duas tabelas: somente `postgres` e `service_role`;
+- `anon` e `authenticated`: SELECT/INSERT/UPDATE/DELETE = false nas duas tabelas;
+- `ensure_rls` ativo;
+- zero linhas residuais em organizations/memberships;
+- nenhuma função ou trigger de domínio criada;
+- CI final verde.
 
-- `public.organizations`;
-- `public.organization_members`;
-- constraints, FKs e índice por `user_id`;
-- migration versionada/aplicada;
-- RLS explicitamente habilitado nas duas tabelas;
-- zero policies ao final desta rodada;
-- acesso funcional de `anon`/`authenticated` fechado até a 001D;
-- provas transacionais das constraints sem resíduos.
+## 5. Pendências e gates para a próxima etapa
 
-Não criar `business_profiles`, onboarding, policies de membership, UI de organizações, convites ou funções `SECURITY DEFINER`.
+1. **Default privileges de tabelas no schema `public`**: `pg_default_acl` ainda concede ALL a `anon`/`authenticated` para novas tabelas criadas por `postgres`/`supabase_admin`. As duas tabelas atuais foram fechadas por REVOKE escopado. Esta pendência é **bloqueante antes de qualquer nova tabela futura** e deve ser tratada na 001D.
+2. **Policies RLS**: os INFO `rls_enabled_no_policy` são esperados até a 001D, que deverá criar policies e provas adversariais.
+3. **Default privileges de funções**: antes da primeira função própria sensível, definir política mínima de EXECUTE; nenhuma função própria foi criada ainda.
+4. `auth_leaked_password_protection` permanece WARN conhecido de Auth; hardening antes de clientes reais/produção.
+5. Brevo Free permanece SMTP provisório de desenvolvimento.
+6. Rate limiting próprio permanece futuro conforme `SECURITY_MODEL.md`.
 
-## 5. Pendências não bloqueantes conhecidas
+## 6. Próxima direção planejada, ainda não autorizada
 
-1. `auth_leaked_password_protection` desabilitado no Advisor — hardening antes de clientes reais/produção; não é regressão da 001C se permanecer inalterado.
-2. Brevo Free é apenas SMTP provisório de desenvolvimento.
-3. Default privileges para funções próprias devem ser resolvidos imediatamente antes da primeira função sensível em schema exposto; a 001C não cria funções próprias.
-4. Rate limiting próprio permanece futuro conforme `SECURITY_MODEL.md`.
-5. Levantada na execução da 001C: os default privileges do schema `public`
-   (`pg_default_acl`) concedem ALL a `anon`/`authenticated` em **toda tabela nova**.
-   As duas tabelas da 001C foram fechadas com `REVOKE` escopado, mas a próxima tabela
-   criada nascerá aberta se os defaults não forem tratados. Decisão pertence à 001D,
-   junto do desenho de grants. Não bloqueia a auditoria da 001C.
+Rodada 001D — **Default privileges + grants + RLS policies + prova adversarial 2 usuários × 2 organizações**.
 
-## 6. Próxima direção após 001C
+Escopo esperado:
 
-Planejada, mas **não autorizada**:
+- corrigir default privileges de tabelas antes de ampliar o schema;
+- definir grants mínimos coerentes com a Data API;
+- criar policies de membership para `organizations` e `organization_members`;
+- provar membro lê apenas org própria e não lê/escreve org alheia;
+- provar não membro sem acesso;
+- provar comportamento de roles onde aplicável;
+- usar ao menos 2 usuários e 2 organizações em prova controlada;
+- limpar fixtures/provas ou preservar somente se explicitamente autorizado.
 
-Rodada 001D — grants + RLS policies + prova adversarial 2 usuários × 2 organizações.
-
-Ela só poderá iniciar após execução, auditoria e promoção da 001C, seguida de nova autorização explícita.
+A 001D precisa de nova autorização explícita antes de `/proxima` executar qualquer implementação.
 
 ## 7. Continuidade
 
