@@ -31,7 +31,7 @@ Este é o **estado operacional canônico** do projeto. GPT e Claude Code devem l
 
 **RODADA 000 — BOOTSTRAP TÉCNICO**
 
-Status: **PLANEJADA / AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
 Mandato vigente:
 
@@ -40,6 +40,21 @@ Mandato vigente:
 Relatório esperado do Claude:
 
 `rodadas/claude/RELATORIO_RODADA_000_BOOTSTRAP_TECNICO.md`
+
+### Registro de execução
+
+Preenchido pelo Claude Code. Não constitui aprovação.
+
+- Executado em: 2026-08-22.
+- Branch: `claude/bootstrap-tecnico` (a partir da `main`, sem merge).
+- Commit de implementação: `1d5d86fc550b74d75e924f2046e1cfe410dd7d62`.
+- Relatório entregue: `rodadas/claude/RELATORIO_RODADA_000_BOOTSTRAP_TECNICO.md`.
+- Gates: lint, typecheck, testes (11/11) e build aprovados localmente.
+- Migrations de domínio: nenhuma. Projeto `cbnxdoxpyioxjwgjhbtq` com zero migrations.
+- Secrets versionados: nenhum.
+- Bloqueios: nenhum.
+- Pendências registradas no relatório (§8), com destaque para o middleware de
+  refresh de sessão Supabase, que deve entrar no escopo da Fase 1.
 
 ## 5. Objetivo da rodada corrente
 
