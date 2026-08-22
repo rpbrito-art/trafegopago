@@ -38,21 +38,29 @@ Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 **RODADA 001C — ORGANIZATIONS + MEMBERSHIP**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
 Mandato vigente:
 
 `rodadas/gpt/RODADA_001C_ORGANIZATIONS_MEMBERSHIP.md`
 
-Branch esperada:
+Branch entregue:
 
 `claude/rodada-001c-organizations-membership`
 
-Relatório esperado:
+Relatório entregue:
 
 `rodadas/claude/RELATORIO_RODADA_001C_ORGANIZATIONS_MEMBERSHIP.md`
 
-`/proxima` está autorizado a executar **somente a Rodada 001C**.
+Migration aplicada no ref `cbnxdoxpyioxjwgjhbtq`:
+
+`20260822234354_create_organizations_and_members.sql`
+
+Commit: head da branch acima no GitHub (SHA resolvido pelo GPT na auditoria).
+
+Bloqueios: nenhum. Gate humano: não foi necessário.
+
+`/proxima` não tem mais execução autorizada até a auditoria do GPT.
 
 Nenhuma 001D está autorizada.
 
@@ -77,6 +85,11 @@ Não criar `business_profiles`, onboarding, policies de membership, UI de organi
 2. Brevo Free é apenas SMTP provisório de desenvolvimento.
 3. Default privileges para funções próprias devem ser resolvidos imediatamente antes da primeira função sensível em schema exposto; a 001C não cria funções próprias.
 4. Rate limiting próprio permanece futuro conforme `SECURITY_MODEL.md`.
+5. Levantada na execução da 001C: os default privileges do schema `public`
+   (`pg_default_acl`) concedem ALL a `anon`/`authenticated` em **toda tabela nova**.
+   As duas tabelas da 001C foram fechadas com `REVOKE` escopado, mas a próxima tabela
+   criada nascerá aberta se os defaults não forem tratados. Decisão pertence à 001D,
+   junto do desenho de grants. Não bloqueia a auditoria da 001C.
 
 ## 6. Próxima direção após 001C
 
