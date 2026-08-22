@@ -6,12 +6,12 @@ Esta pasta organiza o handoff operacional entre GPT e Claude Code.
 
 - `rodadas/gpt/` — mandatos de execução, correções e auditorias preparados pelo GPT.
 - `rodadas/claude/` — relatórios de execução, evidências e devoluções produzidos pelo Claude Code.
-- `/ESTADO.md` — estado operacional corrente e ponte entre ambos.
+- `/estado.md` — estado operacional corrente e ponte entre ambos.
 
 ## Fluxo obrigatório
 
-1. GPT atualiza `ESTADO.md` e cria um mandato numerado em `rodadas/gpt/`.
-2. Claude Code lê `ESTADO.md`, `.gpt/PROJECT_PROMPT.md` e o mandato vigente.
+1. GPT atualiza `estado.md` e cria um mandato numerado em `rodadas/gpt/`.
+2. Claude Code lê `estado.md`, `.gpt/PROJECT_PROMPT.md` e o mandato vigente.
 3. Claude executa somente o escopo autorizado.
 4. Claude grava o relatório final em `rodadas/claude/` usando o nome indicado pelo estado.
 5. GPT lê o relatório, inspeciona GitHub/diff/provas e decide: aprovar, corrigir ou bloquear.
