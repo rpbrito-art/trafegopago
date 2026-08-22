@@ -6,6 +6,16 @@ export const metadata = {
 };
 
 /**
+ * Nunca pré-renderizar.
+ *
+ * A página existe em função da sessão de quem a pede. Deixar o Next tentar
+ * gerá-la em build seria errado por dois motivos: no build não há request (nem
+ * cookies, nem env de runtime), e uma página de sessão prerenderizada é
+ * exatamente o tipo de artefato que não pode acabar em cache compartilhado.
+ */
+export const dynamic = "force-dynamic";
+
+/**
  * Área protegida mínima da Rodada 001B.
  *
  * Existe para provar identidade e sessão, não para ser o dashboard do produto.

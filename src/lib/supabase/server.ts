@@ -18,8 +18,12 @@ import { readPublicEnv } from "@/lib/env/public";
  * Um novo cliente deve ser criado a cada request — nunca compartilhado.
  */
 export async function createSupabaseServerClient() {
-  const env = readPublicEnv();
+  // `cookies()` primeiro, de propósito: é o que marca a rota como dependente do
+  // request. Se a leitura de env viesse antes e falhasse, o Next ainda estaria
+  // tratando a rota como estática e reportaria o erro como falha de prerender —
+  // escondendo a causa real.
   const cookieStore = await cookies();
+  const env = readPublicEnv();
 
   return createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,

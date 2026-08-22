@@ -194,10 +194,33 @@ sem sessão gravada server-side em vez de passar por `/auth/confirm`. Alternativ
 | Typecheck | `npm run typecheck` | sem erros (`next typegen` + `tsc --noEmit`) |
 | Testes | `npm test` | 188/188 |
 | Build | `npm run build` | compilado; rotas `/`, `/auth/confirm`, `/auth/erro`, `/cadastro`, `/cadastro/confirme-seu-email`, `/conta`, `/entrar` + `ƒ Proxy (Middleware)` |
+| Build sem `.env.local` | `npm run build` com a env removida | passa; replica a condição da CI |
 | Smoke real | `npm run smoke:auth` | 27/27 |
 
 `npm ci` local não executado: `package-lock.json` inalterado e ambiente consistente
-(critério §9 do mandato). CI remota roda sobre o push desta branch.
+(critério §9 do mandato).
+
+### Falha de CI corrigida (run 32603178533)
+
+O primeiro push falhou no step **Build**: `Error occurred prerendering page "/conta"` →
+`Variáveis de ambiente públicas inválidas`. Lint, typecheck e testes passaram.
+
+O build local havia passado porque o `.env.local` existia; a CI, sem env, expôs um
+defeito real e não apenas uma diferença de ambiente: **`/conta` não estava declarada como
+dinâmica**, então o Next tentou gerá-la em build. Uma página de sessão prerenderizada é um
+problema por si só, independentemente da env.
+
+Correção em dois pontos:
+
+1. `export const dynamic = "force-dynamic"` em `src/app/conta/page.tsx` — a página nunca
+   pode ser prerenderizada nem acabar em cache compartilhado;
+2. `createSupabaseServerClient` passa a chamar `cookies()` **antes** de `readPublicEnv()`.
+   A ordem anterior deixava a env estourar antes de a rota ser marcada como dependente do
+   request, o que fazia o Next reportar o sintoma (falha de prerender) em vez da causa.
+
+Reproduzido e verificado localmente removendo `.env.local` e rodando `npm run build`:
+passa, com `/conta` como `ƒ (Dynamic)`. Smoke test real reexecutado após a correção:
+27/27.
 
 ---
 
