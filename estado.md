@@ -17,14 +17,20 @@ Promovido e disponível:
 
 - Rodada 000 — Bootstrap Técnico;
 - Rodada 001A — Baseline Supabase e Segurança;
+- Rodada 001B — Auth Real;
 - Next.js 16.3.2 + React 19.2.8 + TypeScript;
 - App Router;
 - lint, typecheck, Vitest, build e GitHub Actions CI;
 - clientes Supabase browser/server com `@supabase/ssr`;
 - migration `20260822212544_harden_rls_auto_enable_privileges.sql` aplicada/versionada;
-- `ensure_rls` ativo e Security Advisor sem achados após 001A;
+- `ensure_rls` ativo;
+- autenticação real por e-mail/senha;
+- confirmação SSR via `/auth/confirm` + `token_hash` + `verifyOtp`;
+- sessão SSR/cookies, `proxy.ts`, guard server-side com `getClaims()`;
+- cadastro, confirmação, logout, bloqueio de rota e login posterior validados em E2E humano real;
+- SMTP Brevo Free configurado apenas como infraestrutura provisória de desenvolvimento;
 - schema `public` sem tabelas de domínio;
-- `/proxima` e `.gitattributes` versionados.
+- `/proxima`, `.gitattributes` e método documental enxuto versionados.
 
 Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
@@ -32,90 +38,43 @@ Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 **RODADA 001B — AUTH REAL**
 
-Status: **001B EXECUTADA COM CORREÇÃO — AGUARDANDO AUDITORIA GPT**.
+Status: **APROVADA E PROMOVIDA**.
 
-Branch corrente:
+PR: #3
+Merge: `4819875007784f9bc016abd57202fe1fe9a7063b`
+Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001B_AUTH_REAL.md`
 
-`claude/rodada-001b-auth-real`
+Não há mandato executável pendente.
 
-Mandato original:
-
-`rodadas/gpt/RODADA_001B_AUTH_REAL.md`
-
-Correção vigente:
-
-`rodadas/gpt/CORRECAO_RODADA_001B_01_FECHAR_AUTH_REAL.md`
-
-Adendo à correção:
-
-`rodadas/gpt/ADENDO_CORRECAO_001B_01_SMTP_FREE.md`
-
-Relatório:
-
-`rodadas/claude/RELATORIO_RODADA_001B_AUTH_REAL.md`
-
-A correção 001B-01 foi executada. Não há mandato executável pendente: `/proxima` deve
-parar até o GPT auditar.
+`/proxima` deve parar aguardando nova autorização.
 
 Nenhuma 001C está autorizada.
 
-## 4. Resultado da auditoria parcial
+## 4. Provas consolidadas da 001B
 
-Confirmado independentemente pelo GPT:
+- head final auditado: `ea886def6face318e032f2ae940a7044a1ce0552`;
+- CI run `32605498009`: success;
+- template versionado/remoto: `type=email`;
+- fluxo real: cadastro → e-mail → confirmação → `/conta` → logout → bloqueio → login → `/conta`, 9/9;
+- logs Supabase: signup 200 e verify 200 no teste final;
+- `auth.users` na auditoria final: 1 usuário total, 1 confirmado, 0 smoke users, 0 não confirmados;
+- nenhuma tabela/tenancy/domínio criada.
 
-- branch correta e sem antecipação de Organizations/tenancy/domínio;
-- CI final do head `a18210bbfeee8817248b011548844acd87f7dbc0` verde em install/lint/typecheck/test/build;
-- 188 testes informados e estrutura de Auth coerente;
-- padrão atual `@supabase/ssr` + Next.js 16 `proxy.ts` implementado;
-- identidade protegida server-side com `getClaims()`, sem confiar em `getSession()`;
-- endpoint `/auth/confirm` usa `verifyOtp` e redirect sanitizado/allowlisted;
-- rota `/conta` faz guard server-side independente do Proxy;
-- logs reais do Supabase confirmam signup/verify/login/logout/revogação exercitados no smoke;
-- schema `public` continua sem tabelas de domínio;
-- Security Advisor continua sem achados.
+## 5. Pendências não bloqueantes
 
-## 5. Gaps da auditoria parcial — fechados pela correção 001B-01
+1. `auth_leaked_password_protection` está desabilitado e aparece como WARN no Security Advisor. Tratar como hardening antes de clientes reais/produção.
+2. Brevo Free é somente SMTP provisório de desenvolvimento. Antes de deploy, decidir provedor definitivo, domínio autenticado e política de e-mail transacional.
+3. Definir default privileges para futuras funções próprias antes da primeira função sensível em schema exposto.
+4. Rate limiting próprio continua futuro conforme `SECURITY_MODEL.md` quando houver necessidade além do provider.
 
-1. **Template remoto de Confirm signup** — aplicado no projeto `cbnxdoxpyioxjwgjhbtq` no
-   padrão oficial `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`.
-   Template versionado ajustado de `type=signup` para `type=email`.
-2. **E2E real pela UI** — passagem humana única concluída: cadastro → e-mail real →
-   confirmação → `/conta` → logout → bloqueio → login posterior → `/conta`, 9/9 passos.
-   Correlacionada nos logs de Auth do Supabase. `scripts/smoke-auth.mjs` permanece como
-   prova complementar, agora declarado smoke de integração, não E2E da UI.
+## 6. Próxima direção planejada, ainda não autorizada
 
-Evidências no adendo do relatório. A verificação final pertence ao GPT.
+Rodada 001C — Organizations + Membership, com fundação de tenancy e preparação para RLS de domínio.
 
-## 6. Pendências abertas para a auditoria
+A 001C deve ser planejada e explicitamente autorizada antes de `/proxima` executar qualquer implementação.
 
-1. **SMTP Brevo Free** configurado no Dashboard conforme o adendo, como SMTP provisório
-   de desenvolvimento. Foi pré-requisito do gap 1: projetos Free criados após 2026-06-03
-   com SMTP padrão não podem editar templates de Auth. Não define o provedor de produção
-   — antes do deploy, decidir domínio autenticado e política de e-mail transacional.
-2. Security Advisor deixou de estar zerado: 1 WARN `auth_leaked_password_protection`.
-   Não é regressão de código; aparece com o Auth em uso real. Hardening, não bloqueante.
-3. Usuários de teste remanescentes no projeto. Limpeza sugerida para a próxima rodada
-   substantiva; não removidos por estarem fora do escopo autorizado.
-
-Gates executados na correção: lint, typecheck, 188/188 testes. Build e `npm ci` não
-executados por nenhum código executável ter mudado; a CI do head final é a prova limpa.
-
-## 7. Fora de escopo
-
-Continua fora da 001B e da correção:
-
-- organizations/memberships/profiles próprios;
-- migrations/RLS de domínio;
-- onboarding;
-- Meta/Instagram;
-- campanhas/leads;
-- IA;
-- pagamentos;
-- deploy;
-- MFA, recuperação de senha, social login.
-
-## 8. Continuidade
+## 7. Continuidade
 
 Descompasso temporário de numeração/documentação é normal e deve ser corrigido na próxima etapa substantiva quando não houver risco operacional.
 
-Branch/relatório existente não significa mudança incorporada. Estado promovido continua sendo a `main`; esta branch permanece em auditoria até a correção ser fechada e reaudita pelo GPT.
+Branch/relatório existente não significa mudança incorporada. Estado efetivo continua sendo `main` + este arquivo + promoção real.
