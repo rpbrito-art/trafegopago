@@ -50,6 +50,7 @@ Preenchido pelo Claude Code. Não constitui aprovação.
 - Commit de implementação: `1d5d86fc550b74d75e924f2046e1cfe410dd7d62`.
 - Relatório entregue: `rodadas/claude/RELATORIO_RODADA_000_BOOTSTRAP_TECNICO.md`.
 - Gates: lint, typecheck, testes (11/11) e build aprovados localmente.
+- CI GitHub Actions aprovada na branch (run 32598727312).
 - Migrations de domínio: nenhuma. Projeto `cbnxdoxpyioxjwgjhbtq` com zero migrations.
 - Secrets versionados: nenhum.
 - Bloqueios: nenhum.

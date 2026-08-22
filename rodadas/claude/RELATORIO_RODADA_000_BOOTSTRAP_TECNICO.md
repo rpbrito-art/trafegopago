@@ -432,8 +432,28 @@ branch, com `concurrency` cancelando execuções obsoletas:
 Sem deploy. Sem secrets. Versões das actions verificadas contra os releases
 correntes (`checkout` v7.0.1, `setup-node` v7.0.0) no momento da execução.
 
-**A CI ainda não foi observada rodando no GitHub** — a execução ocorre no push
-desta branch. O resultado deve ser conferido pelo GPT na auditoria.
+Execução real observada após o push da branch:
+
+```text
+$ gh run list --branch claude/bootstrap-tecnico
+CI  push  32598727312
+
+$ gh run watch 32598727312 --exit-status
+✓ claude/bootstrap-tecnico CI · 32598727312
+✓ install / lint / typecheck / test / build in 33s (ID 97093625536)
+  ✓ Checkout
+  ✓ Setup Node
+  ✓ Install
+  ✓ Lint
+  ✓ Typecheck
+  ✓ Test
+  ✓ Build
+  ✓ Complete job
+```
+
+A CI passou em ambiente limpo (Ubuntu + Node 24 + `npm ci`), o que confirma
+que a fundação é reproduzível fora da máquina do fundador e que o build não
+depende de nenhum secret.
 
 ---
 
@@ -471,19 +491,17 @@ Working tree final: limpa, exceto por `.claude/` (ver §8).
    introduzir o middleware, sob pena de logouts aleatórios e sessões
    inconsistentes. Registrado como requisito da Fase 1.
 
-4. **CI não observada em execução real** (ver §6).
-
-5. **Varredura de secrets no bundle foi manual nesta rodada.**
+4. **Varredura de secrets no bundle foi manual nesta rodada.**
    `SECURITY_MODEL.md` §24 exige esse gate antes do primeiro cliente pagante;
    sugere-se transformá-lo em passo automatizado de CI numa rodada futura.
    Não foi feito agora para não exceder o escopo.
 
-6. **Sem `.editorconfig` / normalização de fim de linha.** O Git avisou
+5. **Sem `.editorconfig` / normalização de fim de linha.** O Git avisou
    `LF will be replaced by CRLF` em todos os arquivos (ambiente Windows). Não
    quebra nada hoje, mas gerará ruído de diff quando houver mais de um
    colaborador. Sugestão de `.gitattributes` fica para decisão do GPT.
 
-7. **devDependencies com faixa `^`** (herdadas do scaffold oficial). O lockfile
+6. **devDependencies com faixa `^`** (herdadas do scaffold oficial). O lockfile
    fixa as versões efetivas. Se o GPT exigir pinning exato também nas
    devDependencies, é correção trivial.
 
@@ -512,7 +530,7 @@ a necessidade de `next typegen` antes do `tsc` (§3.5.1).
 | Typecheck | aprovado |
 | Testes | 11/11 aprovados |
 | Build | aprovado |
-| CI | configurada, execução ainda não observada |
+| CI | aprovada no GitHub Actions (run 32598727312) |
 | Secrets versionados | nenhum |
 | Migrations de domínio | nenhuma (remoto com zero migrations) |
 | Escopo excedido | nenhum |
