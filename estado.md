@@ -32,7 +32,7 @@ Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 **RODADA 001B — AUTH REAL**
 
-Status: **AUDITORIA GPT PARCIAL — CORREÇÃO 001B-01 AUTORIZADA**.
+Status: **001B EXECUTADA COM CORREÇÃO — AGUARDANDO AUDITORIA GPT**.
 
 Branch corrente:
 
@@ -50,7 +50,8 @@ Relatório:
 
 `rodadas/claude/RELATORIO_RODADA_001B_AUTH_REAL.md`
 
-O comando `/proxima` está autorizado a executar **somente a correção 001B-01**.
+A correção 001B-01 foi executada. Não há mandato executável pendente: `/proxima` deve
+parar até o GPT auditar.
 
 Nenhuma 001C está autorizada.
 
@@ -69,21 +70,31 @@ Confirmado independentemente pelo GPT:
 - schema `public` continua sem tabelas de domínio;
 - Security Advisor continua sem achados.
 
-## 5. Gaps bloqueantes antes da promoção
+## 5. Gaps da auditoria parcial — fechados pela correção 001B-01
 
-1. **Template remoto de Confirm signup não aplicado** no projeto hospedado. Sem isso, o e-mail real do usuário não percorre `/auth/confirm` como exige o fluxo SSR implementado.
-2. O script `scripts/smoke-auth.mjs` é um **smoke de integração real**, mas cria o usuário com `admin.generateLink()` e não executa o cadastro/login/logout pelas telas/Server Actions reais do produto. Falta uma passagem E2E real pela UI + e-mail.
+1. **Template remoto de Confirm signup** — aplicado no projeto `cbnxdoxpyioxjwgjhbtq` no
+   padrão oficial `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`.
+   Template versionado ajustado de `type=signup` para `type=email`.
+2. **E2E real pela UI** — passagem humana única concluída: cadastro → e-mail real →
+   confirmação → `/conta` → logout → bloqueio → login posterior → `/conta`, 9/9 passos.
+   Correlacionada nos logs de Auth do Supabase. `scripts/smoke-auth.mjs` permanece como
+   prova complementar, agora declarado smoke de integração, não E2E da UI.
 
-Esses pontos são fechados pela correção 001B-01. Não são motivo para iniciar nova fase.
+Evidências no adendo do relatório. A verificação final pertence ao GPT.
 
-## 6. Regra para a correção
+## 6. Pendências abertas para a auditoria
 
-- Não usar `supabase config push` amplo.
-- Ajustar o template versionado ao padrão oficial atual `type=email` se necessário.
-- Aplicar manualmente apenas o template Confirm signup no Dashboard do projeto correto.
-- Fazer uma passagem humana única pela UI: cadastro → e-mail real → confirmação → `/conta` → logout → bloqueio → login posterior → `/conta`.
-- Não revelar senha, token ou link no relatório/chat.
-- Manter relatório compacto.
+1. **SMTP Brevo Free** configurado no projeto como SMTP provisório de desenvolvimento,
+   para viabilizar a entrega real do e-mail. Não estava previsto no mandato, não é
+   configuração versionada e exige decisão do GPT antes da promoção (provedor de
+   produção, domínio remetente, limites).
+2. Security Advisor deixou de estar zerado: 1 WARN `auth_leaked_password_protection`.
+   Não é regressão de código; aparece com o Auth em uso real. Hardening, não bloqueante.
+3. Usuários de teste remanescentes no projeto. Limpeza sugerida para a próxima rodada
+   substantiva; não removidos por estarem fora do escopo autorizado.
+
+Gates executados na correção: lint, typecheck, 188/188 testes. Build e `npm ci` não
+executados por nenhum código executável ter mudado; a CI do head final é a prova limpa.
 
 ## 7. Fora de escopo
 

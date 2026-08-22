@@ -1,11 +1,18 @@
 /**
- * Smoke test real do fluxo de autenticação da Rodada 001B.
+ * Smoke de integração real do fluxo de autenticação da Rodada 001B.
  *
  * Fala com o projeto Supabase de verdade e com a aplicação Next de verdade —
  * não há mock aqui. Prova, em uma passagem:
  *
- *   cadastro -> confirmação SSR -> sessão em cookie -> área protegida ->
- *   logout -> login posterior
+ *   token de confirmação -> confirmação SSR -> sessão em cookie ->
+ *   área protegida -> logout -> login posterior
+ *
+ * **Não é o E2E completo da UI.** O usuário é criado por
+ * `admin.generateLink()`, portanto o cadastro, o login e o logout pelas telas
+ * e Server Actions do produto — e a entrega real do e-mail — não passam por
+ * aqui. Esse aceite é a passagem humana descrita na correção 001B-01; este
+ * script complementa aquela prova, não a substitui, porque cobre token,
+ * cookies, replay, guard e revogação no provider sem depender de SMTP.
  *
  * Além do caminho feliz, exercita os vetores de abuso do endpoint de
  * confirmação: token inválido, token reutilizado, tipo de OTP fora do escopo e

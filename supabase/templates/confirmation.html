@@ -12,14 +12,14 @@
 <p>Olá! Falta um passo para ativar sua conta no Tráfego Pago.</p>
 
 <p>
-  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup">
+  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">
     Confirmar meu e-mail
   </a>
 </p>
 
 <p>
   Se o botão não funcionar, copie e cole este endereço no navegador:<br />
-  {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup
+  {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email
 </p>
 
 <p>Se você não criou esta conta, ignore esta mensagem.</p>

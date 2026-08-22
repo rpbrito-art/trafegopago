@@ -256,3 +256,88 @@ privilegiada no cliente ou no Git, nenhuma tabela ou tenancy criada.
 Resta uma única ação humana: aplicar a configuração remota de Auth (§5).
 
 Não iniciei a 001C nem qualquer trabalho de Organizations/Membership/RLS.
+
+---
+
+# ADENDO — CORREÇÃO 001B-01 (FECHAR AUTH REAL)
+
+Mandato: `rodadas/gpt/CORRECAO_RODADA_001B_01_FECHAR_AUTH_REAL.md`. Branch inalterada.
+Preflight repetido e aprovado (remote `rpbrito-art/trafegopago`, tree limpa, ref
+`cbnxdoxpyioxjwgjhbtq`).
+
+## A1. Arquivos alterados
+
+- `supabase/templates/confirmation.html` — `type=signup` → `type=email` (link e fallback);
+- `scripts/smoke-auth.mjs` — só docblock: agora se declara **smoke de integração real**,
+  explicitamente **não** E2E da UI;
+- este relatório e `estado.md`.
+
+Nenhuma mudança de código executável, de arquitetura ou de dependência.
+
+## A2. Decisões não óbvias
+
+- `type=email` confirmado na doc oficial vigente via `search_docs`, não por memória: 6 de
+  7 ocorrências do padrão SSR usam `type=email` (a 7ª é `invite`, fora de escopo). A
+  allowlist **não foi ampliada** — `ALLOWED_EMAIL_OTP_TYPES` já continha `signup` e
+  `email`; demais tipos seguem recusados sem chamar o provider.
+- Redirect URLs remotas dispensadas: `signUpAction` chama `signUp()` sem `emailRedirectTo`
+  (`src/app/actions/auth.ts:53`), então o link vem só de `{{ .SiteURL }}`, confirmada como
+  `http://localhost:3000`.
+- `supabase config push` não foi usado (§3); só o template Confirm signup foi aplicado.
+- O `type` do smoke segue `signup`, aceito pela allowlist; trocá-lo exigiria re-executar o
+  smoke sem ganho de evidência (§6).
+
+## A3. Provas
+
+| prova | comando/fonte | resultado |
+|---|---|---|
+| doc oficial exige `type=email` | `search_docs` | 6/6 no Confirm signup SSR |
+| template versionado ajustado | `confirmation.html` | `type=email` em link e fallback |
+| template remoto aplicado | Dashboard (gate humano) | **sim** |
+| `signUp()` sem `emailRedirectTo` | `grep` em `src/`, `scripts/` | nenhuma ocorrência |
+| guard de `/conta` sem sessão | `curl` local | `307 → /entrar` |
+| E2E humano pela UI real | fundador, app local | 9/9 passos OK |
+| e-mail real entregue | SMTP Brevo (dev) | recebido |
+| confirmação pelo endpoint SSR | `auth_logs` | `login method=otp` 23:25:21 |
+| cadastro concluído | `auth_audit_logs` | `user_confirmation_requested` 23:24:44 → `user_signedup` 23:25:21, mesmo `actor_id` |
+| logout real | `auth_audit_logs` | `logout` 23:25:50, mesmo `actor_id` |
+| login posterior por senha | `auth_logs` | `login method=password` 23:25:54 |
+| URL final sem token | verificação do fundador | sem `token_hash`/`token` |
+| lint / typecheck / testes | `npm run lint`, `typecheck`, `test -- --run` | limpo, limpo, 188/188 |
+| Security Advisor | `get_advisors(security)` | 1 WARN (A5) |
+
+Nenhum token, link ou senha foi pedido, exibido ou registrado; os e-mails de teste não são
+reproduzidos — a correlação usa `actor_id`. Sem migrations: schema `public` inalterado.
+
+## A4. Configuração remota
+
+- Confirm signup substituído pelo template versionado (`type=email`) — **aplicado**;
+- **SMTP customizado (Brevo Free)** configurado pelo fundador como SMTP provisório de dev
+  para viabilizar a entrega real. Não previsto no mandato; registrado por ser mudança
+  remota com efeito de runtime, não versionada, e que **exige decisão do GPT** antes da
+  promoção (provedor de produção, domínio remetente, limites);
+- Redirect URLs: nenhuma alteração necessária (A2).
+
+## A5. Gates e pendências
+
+Executados: lint, typecheck, testes. Build, `npm ci` e smoke não executados — nenhum
+código executável mudou (§6); a CI do head final é a prova limpa.
+
+Pendências novas:
+
+1. Security Advisor deixou de estar zerado: 1 WARN `auth_leaked_password_protection`.
+   Não é regressão de código — aparece com o Auth em uso real. Hardening, não bloqueante.
+2. SMTP Brevo provisório e não versionado (A4).
+3. Usuários de teste remanescentes, incluindo tentativas anteriores ao SMTP. Não removidos
+   por estarem fora do escopo; sugiro limpeza na próxima rodada substantiva.
+4. Pendências herdadas em §7 seguem abertas e intocadas.
+
+Nenhuma divergência entre o mandato da correção e a documentação canônica.
+
+## A6. Conclusão
+
+Os dois gaps de aceite estão fechados: template remoto aplicado no padrão oficial
+`type=email`, e o fluxo `cadastro → e-mail real → confirmação SSR → /conta → logout →
+bloqueio → login → /conta` percorrido pela UI real do produto, com correlação independente
+nos logs de Auth. O smoke automatizado permanece como prova complementar, agora nomeado
+corretamente. Não iniciei a 001C. Aguardando auditoria GPT.
