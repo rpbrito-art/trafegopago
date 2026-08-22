@@ -12,13 +12,17 @@ Este é o **estado operacional canônico** do projeto. GPT e Claude Code devem l
 
 ## 2. Infraestrutura conhecida
 
-- Repositório GitHub criado e populado com documentação canônica.
-- Projeto Supabase já criado pelo fundador.
-- Pasta local já vinculada ao Supabase pelo comando:
-  `supabase link --project-ref cbnxdoxpyioxjwgjhbtq`
-- Ainda não há aplicação Next.js implementada.
-- Ainda não há schema de domínio aplicado.
-- Ainda não há integração Meta, workers, IA, CI ou deploy.
+- Aplicação Next.js 16.3.2 + React 19.2.8 + TypeScript implementada.
+- App Router ativo.
+- npm + `package-lock.json` como package manager/lockfile.
+- lint, typecheck, Vitest e build configurados.
+- CI GitHub Actions ativa: install → lint → typecheck → test → build.
+- Clientes Supabase browser/server preparados com `@supabase/ssr` e publishable key.
+- Convenção de env e proteção de secrets estabelecidas.
+- Projeto Supabase vinculado: `cbnxdoxpyioxjwgjhbtq`.
+- O projeto Supabase foi criado em 2026-08-22 e aparece no painel com o nome `quoron`; o ref é o identificador operacional correto.
+- Schema `public` sem tabelas de domínio.
+- Ainda não existem Auth funcional do produto, organizations, memberships, RLS de domínio, integração Meta, workers de domínio, IA ou deploy de produção.
 
 ## 3. Etapas concluídas
 
@@ -26,95 +30,94 @@ Este é o **estado operacional canônico** do projeto. GPT e Claude Code devem l
 - Etapa 2A — pesquisa técnica: concluída.
 - Etapa 2B — revisão adversarial: concluída.
 - Etapa 3 — consolidação canônica e estruturação documental: concluída.
+- Rodada 000 — Bootstrap Técnico: **APROVADA E PROMOVIDA**.
 
-## 4. Etapa corrente
+Auditoria:
 
-**RODADA 000 — BOOTSTRAP TÉCNICO**
+`rodadas/gpt/AUDITORIA_RODADA_000_BOOTSTRAP_TECNICO.md`
 
-Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
-
-Mandato vigente:
-
-`rodadas/gpt/RODADA_000_BOOTSTRAP_TECNICO.md`
-
-Relatório esperado do Claude:
+Relatório do Claude:
 
 `rodadas/claude/RELATORIO_RODADA_000_BOOTSTRAP_TECNICO.md`
 
-### Registro de execução
+PR de promoção: `#1`
 
-Preenchido pelo Claude Code. Não constitui aprovação.
+Merge em `main`: `9f0f6aaa205fe5b774faab92c34e8373e4ef7d6c`.
 
-- Executado em: 2026-08-22.
-- Branch: `claude/bootstrap-tecnico` (a partir da `main`, sem merge).
-- Commit de implementação: `1d5d86fc550b74d75e924f2046e1cfe410dd7d62`.
-- Relatório entregue: `rodadas/claude/RELATORIO_RODADA_000_BOOTSTRAP_TECNICO.md`.
-- Gates: lint, typecheck, testes (11/11) e build aprovados localmente.
-- CI GitHub Actions aprovada na branch (run 32598727312).
-- Migrations de domínio: nenhuma. Projeto `cbnxdoxpyioxjwgjhbtq` com zero migrations.
-- Secrets versionados: nenhum.
-- Bloqueios: nenhum.
-- Pendências registradas no relatório (§8), com destaque para o middleware de
-  refresh de sessão Supabase, que deve entrar no escopo da Fase 1.
+## 4. Estado corrente
 
-## 5. Objetivo da rodada corrente
+**PRÓXIMA FASE EM PLANEJAMENTO — AGUARDANDO APROVAÇÃO DO FUNDADOR**
 
-Criar a base executável do aplicativo sem antecipar domínio:
+Nenhum mandato executável de Rodada 001 está autorizado neste momento.
 
-- Next.js + TypeScript;
-- App Router;
-- lint, typecheck, testes e build;
-- estrutura modular inicial;
-- preparação segura do cliente Supabase;
-- `.env.example` e proteção de secrets;
-- CI mínima;
-- smoke test;
-- nenhuma migration de domínio.
+O GPT deve apresentar o planejamento da próxima fase ao fundador. Somente após aprovação explícita poderá criar o mandato em `rodadas/gpt/`, atualizar este arquivo e autorizar `/proxima` a executar.
 
-## 6. Regras de handoff
+## 5. Próxima fase proposta
+
+**Fundação Supabase — Auth + Organizations + Membership + RLS**.
+
+Objetivos propostos:
+
+- autenticação Supabase com e-mail/senha e confirmação de e-mail;
+- integração SSR correta para Next.js 16 usando Proxy (`proxy.ts`) para refresh de sessão;
+- `organizations` e `organization_members` como raiz de tenancy;
+- bootstrap seguro da primeira organização do usuário;
+- RLS explícita e testada;
+- grants explícitos para Data API conforme defaults atuais do Supabase;
+- provas de isolamento entre duas organizações/dois usuários;
+- tratamento inicial de logout/sessão;
+- migrations versionadas como fonte de verdade.
+
+O planejamento ainda precisa ser aprovado pelo fundador antes da execução.
+
+## 6. Achados obrigatórios para a próxima fase
+
+### Supabase — `rls_auto_enable`
+
+O Security Advisor encontrou `public.rls_auto_enable()` como `SECURITY DEFINER` com `EXECUTE` concedido a `PUBLIC`, `anon` e `authenticated`.
+
+A função integra o event trigger `ensure_rls`, que ativa RLS automaticamente em novas tabelas `public`. O mecanismo deve ser preservado, mas os privilégios indevidos precisam ser corrigidos e provados antes da exposição do domínio.
+
+A próxima rodada deve:
+
+1. revisar os privilégios da função;
+2. remover capacidade de execução indevida por papéis públicos quando tecnicamente seguro;
+3. provar que o event trigger continua habilitando RLS em novas tabelas;
+4. executar o Supabase Security Advisor novamente;
+5. não considerar a fundação de RLS aprovada enquanto houver warning relevante sem justificativa.
+
+### Auth Next.js 16
+
+A documentação atual usa `proxy.ts`/Proxy, não o antigo `middleware.ts`, para refresh da sessão SSR. Proteção de identidade deve usar `supabase.auth.getClaims()` em vez de confiar em `getSession()` para autorização server-side.
+
+## 7. Housekeeping pendente não bloqueante
+
+- `.claude/commands/proxima.md` existe apenas localmente e deve ser versionado para tornar o protocolo reproduzível.
+- adicionar `.gitattributes`/normalização de line endings deve ser considerado.
+- secret scanning automatizado em CI permanece hardening futuro.
+- monitorar atualização compatível do ESLint; não fazer upgrade cego.
+
+## 8. Regras de handoff
 
 ### GPT
 
 Ao planejar uma rodada ou correção:
 
 1. atualizar este `estado.md`;
-2. criar o mandato em `rodadas/gpt/`;
+2. criar o mandato em `rodadas/gpt/` somente após autorização quando exigida;
 3. nunca depender de texto solto no chat como única fonte de instrução;
 4. após execução, ler o relatório em `rodadas/claude/` e auditar branch/diff/código/provas.
 
 ### Claude Code
 
-Ao iniciar:
+Ao iniciar `/proxima`:
 
 1. ler `estado.md`;
 2. ler `.gpt/PROJECT_PROMPT.md`;
-3. abrir o mandato exato indicado em `estado.md`;
-4. executar somente o escopo autorizado;
-5. escrever o relatório final no caminho indicado em `estado.md`;
-6. atualizar `estado.md` apenas no bloco de execução quando o mandato autorizar, sem promover a próxima fase;
-7. não iniciar nova rodada sem mandato em `rodadas/gpt/`.
-
-## 7. Estado Git esperado antes da Rodada 000
-
-A sessão do Claude deve começar dentro de `trafegopago` e validar:
-
-- diretório raiz correto;
-- remote `rpbrito-art/trafegopago`;
-- branch inicial coerente;
-- working tree conhecida;
-- Supabase vinculado ao projeto correto.
-
-Se qualquer verificação falhar, parar sem alterar arquivos.
-
-## 8. Próxima transição permitida
-
-Após o Claude concluir a Rodada 000:
-
-1. Claude cria/pusha `claude/bootstrap-tecnico`;
-2. Claude grava relatório em `rodadas/claude/RELATORIO_RODADA_000_BOOTSTRAP_TECNICO.md`;
-3. GPT audita a execução;
-4. correções, se necessárias, recebem novo mandato em `rodadas/gpt/`;
-5. somente após aprovação será planejada a Fundação Supabase/Auth/Tenancy/RLS.
+3. só executar se existir mandato vigente explicitamente autorizado;
+4. se o estado estiver aguardando aprovação/auditoria, não implementar nada;
+5. escrever relatório no caminho indicado pela rodada;
+6. nunca promover a própria execução.
 
 ## 9. Regra contra ambiguidade
 
