@@ -844,7 +844,68 @@ Bloqueadores da seção 10 do mandato — todos negativos:
 
 ## 11. Git — commit, push e CI
 
-_Preenchido no commit de handoff._
+### Commits
+
+**Commit de implementação — âncora de auditoria:**
+
+```
+d802e8f02f2b520b4252fe3be70e6e161952507a
+Rodada 001A: baseline Supabase e hardening de rls_auto_enable
+```
+
+Conteúdo (`git diff --cached --stat`, somente adições):
+
+```
+ .claude/commands/proxima.md                        | 314 ++++++++
+ .gitattributes                                     |  32 +
+ ...ORIO_RODADA_001A_BASELINE_SUPABASE_SEGURANCA.md | 858 +++++++++++++++++++++
+ ...822212544_harden_rls_auto_enable_privileges.sql |  43 ++
+ 4 files changed, 1247 insertions(+)
+```
+
+Nenhuma linha de nenhum arquivo pré-existente foi modificada — confirmação
+adicional de que o `.gitattributes` não produziu renormalização.
+
+**Commit de handoff:** head da branch após este relatório. Contém apenas
+`estado.md` e esta seção 11. Não toca em código, migration nem banco.
+
+### Push
+
+```
+$ git push -u origin claude/rodada-001a-baseline-supabase-seguranca
+ * [new branch]  claude/rodada-001a-baseline-supabase-seguranca -> claude/rodada-001a-baseline-supabase-seguranca
+```
+
+- Branch remota criada em `origin` (`rpbrito-art/trafegopago`).
+- `--force`: não usado.
+- Merge na `main`: **não realizado**.
+- PR: **não aberto** — a promoção depende da auditoria do GPT.
+
+### CI
+
+Run `32600593719` — https://github.com/rpbrito-art/trafegopago/actions/runs/32600593719
+
+```
+$ gh run view 32600593719 --json status,conclusion,headSha
+{"conclusion":"success","status":"completed",
+ "headSha":"d802e8f02f2b520b4252fe3be70e6e161952507a"}
+```
+
+Steps do job `install / lint / typecheck / test / build` (30s):
+
+```
+✓ Set up job    ✓ Checkout   ✓ Setup Node   ✓ Install
+✓ Lint          ✓ Typecheck  ✓ Test         ✓ Build
+✓ Post Setup Node   ✓ Post Checkout   ✓ Complete job
+```
+
+**CI verde sobre o commit de implementação**, que é o commit que carrega toda a
+mudança auditável desta rodada.
+
+### Working tree final
+
+Após o commit de handoff a árvore fica limpa, com a branch alinhada ao remoto.
+Nenhum arquivo não rastreado inesperado permanece.
 
 ---
 
