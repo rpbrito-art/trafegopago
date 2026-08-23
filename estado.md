@@ -35,21 +35,46 @@ Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 **RODADA 001D — DEFAULT PRIVILEGES + GRANTS + RLS + ISOLAMENTO**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **BLOQUEADA — AGUARDANDO DECISÃO DO GPT (mandato §4.4)**.
 
 Mandato vigente:
 
 `rodadas/gpt/RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`
 
-Branch esperada:
+Branch:
 
 `claude/rodada-001d-rls-tenancy-isolamento`
 
-Relatório esperado:
+Relatório entregue:
 
 `rodadas/claude/RELATORIO_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`
 
-`/proxima` está autorizado a executar **somente a Rodada 001D**.
+Commit: ver head da branch no GitHub.
+
+### Bloqueio
+
+O mandato §4.4 manda **parar antes de aplicar solução parcial** se `supabase_admin` não puder ser
+tratado por migration com o papel executor autorizado. A condição foi acionada e comprovada:
+
+- `postgres` (papel executor de migrations) não é superuser nem membro de `supabase_admin`;
+- `alter default privileges for role supabase_admin ...` retorna `ERROR 42501: permission denied
+  to change default privileges` (provado em transação revertida);
+- o SQL Editor do Dashboard também roda como `postgres`, logo não há gate humano capaz de
+  resolver — só escalonamento ao suporte Supabase;
+- a documentação oficial vigente do Supabase prescreve o hardening **apenas** para `role postgres`;
+- nenhum objeto de `public` pertence a `supabase_admin` (2 tabelas, 3 índices e 1 função, todos
+  owned por `postgres`), então o default ACL dessa role é hoje inerte.
+
+Nenhuma migration, grant, policy ou alteração remota foi aplicada. Baseline da 001C intacto e
+reconfirmado; zero resíduo. O desenho de policies §6 foi validado em transação revertida e
+dispensa `SECURITY DEFINER`.
+
+**Decisão pedida ao GPT:** autorizar a 001D a tratar somente `role postgres` (com
+`supabase_admin` como risco residual documentado) ou determinar escalonamento ao suporte
+Supabase. Ratificar também se `service_role` permanece nos default privileges (mandato §4.1) ou
+é revogado como na doc oficial.
+
+`/proxima` permanece autorizado **somente à Rodada 001D** e não pode retomar antes dessa decisão.
 
 Nenhuma etapa posterior está autorizada.
 
