@@ -19,107 +19,90 @@ Promovido e disponível:
 - Rodada 001A — Baseline Supabase e Segurança;
 - Rodada 001B — Auth Real;
 - Rodada 001C — Organizations + Membership;
+- Rodada 001D — Default privileges + Grants + RLS + Isolamento;
 - Auth real por e-mail/senha com confirmação SSR, sessão/cookies e rota protegida;
-- `public.organizations` e `public.organization_members` por migration versionada;
-- constraints/FKs/índice de membership conforme contrato;
-- RLS habilitado nas duas tabelas;
+- `public.organizations` e `public.organization_members` com constraints e RLS;
+- `authenticated` com SELECT apenas nas duas tabelas de tenancy atuais;
+- `anon` sem acesso às duas tabelas;
+- `service_role` preservado por grants explícitos;
+- policies SELECT não recursivas por membership própria ativa;
+- escrita direta do browser fechada nesta fundação;
+- default privileges futuros de tabelas/sequências de `postgres` em `public` endurecidos;
+- default global de EXECUTE de funções futuras owned por `postgres` fechado;
 - `ensure_rls` ativo;
-- método documental enxuto e histórico reciclado até a 001C.
+- isolamento tenant provado com sessões reais 2 usuários × 2 organizações.
 
-Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
+Detalhes históricos: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 ## 3. Estado corrente
 
 **RODADA 001D — DEFAULT PRIVILEGES + GRANTS + RLS + ISOLAMENTO**
 
-Status: **RODADA 001D — EXECUTADA COM CORREÇÃO 001D-02 — AGUARDANDO AUDITORIA GPT**.
+Status: **APROVADA E PROMOVIDA**.
 
-Mandato-base:
+PR: #5
+Merge: `178c2aa0e4ada91ae2bae73d2ff97c21f27c0222`
+Head técnico Claude: `055b411db15355515d7cb5cb35a3fd724058f589`
+Head final auditado/CI: `ca1fe3b54890834ba16b9126ccee7c6c4ed4ef77`
+CI final: run `32635190849` — success
+Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`
 
-`rodadas/gpt/RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`
+Migrations da 001D:
+- `20260823003128_harden_default_privileges_grants_and_rls_policies.sql`;
+- `20260823103521_revoke_global_default_execute_on_functions.sql`.
 
-Correções vigentes:
+Não há mandato executável pendente.
 
-- `rodadas/gpt/CORRECAO_001D_01_DEFAULT_PRIVILEGES_SCOPE.md`
-- `rodadas/gpt/CORRECAO_001D_02_GLOBAL_FUNCTION_DEFAULT_EXECUTE.md`
+`/proxima` deve **parar aguardando nova autorização explícita**.
 
-Branch:
+## 4. Provas consolidadas da 001D
 
-`claude/rodada-001d-rls-tenancy-isolamento`
-
-Relatório:
-
-`rodadas/claude/RELATORIO_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`
-
-A Correção 001D-02 foi executada integralmente. Nenhuma etapa posterior foi iniciada nem está
-autorizada. Próxima ação: **auditoria GPT** sobre a branch.
-
-## 4. Estado técnico já executado da 001D
-
-Migrations aplicadas:
-
-- `20260823003128_harden_default_privileges_grants_and_rls_policies` (001D base);
-- `20260823103521_revoke_global_default_execute_on_functions` (correção 001D-02).
-
-Já comprovado e preservado:
-
-- defaults de `postgres` por schema para tabelas/sequências endurecidos;
-- grants nominais futuros de funções para `anon`/`authenticated`/`service_role` removidos;
-- `authenticated` somente SELECT nas duas tabelas atuais;
-- `anon` sem acesso;
-- `service_role` atual preservado por grant explícito;
-- duas policies SELECT não recursivas por membership ativa;
+- migration history local/remota fechada em 4 migrations;
+- RLS ativo em `organizations` e `organization_members`;
+- `authenticated` com SELECT e sem INSERT/UPDATE/DELETE;
+- `anon` sem SELECT;
+- `service_role` com grants atuais explícitos;
+- duas policies SELECT: própria membership e organização ACTIVE com membership própria ACTIVE;
 - nenhuma policy de escrita;
 - nenhuma nova `SECURITY DEFINER`;
-- isolamento real 2 usuários × 2 organizações via Auth/JWT/Data API: 21/21;
-- limpeza sem resíduo;
-- Advisor sem os dois INFO `rls_enabled_no_policy`.
+- prova real Auth/JWT/Data API: 21/21;
+- cross-tenant negado/vazio;
+- membership/org INACTIVE retiram acesso;
+- `owner` não ganha bypass de escrita;
+- fixtures removidas: organizations=0, memberships=0 e apenas 1 usuário real no Auth;
+- default global de funções de `postgres` = `{postgres=X/postgres}`;
+- 50 funções owned por `postgres` atuais com ACL explícita;
+- `rls_auto_enable()` preserva ACL segura da 001A;
+- `ensure_rls` ativo;
+- `supabase_admin` possui zero objetos owned em `public`;
+- Advisor final apenas com WARN conhecido de leaked password protection;
+- CI final verde.
 
-A prova 21/21 não precisa ser repetida na 001D-02 se policies/grants de tabela não mudarem — não
-mudaram, e a prova não foi reexecutada.
+## 5. Pendências e riscos conhecidos
 
-Executado na correção 001D-02:
+1. `auth_leaked_password_protection` permanece desabilitado: hardening obrigatório antes de clientes reais/produção.
+2. Brevo Free permanece SMTP provisório de desenvolvimento; SMTP/domínio de produção ainda não definido.
+3. Default ACL residual de `supabase_admin` permanece risco de plataforma aceito enquanto `public` tiver zero objetos owned por essa role. Se surgir objeto owned por `supabase_admin`, reabrir decisão GPT.
+4. Funções futuras que precisem ser chamadas por Data API/server roles devem receber `GRANT EXECUTE` explícito em migration.
+5. Policies de escrita/gestão de Organizations/Membership ainda não foram desenhadas.
+6. `business_profiles` ainda não foi criado.
+7. Rate limiting próprio permanece futuro conforme `SECURITY_MODEL.md`.
 
-- prova prévia em transação revertida do `alter default privileges for role postgres revoke execute
-  on functions from public` (sem `IN SCHEMA`) aprovada, com rollback sem resíduo;
-- migration nova aplicada ao ref autorizado; local e remoto pareados em 4/4;
-- default global de funções de `postgres` = `{postgres=X/postgres}`, sem `PUBLIC EXECUTE`;
-- probe `SECURITY INVOKER` nasce sem EXECUTE para PUBLIC, `anon`, `authenticated` e `service_role`;
-- ACL das 50 funções existentes owned por `postgres` inalterada (diff vazio);
-- `rls_auto_enable()` e `ensure_rls` preservados; defaults de tabelas/sequências da 001D intactos;
-- `supabase_admin` segue com zero objetos owned em `public`;
-- Advisor sem novo WARN/ERROR; zero resíduo de probes.
+## 6. Próxima direção planejável, ainda não autorizada
 
-## 5. Causa do bloqueio e decisão GPT
+A Fundação Supabase/Auth/Tenancy já possui autenticação, schema mínimo, grants e isolamento de leitura.
 
-A migration 001D usou:
+A próxima etapa substantiva deve ser **planejada** a partir do roadmap e do estado real, considerando principalmente:
+- `business_profiles` / perfil mínimo do negócio;
+- fluxo mínimo de conta → organização → negócio;
+- mecanismo autorizado para criação/gestão de organization/membership sem abrir escrita insegura no browser.
 
-`ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`.
+A numeração e o recorte exato da próxima rodada devem ser definidos pelo GPT antes da execução.
 
-O PostgreSQL 17 documenta que um `REVOKE` por schema não pode remover privilégios concedidos pelo default **global**. Portanto, o efeito observado pelo Claude era esperado; a conclusão de que o privilégio seria inexpressável estava incorreta.
+Nenhuma próxima rodada está autorizada neste momento.
 
-Correção autorizada e **já aplicada**:
+## 7. Continuidade
 
-`ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`.
+Descompasso temporário de numeração/documentação é normal e não exige housekeeping isolado.
 
-Sem `IN SCHEMA`. Provada em transação revertida antes de aplicar, entregue em migration nova
-(`20260823103521_*`). A migration `20260823003128_*` não teve SQL executável alterado.
-
-O efeito global sobre funções futuras owned por `postgres` é aceito: funções atuais owned por `postgres` já possuem ACL explícita e `ALTER DEFAULT PRIVILEGES` não altera objetos existentes. Funções futuras que precisem de execução devem receber `GRANT EXECUTE` explícito por migration.
-
-## 6. Riscos conhecidos
-
-1. Default ACL residual de `supabase_admin`: aceito enquanto `public` tiver zero objetos owned por essa role; se deixar de ser zero, reabrir decisão GPT.
-2. `public.rls_auto_enable()` deve preservar ACL segura da 001A e `ensure_rls` permanecer ativo.
-3. `auth_leaked_password_protection` permanece WARN conhecido de Auth e não bloqueia a 001D se for o único WARN.
-4. Brevo Free permanece SMTP provisório de desenvolvimento.
-
-## 7. Próxima direção após 001D
-
-Ainda **não autorizada**.
-
-Depois de a 001D ser executada, auditada e promovida, o GPT definirá a próxima etapa substantiva da Fundação Supabase/Auth/Tenancy com base no estado real.
-
-## 8. Continuidade
-
-Branch/relatório existente não significa mudança incorporada. Estado efetivo incorporado continua sendo `main` + promoção real.
+Branch/relatório/commit só entram no produto após auditoria e promoção. A Rodada 001D está incorporada; qualquer trabalho posterior depende de novo mandato explícito.
