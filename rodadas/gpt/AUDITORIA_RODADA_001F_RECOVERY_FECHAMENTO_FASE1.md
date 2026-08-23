@@ -74,8 +74,8 @@ Não houve Meta/Instagram, IA, Ads, Fase 2, gestão avançada de membros ou migr
 ## 5. Ressalvas e dívidas não bloqueantes
 
 - `auth_leaked_password_protection` continua desabilitado e deve ser tratado antes de clientes reais/produção;
-- Gmail SMTP foi usado apenas como SMTP provisório de desenvolvimento e não serve como infraestrutura de produção;
-- a App Password do Gmail criada para esta prova deve ser revogada agora que a 001F foi promovida;
+- Gmail SMTP é infraestrutura **provisória de desenvolvimento**, não de produção;
+- a App Password do Gmail deve permanecer secreta e ativa enquanto esse Gmail for o SMTP configurado, pois revogá-la agora quebraria o recovery no ambiente de desenvolvimento; revogar/rotacionar quando o SMTP for substituído ou deixar de ser necessário;
 - access tokens já emitidos podem permanecer válidos até `exp`, enquanto refresh tokens revogados não renovam a sessão;
 - habilitar magic link, phone OTP, invite ou social login exige reabrir o guard de recovery;
 - observabilidade server-side de falha no pedido de recovery pode ser adicionada futuramente sem diferenciar a resposta pública.

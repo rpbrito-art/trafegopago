@@ -70,7 +70,7 @@ Relatório: `rodadas/claude/RELATORIO_RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 
 1. `auth_leaked_password_protection` continua desabilitado; hardening antes de clientes reais/produção.
 2. Gmail SMTP é apenas desenvolvimento e não substitui SMTP/domínio de produção.
-3. **A App Password do Gmail criada para o E2E da 001F deve ser revogada agora que a promoção terminou.**
+3. A App Password do Gmail deve permanecer secreta e ativa enquanto Gmail SMTP for o transporte de recovery do ambiente de desenvolvimento; revogar/rotacionar quando esse SMTP for substituído ou deixar de ser necessário.
 4. Access tokens já emitidos podem seguir válidos até `exp`; refresh anterior foi revogado conforme contrato.
 5. Habilitar magic link, phone OTP, invite ou social login exige reabrir o guard de recovery.
 6. Default ACL residual de `supabase_admin` continua aceito apenas enquanto não houver objetos `public` owned por essa role.
@@ -83,7 +83,7 @@ Relatório: `rodadas/claude/RELATORIO_RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 
 A Fase 2 aparece no roadmap, mas não começa automaticamente. GPT deve planejar a próxima etapa a partir deste estado e do `GROWTH_INTELLIGENCE_CANONICAL.md`; o fundador autoriza quando o fluxo exigir.
 
-Antes de qualquer nova execução, concluir a limpeza de segurança humana da 001F: revogar a App Password do Gmail usada apenas no SMTP de desenvolvimento.
+Não há ação manual de infraestrutura pendente para encerrar a 001F.
 
 ## 8. Continuidade
 

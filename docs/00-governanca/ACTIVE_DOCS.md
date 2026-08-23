@@ -69,7 +69,7 @@ Princípio: **a complexidade pertence ao sistema, não ao usuário**.
 
 ## Pendências abertas que não são mandato
 
-- revogar a App Password do Gmail criada somente para o E2E da 001F;
+- Gmail SMTP é provisório de desenvolvimento; sua App Password deve permanecer secreta e só deve ser revogada/rotacionada quando esse SMTP for substituído ou deixar de ser necessário;
 - leaked password protection antes de clientes reais/produção;
 - SMTP/domínio de produção;
 - hardening e capacidades posteriores conforme roadmap.

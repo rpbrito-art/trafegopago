@@ -69,7 +69,8 @@ Decisões persistentes:
 
 - habilitar magic link, phone OTP, invite ou social login exige reabrir o guard de recovery;
 - access token já emitido pode sobreviver até `exp`; refresh revogado não pode renovar;
-- falha do provider no pedido de recovery permanece pública e deliberadamente neutra; observabilidade futura deve ser server-side.
+- falha do provider no pedido de recovery permanece pública e deliberadamente neutra; observabilidade futura deve ser server-side;
+- a App Password do Gmail permanece necessária enquanto Gmail SMTP for o transporte de recovery em desenvolvimento; revogar/rotacionar quando esse SMTP for substituído ou deixar de ser necessário.
 
 Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md` — PR #7 — merge `7f2a1b9631ce134ec9f39585fa2defa3185fcd05`.
 
@@ -83,9 +84,8 @@ A Fase 2 existe no roadmap, mas não foi autorizada automaticamente pelo fechame
 
 ## Pendências transversais abertas
 
-- revogar a App Password do Gmail criada somente para o E2E da 001F;
 - `auth_leaked_password_protection` antes de clientes reais/produção;
-- SMTP/domínio de produção;
+- SMTP/domínio de produção; enquanto isso, Gmail SMTP permanece provisório de desenvolvimento;
 - default ACL residual de `supabase_admin` monitorado enquanto inerte;
 - funções futuras exigem GRANT EXECUTE explícito;
 - ambiente de deploy deverá receber `SUPABASE_SECRET_KEY` quando houver deploy;
