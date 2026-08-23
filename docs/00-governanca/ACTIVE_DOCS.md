@@ -8,19 +8,13 @@ Próximo gatilho ordinário: cinco rodadas substantivas promovidas desde essa re
 
 **Fase 1 encerrada e promovida.**
 
-Rodada vigente: **002A — Operations + Audit Foundation**.
+**Fase 2 — Operations, Audit, Queues e Segurança Base: EM ANDAMENTO.**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Última promoção: **002A — Operations + Audit Foundation**.
 
-Mandato:
+Status: **APROVADA COM RESSALVAS NÃO BLOQUEANTES E PROMOVIDA**.
 
-`rodadas/gpt/RODADA_002A_OPERATIONS_AUDIT_FOUNDATION.md`
-
-Branch esperada:
-
-`claude/rodada-002a-operations-audit-foundation`
-
-O estado incorporado continua 000–001F até auditoria/promoção da 002A.
+O estado incorporado é 000–002A.
 
 Fonte operacional: `estado.md`.
 
@@ -29,98 +23,70 @@ Fonte operacional: `estado.md`.
 1. `estado.md`
 2. `.gpt/PROJECT_PROMPT.md`
 3. `docs/00-governanca/ACTIVE_DOCS.md`
-4. `rodadas/gpt/RODADA_002A_OPERATIONS_AUDIT_FOUNDATION.md`
+
+Não existe mandato vigente enquanto uma nova rodada não for publicada.
 
 ## Resumo histórico preferencial
 
 `docs/00-governanca/HISTORY_SUMMARY.md`
 
-O resumo incorpora Rodadas 000–001F e o fechamento da Fase 1. Mandatos, correções, relatórios e auditorias 000–001F são HISTORY / EVIDENCE: abrir somente se surgir dependência concreta.
+O resumo incorpora Rodadas 000–002A. Mandato, relatório e auditoria da 002A são agora HISTORY / EVIDENCE: abrir somente se surgir dependência concreta.
 
-## READ SET da 002A
+## Estado técnico promovido relevante
 
-Além dos HOT, ler somente:
+Além da fundação da Fase 1:
 
-- `docs/00-governanca/HISTORY_SUMMARY.md` — resumo promovido;
-- `docs/00-governanca/IMPLEMENTATION_ROADMAP.md` — regra de interpretação + Fase 2;
-- `docs/03-canonical/TECHNICAL_SPEC.md` — §§2, 3.11, 19–28 e 30;
-- `docs/03-canonical/DATA_MODEL.md` — §§13–14 e 16–18;
-- `docs/03-canonical/API_CONTRACTS.md` — §§1 e 11–13;
-- `docs/03-canonical/SECURITY_MODEL.md` — §§3–6, 15, 20 e 23–25;
-- migrations 001D/001E somente como padrão de segurança/grants/RLS;
-- scripts atuais somente quando necessários para padrão de fixture/limpeza.
+- `public.operations` registra intenções técnicas idempotentes;
+- unicidade por `(organization_id, operation_type, idempotency_key)` impede duplicação da mesma intenção no mesmo tenant/tipo;
+- `public.audit_events` registra histórico append-oriented;
+- browser não tem acesso direto às duas tabelas;
+- `service_role` tem somente os privilégios internos necessários;
+- status, taxonomia de erro e retry estão versionados em TypeScript;
+- `correlation_id` está disponível para rastreabilidade futura;
+- migration history = 6;
+- CI final da 002A: 437 testes, lint/typecheck/build verdes;
+- nenhuma fixture residual.
 
-Sob demanda: cliente Supabase privilegiado e documentação oficial apenas quando houver dependência concreta.
+## Ressalvas ativas da 002A
 
-Não reler relatórios antigos completos nem `docs/02-research/` por ritual.
+- a primeira tentativa não promovida da migration 002A foi desfeita e reaplicada após a prova detectar CHECK temporal incompatível com skew de relógio; estado final coerente e auditado, mas esse procedimento não deve virar rotina;
+- `operations.updated_at` não é automático; decidir junto do worker futuro;
+- `audit_events.actor_user_id` sem índice próprio foi INFO de performance, não bloqueante;
+- `approval_id` continua fora de `operations` até a fundação financeira posterior;
+- dois INFO de Security Advisor `rls_enabled_no_policy` são esperados porque as tabelas são deliberadamente server-only.
 
-## Gate de produto
+## Gate obrigatório de produto
 
-A 002A é infraestrutura interna e não altera produto/UX. Portanto o executor não precisa reler Growth Intelligence para executar o mandato atual.
+Antes de planejar, refinar, autorizar ou auditar qualquer rodada que afete produto/experiência, ler integralmente:
 
-**Se surgir qualquer proposta de mudança de produto ou experiência, deve parar antes de executá-la e aplicar a leitura integral de `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`.**
+`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
 
-O princípio permanece vinculante: **a complexidade pertence ao sistema, não ao usuário**.
+Princípio: **a complexidade pertence ao sistema, não ao usuário**.
 
-## Escopo ativo 002A
+A próxima sub-rodada de infraestrutura da Fase 2 pode não exigir esse gate se permanecer estritamente interna. Se tocar UX, Meta, jornada, conteúdo, Ads, leads ou outra experiência, o gate volta a ser obrigatório.
 
-A rodada cria somente:
+## Próxima rodada
 
-- `public.operations` — memória de operações idempotentes;
-- `public.audit_events` — histórico append-oriented de ações sensíveis;
-- grants/RLS internos de privilégio mínimo;
-- `correlation_id` e contratos mínimos de status/error/retry;
-- uma migration;
-- provas automatizadas e CI.
+**Nenhuma rodada está autorizada neste momento.**
 
-Nenhuma UI é necessária.
+Antes de publicar a próxima sub-rodada da Fase 2, GPT deve:
 
-## Fora da 002A
+1. definir o menor próximo bloco útil;
+2. apresentar ao fundador, em linguagem simples, um resumo contendo o que será feito, por que é necessário, o que muda na prática, o que fica de fora e se haverá ação manual;
+3. obter autorização quando o fluxo exigir;
+4. só então publicar mandato, atualizar `estado.md` e liberar `/proxima`.
 
-Não executar:
+Candidato natural de planejamento: base de **fila + contrato de processamento em segundo plano**, reutilizando `operations`, retry e correlação já promovidos. Isso é apenas candidato; **não é autorização para 002B**.
 
-- provider/fila real;
-- `integration_jobs` persistente;
-- worker/Edge Function;
-- cron;
-- `webhook_events` ou endpoint de webhook;
-- Meta/Instagram/OAuth;
-- Ads/aprovações;
-- IA;
-- notificações;
-- gestão de membros;
-- deploy/produção.
+## Pendências transversais abertas
 
-Esses itens não estão autorizados por proximidade com a Fase 2.
-
-## Gate humano
-
-**Nenhum gate humano esperado.**
-
-Claude deve executar a 002A autonomamente e não pedir ao fundador configuração de Supabase, segredo, SQL manual ou transporte de contexto.
-
-## Baseline promovido a preservar
-
-- Auth/recovery real;
-- organizations + memberships + business_profiles;
-- grants mínimos + RLS + isolamento tenant;
-- bootstrap de negócio atômico server-only;
-- 5 migrations antes da 002A;
-- zero fixtures residuais;
-- `public` sem objetos owned por `supabase_admin`;
-- defaults endurecidos + `ensure_rls`;
-- Security Advisor apenas com WARN conhecido de senha vazada;
-- Gmail SMTP de desenvolvimento intocado.
-
-## Próxima ação autorizada
-
-Claude Code pode executar a 002A via `/proxima`.
-
-Fluxo esperado:
-
-`AUTORIZADA → EXECUÇÃO CLAUDE → PR/RELATÓRIO → 002A EXECUTADA — AGUARDANDO AUDITORIA GPT`
-
-Não há autorização para 002B ou restante da Fase 2 após o handoff.
+- Gmail SMTP é provisório de desenvolvimento; App Password permanece secreta/ativa enquanto necessária;
+- leaked password protection antes de clientes reais/produção;
+- SMTP/domínio de produção;
+- default ACL residual de `supabase_admin` monitorado enquanto inerte;
+- funções futuras exigem GRANT EXECUTE explícito;
+- gestão avançada de membros, edição de negócio, multi-org switcher e exclusão continuam posteriores;
+- rate limiting/observabilidade próprios entram conforme endpoint/risco.
 
 ## Canônicos ativos por área
 
