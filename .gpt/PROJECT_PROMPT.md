@@ -112,6 +112,41 @@ A política completa está em:
 
 `docs/00-governanca/DOCUMENTATION_LIFECYCLE.md`
 
+## 3.3 Gate obrigatório de planejamento de produto
+
+Antes de **formular, refinar, dividir, autorizar ou auditar** qualquer rodada que possa afetar produto ou experiência, o GPT deve ler **integralmente**:
+
+`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
+
+Não basta ler a referência curta deste prompt ou um resumo no `MVP_CANONICAL.md`.
+
+Este gate é obrigatório sempre que a rodada tocar, direta ou indiretamente, em qualquer um destes temas:
+
+- onboarding e configuração do negócio;
+- jornada/funil e definição de sucesso;
+- conteúdo, publicação e criativos;
+- orgânico e mídia paga;
+- Meta/Instagram e experiência de conexão/operação;
+- oportunidades, experimentos e recomendações;
+- personas, públicos, segmentação e targeting;
+- leads, conversões, eventos e mensuração;
+- inteligência, insights e uso de IA sobre comportamento de mercado;
+- UX, navegação, configuração ou qualquer decisão que possa aumentar complexidade para o usuário.
+
+Se houver dúvida se uma rodada é de produto, **trate como relevante e leia o documento**.
+
+Consequências obrigatórias:
+
+1. todo mandato relevante deve listar `GROWTH_INTELLIGENCE_CANONICAL.md` explicitamente em seu **READ SET**;
+2. o Claude deve lê-lo antes de implementar o escopo relevante;
+3. na auditoria, o GPT deve verificar aderência ao documento; contradição material é **bloqueante**, salvo decisão explícita do fundador que altere o contrato canônico;
+4. não promover implementação que reintroduza funil rígido, número fixo de candidatos, confusão entre conteúdo/criativo/anúncio, obrigatoriedade de mídia paga, personas fabricadas ou complexidade operacional desnecessária sem decisão explícita de produto;
+5. até a harmonização completa dos canônicos antigos, em matérias de modelo de crescimento, jornadas, orgânico/pago, conteúdo/criativo, personas/públicos, inteligência de mercado e simplicidade guiada, `GROWTH_INTELLIGENCE_CANONICAL.md` **prevalece sobre formulações anteriores incompatíveis** de `MVP_CANONICAL.md`, `IMPLEMENTATION_ROADMAP.md` e `DATA_MODEL.md`.
+
+Essa prevalência não substitui contratos de segurança, tenancy, autorização financeira ou outros invariantes técnicos de seus respectivos canônicos.
+
+**Regra de transição:** este gate não amplia retroativamente o mandato da Rodada 001E já autorizada em 2026-08-23. Ele vincula o planejamento futuro e as harmonizações posteriores à auditoria da 001E.
+
 ---
 
 # 4. PROTOCOLO DE RODADAS
