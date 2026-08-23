@@ -20,39 +20,51 @@ Promovidas: **000–002C**.
 
 Última rodada promovida: **002C — Webhook Inbox + Observabilidade Base**.
 
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`.
-
-## 3. Rodada autorizada
+## 3. Rodada corrente
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **CORREÇÃO 003A-01 AUTORIZADA — HANDOFF/RECONCILIAÇÃO**.
 
-Mandato:
+Mandato original:
 
 `rodadas/gpt/RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
-Branch prevista:
+Correção vigente:
+
+`rodadas/gpt/CORRECAO_003A_01_HANDOFF_RECONCILIACAO.md`
+
+Branch esperada:
 
 `claude/rodada-003a-meta-connection-foundation`
 
-Relatório previsto:
+Relatório esperado:
 
 `rodadas/claude/RELATORIO_RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
-A autorização cobre **somente a 003A**.
+## 4. Fato já observado pelo GPT
 
-## 4. Próxima ação autorizada
+A execução 003A alterou o Supabase remoto antes do handoff:
 
-Claude Code deve executar **somente a 003A** via `/proxima`.
+- migration history = **12**;
+- novas migrations remotas: `20260823195327`, `20260823195742`, `20260823200706`;
+- `meta_connections` e `meta_oauth_intents` existem;
+- 0 resíduos nas duas tabelas;
+- Advisor sem novo ERROR material.
 
-Fluxo esperado:
+Mas ainda não há branch/PR/relatório 003A no GitHub. Portanto a rodada **não pode ser promovida nem auditada integralmente** até o código e migrations já executados serem reconciliados no Git.
 
-`AUTORIZADA → EXECUÇÃO CLAUDE → GATE HUMANO META SE NECESSÁRIO → PR/RELATÓRIO → 003A EXECUTADA — AGUARDANDO AUDITORIA GPT`
+## 5. Próxima ação autorizada
 
-Claude não promove, não inicia 003B e não amplia para importação de conteúdo, Ads ou gasto.
+Claude Code deve executar **somente a Correção 003A-01** via `/proxima`.
 
-## 5. Pendências que não bloqueiam 003A
+Objetivo: reconciliar e publicar o trabalho já feito, sem repetir a implementação e sem iniciar 003B.
+
+Estado final esperado:
+
+`003A EXECUTADA — AGUARDANDO AUDITORIA GPT`
+
+## 6. Pendências não bloqueantes
 
 - leaked-password protection antes de produção;
 - SMTP/domínio de produção;
