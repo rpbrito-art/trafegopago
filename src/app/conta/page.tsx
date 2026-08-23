@@ -1,5 +1,7 @@
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { BusinessSection } from "@/components/business/business-section";
 import { requireUser } from "@/lib/auth/session";
+import { getAccountBusinessState } from "@/lib/business/account";
 
 export const metadata = {
   title: "Sua conta — Tráfego Pago",
@@ -16,17 +18,19 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 /**
- * Área protegida mínima da Rodada 001B.
+ * Conta: onboarding do negócio inicial ou resumo do que já existe.
  *
- * Existe para provar identidade e sessão, não para ser o dashboard do produto.
- * O guard vem de `requireUser()`, que verifica o JWT server-side; o redirect do
- * Proxy é apenas a primeira camada e não substitui esta.
+ * O guard é `requireUser()`, que verifica o JWT server-side; o redirect do
+ * Proxy é apenas a primeira camada. O que a página mostra depois disso vem de
+ * `getAccountBusinessState()`, que lê sob RLS — a página não decide o que o
+ * usuário pode ver, apenas como mostrar o que chegou.
  */
 export default async function ContaPage() {
   const user = await requireUser();
+  const state = await getAccountBusinessState();
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center gap-6 p-8">
+    <main className="mx-auto flex w-full max-w-xl flex-col gap-6 p-8">
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">Sua conta</h1>
         <p className="text-sm text-neutral-600">
@@ -45,10 +49,7 @@ export default async function ContaPage() {
         </div>
       </dl>
 
-      <p className="text-sm text-neutral-600">
-        Nenhuma funcionalidade de domínio existe nesta etapa: organizações,
-        integrações e campanhas entram em rodadas posteriores.
-      </p>
+      <BusinessSection state={state} />
 
       <SignOutButton />
     </main>

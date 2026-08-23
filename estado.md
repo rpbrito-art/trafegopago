@@ -38,23 +38,33 @@ Detalhes históricos: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 **RODADA 001E — BOOTSTRAP DE NEGÓCIO**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
 Mandato:
 
 `rodadas/gpt/RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-Branch esperada:
+Branch entregue:
 
 `claude/rodada-001e-business-bootstrap`
 
-Relatório esperado:
+Relatório entregue:
 
 `rodadas/claude/RELATORIO_RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-`/proxima` está autorizado a executar **somente a Rodada 001E**.
+Commit: resolver pelo head da branch no GitHub (push único, conforme
+`PROJECT_PROMPT.md` §5.2).
 
-Nenhuma etapa posterior está autorizada.
+Migration aplicada no project ref `cbnxdoxpyioxjwgjhbtq`:
+`20260823111051_create_business_profiles_and_bootstrap.sql`.
+
+Gates executados: `git diff --check`, lint, typecheck, 236 testes, build,
+`supabase migration list` (5 local = 5 remoto), 24/24 provas reais de
+banco/Data API, Security Advisor sem regressão, zero resíduo remoto.
+
+Bloqueios: nenhum.
+
+Nenhuma etapa posterior está autorizada. A 001F não foi aberta.
 
 ## 4. Objetivo autorizado da 001E
 
@@ -100,11 +110,16 @@ A rodada deve:
 
 ## 7. Próxima ação autorizada
 
-Claude Code deve executar a Rodada 001E conforme o mandato e parar em:
+Rodada 001E executada e parada em:
 
 `RODADA 001E — EXECUTADA — AGUARDANDO AUDITORIA GPT`
 
-Não iniciar 001F.
+Próximo agente: **GPT**, auditando independentemente a branch
+`claude/rodada-001e-business-bootstrap` — diff, CI, migration aplicada, grants,
+policy de `business_profiles`, ACL da função de bootstrap, provas de isolamento
+e de dupla submissão, ausência de secret em código cliente e resíduo remoto.
+
+Claude Code não pode aprovar, promover nem iniciar 001F.
 
 ## 8. Continuidade
 
