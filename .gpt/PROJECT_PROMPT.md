@@ -12,11 +12,33 @@ Este é o mandato permanente do projeto para GPT, Claude Code e novos chats. Nã
 
 Construir um SaaS inicialmente focado em **Instagram + Meta Ads + geração e aprendizagem sobre leads** para pequenas empresas.
 
-Ciclo central:
+O ciclo de produto não deve ser tratado como funil rígido. O modelo canônico de crescimento é:
 
-`conteúdo → sinais orgânicos → hipótese → teste pago → resultado → vencedor → escala → lead → qualificação → conversão/perda → feedback → insight → novo teste`
+`contexto do negócio → objetivo → jornada → público/personas → conteúdo/criativo → distribuição orgânica, paga ou ambas → resultado → aprendizado → nova ação`
 
-O produto deve transformar marketing em um ciclo contínuo de experimentação, aquisição e aprendizagem; não apenas publicar posts ou mostrar métricas.
+Mídia paga é uma capacidade importante, não obrigação de uso. O sistema deve conseguir entregar valor por inteligência orgânica e ampliar para mídia paga quando fizer sentido ao objetivo do negócio.
+
+O detalhamento vigente está em:
+
+`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
+
+## 1.1 Lei da simplicidade guiada
+
+**A complexidade pertence ao sistema, não ao usuário.**
+
+O produto deve ser operado como uma trilha guiada e não pode exigir que o usuário domine Ads Manager, hierarquia campanha/ad set/anúncio, APIs, targeting avançado ou jargão técnico para completar o fluxo principal.
+
+O sistema deve:
+
+- propor o próximo passo em linguagem simples;
+- explicar por que recomenda;
+- usar defaults seguros;
+- esconder complexidade avançada até ser necessária;
+- pedir somente decisões que realmente dependam do usuário;
+- absorver internamente complexidade técnica sempre que puder fazê-lo com segurança;
+- nunca esconder gasto, risco, incerteza ou limitação de mensuração em nome da simplicidade.
+
+Nenhuma rodada futura pode reintroduzir complexidade operacional desnecessária para o usuário sem decisão explícita de produto.
 
 ---
 
@@ -89,6 +111,41 @@ Para histórico já promovido, ler primeiro:
 A política completa está em:
 
 `docs/00-governanca/DOCUMENTATION_LIFECYCLE.md`
+
+## 3.3 Gate obrigatório de planejamento de produto
+
+Antes de **formular, refinar, dividir, autorizar ou auditar** qualquer rodada que possa afetar produto ou experiência, o GPT deve ler **integralmente**:
+
+`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
+
+Não basta ler a referência curta deste prompt ou um resumo no `MVP_CANONICAL.md`.
+
+Este gate é obrigatório sempre que a rodada tocar, direta ou indiretamente, em qualquer um destes temas:
+
+- onboarding e configuração do negócio;
+- jornada/funil e definição de sucesso;
+- conteúdo, publicação e criativos;
+- orgânico e mídia paga;
+- Meta/Instagram e experiência de conexão/operação;
+- oportunidades, experimentos e recomendações;
+- personas, públicos, segmentação e targeting;
+- leads, conversões, eventos e mensuração;
+- inteligência, insights e uso de IA sobre comportamento de mercado;
+- UX, navegação, configuração ou qualquer decisão que possa aumentar complexidade para o usuário.
+
+Se houver dúvida se uma rodada é de produto, **trate como relevante e leia o documento**.
+
+Consequências obrigatórias:
+
+1. todo mandato relevante deve listar `GROWTH_INTELLIGENCE_CANONICAL.md` explicitamente em seu **READ SET**;
+2. o Claude deve lê-lo antes de implementar o escopo relevante;
+3. na auditoria, o GPT deve verificar aderência ao documento; contradição material é **bloqueante**, salvo decisão explícita do fundador que altere o contrato canônico;
+4. não promover implementação que reintroduza funil rígido, número fixo de candidatos, confusão entre conteúdo/criativo/anúncio, obrigatoriedade de mídia paga, personas fabricadas ou complexidade operacional desnecessária sem decisão explícita de produto;
+5. até a harmonização completa dos canônicos antigos, em matérias de modelo de crescimento, jornadas, orgânico/pago, conteúdo/criativo, personas/públicos, inteligência de mercado e simplicidade guiada, `GROWTH_INTELLIGENCE_CANONICAL.md` **prevalece sobre formulações anteriores incompatíveis** de `MVP_CANONICAL.md`, `IMPLEMENTATION_ROADMAP.md` e `DATA_MODEL.md`.
+
+Essa prevalência não substitui contratos de segurança, tenancy, autorização financeira ou outros invariantes técnicos de seus respectivos canônicos.
+
+**Regra de transição:** este gate não amplia retroativamente o mandato da Rodada 001E já autorizada em 2026-08-23. Ele vincula o planejamento futuro e as harmonizações posteriores à auditoria da 001E.
 
 ---
 
@@ -266,9 +323,9 @@ Nunca expor passwords, access tokens, service role/secret keys ou outros segredo
 
 ---
 
-# 10. INVARIANTES TÉCNICOS
+# 10. INVARIANTES TÉCNICOS E DE PRODUTO
 
-Contratos detalhados vivem em `docs/03-canonical/`. Invariantes que nenhuma rodada pode violar silenciosamente:
+Contratos detalhados vivem em `docs/03-canonical/` e `docs/01-produto/`. Invariantes que nenhuma rodada pode violar silenciosamente:
 
 - multi-tenancy por organização;
 - RLS e grants tratados como camadas distintas;
@@ -285,7 +342,14 @@ Contratos detalhados vivem em `docs/03-canonical/`. Invariantes que nenhuma roda
 - IA nunca executa gasto diretamente;
 - cálculos determinísticos fora de LLM;
 - AI Router multi-provedor, sem modelo hardcoded na feature;
-- custo de IA registrado por execução.
+- custo de IA registrado por execução;
+- a experiência padrão deve seguir a **lei da simplicidade guiada**;
+- mídia paga é opcional: o sistema deve entregar valor orgânico quando houver dados suficientes;
+- conteúdo orgânico, criativo publicitário e anúncio são conceitos distintos;
+- o número de oportunidades/candidatos não é fixo por contrato;
+- jornada, evento de sucesso e resultado mensurável variam por negócio;
+- personas são hipóteses apoiadas por evidência e não podem ser fabricadas como fatos;
+- complexidade técnica pode ser escondida, mas gasto, risco, incerteza e limitações não.
 
 Fluxo financeiro obrigatório:
 
