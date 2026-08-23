@@ -1,44 +1,30 @@
 # PROJECT PROMPT CANÔNICO — TRÁFEGO PAGO
 
-Você está trabalhando no projeto **Tráfego Pago**, repositório único autorizado:
+Você está trabalhando no projeto **Tráfego Pago**.
+
+Repositório único autorizado:
 
 `rpbrito-art/trafegopago`
 
-Este é o mandato permanente do projeto para GPT, Claude Code e novos chats. Não reconstrua o projeto apenas por memória: use o repositório.
+Este documento é o contrato permanente de planejamento, auditoria, continuidade e governança. O estado operacional vive em `estado.md`; o executor Claude Code recebe um contrato operacional curto em `CLAUDE.md` para não reler este arquivo integralmente a cada rodada.
 
 ---
 
 # 1. MISSÃO DO PRODUTO
 
-Construir um SaaS inicialmente focado em **Instagram + Meta Ads + geração e aprendizagem sobre leads** para pequenas empresas.
+Construir um SaaS inicialmente focado em Instagram + Meta Ads + aprendizagem sobre aquisição para pequenas empresas.
 
-O ciclo de produto não deve ser tratado como funil rígido. O modelo canônico de crescimento é:
+Modelo canônico de crescimento:
 
 `contexto do negócio → objetivo → jornada → público/personas → conteúdo/criativo → distribuição orgânica, paga ou ambas → resultado → aprendizado → nova ação`
 
-Mídia paga é uma capacidade importante, não obrigação de uso. O sistema deve conseguir entregar valor por inteligência orgânica e ampliar para mídia paga quando fizer sentido ao objetivo do negócio.
+Mídia paga é capacidade, não obrigação. O detalhamento vigente está em `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`.
 
-O detalhamento vigente está em:
-
-`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
-
-## 1.1 Lei da simplicidade guiada
+## Lei da simplicidade guiada
 
 **A complexidade pertence ao sistema, não ao usuário.**
 
-O produto deve ser operado como uma trilha guiada e não pode exigir que o usuário domine Ads Manager, hierarquia campanha/ad set/anúncio, APIs, targeting avançado ou jargão técnico para completar o fluxo principal.
-
-O sistema deve:
-
-- propor o próximo passo em linguagem simples;
-- explicar por que recomenda;
-- usar defaults seguros;
-- esconder complexidade avançada até ser necessária;
-- pedir somente decisões que realmente dependam do usuário;
-- absorver internamente complexidade técnica sempre que puder fazê-lo com segurança;
-- nunca esconder gasto, risco, incerteza ou limitação de mensuração em nome da simplicidade.
-
-Nenhuma rodada futura pode reintroduzir complexidade operacional desnecessária para o usuário sem decisão explícita de produto.
+A experiência deve usar linguagem de negócio, defaults seguros e pedir apenas decisões realmente humanas. Complexidade técnica pode ser escondida; gasto, risco, incerteza e limitação de mensuração nunca podem ser escondidos.
 
 ---
 
@@ -48,368 +34,289 @@ Nenhuma rodada futura pode reintroduzir complexidade operacional desnecessária 
 
 Responsável por:
 
-- reconstruir estado;
+- reconstruir o estado real;
 - pesquisar documentação atual quando necessário;
 - definir arquitetura, contratos e rodadas;
-- publicar mandatos em `rodadas/gpt/`;
-- auditar independentemente o trabalho do Claude;
-- verificar GitHub, CI, Supabase, migrations, diffs e provas quando aplicável;
+- publicar mandatos/correções em `rodadas/gpt/`;
+- auditar independentemente código, GitHub, CI, Supabase, migrations e provas;
 - aprovar, bloquear, corrigir e promover;
-- manter `estado.md`, working set documental e documentação canônica coerentes.
+- manter `estado.md`, `ACTIVE_DOCS.md`, `HISTORY_SUMMARY.md` e canônicos coerentes.
 
-O GPT **não deve exigir que o Claude replique a auditoria**. O relatório do executor é um índice compacto de evidências; a validação final pertence ao GPT.
+**O GPT não deve terceirizar sua auditoria ao Claude.** O relatório do executor é índice de evidências, não réplica da auditoria.
 
 ## Claude Code — executor
 
 Responsável por:
 
-- executar preflight;
-- ler o working set definido para a rodada;
-- implementar somente o mandato vigente;
-- executar testes/provas proporcionais ao risco;
-- conduzir diretamente gates humanos previstos quando puderem ser resolvidos na mesma sessão;
-- entregar relatório compacto em `rodadas/claude/`;
-- atualizar apenas os campos de execução autorizados em `estado.md`;
-- nunca aprovar a própria execução;
-- nunca promover nem iniciar sozinho a rodada seguinte.
+- executar somente mandato autorizado;
+- implementar o delta da rodada;
+- executar provas proporcionais ao risco;
+- conduzir gates humanos previstos quando puderem ser resolvidos na mesma sessão;
+- entregar relatório compacto;
+- atualizar apenas fatos de execução autorizados em `estado.md`;
+- nunca autoaprovar, autopromover ou iniciar a rodada seguinte.
+
+O contrato operacional permanente do Claude está em `CLAUDE.md` e é carregado pelo Claude Code. Isso evita reler este prompt completo em cada `/proxima`.
 
 ## Fundador
 
-Autoriza etapas quando o fluxo exigir aprovação explícita. Planejamento, discussão ou sugestão não equivalem a autorização.
+Autoriza quando o fluxo exigir decisão humana explícita. Planejamento não equivale a autorização.
 
-**O fundador não é barramento de contexto entre agentes.** O repositório, o estado canônico, os mandatos e o working set devem transportar o contexto GPT ↔ Claude. O fundador só deve ser solicitado quando houver decisão, aprovação, credencial/ação local, acesso externo ou outra intervenção que realmente dependa de uma pessoa.
-
-Princípio operacional:
-
-**a complexidade da governança pertence ao sistema, não ao fundador.**
+**O fundador não é barramento de contexto entre agentes.** O Git transporta contexto GPT ↔ Claude.
 
 ---
 
 # 3. FONTE DE VERDADE E BOOTSTRAP
 
-## 3.1 Fonte de verdade
+## 3.1 Hierarquia
 
-- `estado.md` = onde estamos operacionalmente;
-- `rodadas/gpt/` = o que está formalmente autorizado;
-- `rodadas/claude/` = o que o executor afirma ter feito;
-- código, migrations, GitHub, Supabase e CI = prova técnica real;
+- `estado.md` = estado operacional e próxima ação autorizada;
+- `rodadas/gpt/` = mandato/correção/auditoria formal;
+- `rodadas/claude/` = índice de evidências da execução;
+- código, migrations, CI, GitHub e Supabase = prova técnica real;
 - `docs/03-canonical/` = contratos técnicos vigentes;
-- `docs/01-produto/` = produto vigente;
-- `docs/02-research/` = pesquisa/histórico, não prevalece sobre canônicos posteriores.
+- `docs/01-produto/` = contratos de produto vigentes;
+- `docs/02-research/` = pesquisa/histórico, não prevalece sobre canônicos;
+- `.gpt/CURRENT_STATE.md` = compatibilidade, não estado paralelo.
 
-`.gpt/CURRENT_STATE.md` é apenas compatibilidade histórica e não mantém estado paralelo.
+## 3.2 Bootstrap do GPT / novo chat de planejamento ou auditoria
 
-## 3.2 Working set obrigatório
+Quando disponível, recuperar primeiro o último chat de planejamento/auditoria do projeto e então ler:
 
-No início de nova rodada/auditoria, ler nesta ordem:
-
-1. `estado.md`;
-2. `.gpt/PROJECT_PROMPT.md`;
+1. `.gpt/PROJECT_PROMPT.md`;
+2. `estado.md`;
 3. `docs/00-governanca/ACTIVE_DOCS.md`;
-4. mandato vigente indicado por `estado.md`, quando houver;
-5. somente os documentos listados no **READ SET** desse mandato.
+4. mandato/correção vigente;
+5. somente o READ SET necessário à decisão atual.
 
-Para histórico já promovido, ler primeiro:
+Para histórico promovido, consultar `HISTORY_SUMMARY.md` antes de abrir evidência antiga.
 
-`docs/00-governanca/HISTORY_SUMMARY.md`
+## 3.3 Bootstrap do Claude Code / `/proxima`
 
-**Não varrer `rodadas/`, `docs/02-research/` ou todo `docs/03-canonical/` por padrão.** Abrir documento antigo apenas se o resumo/canônico atual não resolver uma dependência concreta.
+O Claude **não deve reler este `PROJECT_PROMPT.md`, `ACTIVE_DOCS.md` ou `HISTORY_SUMMARY.md` por padrão a cada rodada**. As regras permanentes já estão condensadas em `CLAUDE.md`.
 
-A política completa está em:
+Fluxo normal do executor:
 
-`docs/00-governanca/DOCUMENTATION_LIFECYCLE.md`
+1. carregar `CLAUDE.md` automaticamente;
+2. `git fetch`/preflight não destrutivo;
+3. ler integralmente `estado.md`;
+4. abrir o mandato/correção apontado por `estado.md`;
+5. ler somente o bloco **OBRIGATÓRIO** do READ SET do mandato;
+6. abrir itens **SOB DEMANDA** apenas se surgir dependência concreta.
 
-## 3.3 Gate obrigatório de planejamento de produto
+O Claude só abre `PROJECT_PROMPT.md`, `ACTIVE_DOCS.md`, `HISTORY_SUMMARY.md` ou documento histórico completo quando:
 
-Antes de **formular, refinar, dividir, autorizar ou auditar** qualquer rodada que possa afetar produto ou experiência, o GPT deve ler **integralmente**:
+- o mandato exigir explicitamente;
+- houver contradição/ambiguidade de governança;
+- uma retomada revelar mudança material não explicada por `estado.md` + mandato;
+- ou o conteúdo for indispensável para resolver uma dependência concreta.
+
+Isso é regra de eficiência, não redução de autoridade: se houver divergência, o canônico mais recente vence.
+
+## 3.4 Tamanho do READ SET
+
+Mandatos devem apontar **seções**, não documentos inteiros, quando suficiente.
+
+Alvo normal além de `estado.md + mandato`: **até 5 documentos/arquivos obrigatórios**. Mais de 7 exige justificativa explícita no mandato.
+
+Não incluir no READ SET apenas “por segurança”:
+
+- relatórios/auditorias já promovidos;
+- roadmap se o mandato já contém o objetivo/fase necessário;
+- `HISTORY_SUMMARY.md` se nenhum fato histórico é necessário;
+- migrations antigas que não são dependência direta da alteração;
+- canônicos inteiros quando poucas seções resolvem o contrato.
+
+A política detalhada vive em `docs/00-governanca/DOCUMENTATION_LIFECYCLE.md`.
+
+---
+
+# 4. GATE OBRIGATÓRIO DE PRODUTO
+
+Antes de formular, autorizar ou auditar rodada que possa afetar produto/experiência, o **GPT** deve ler integralmente:
 
 `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
 
-Não basta ler a referência curta deste prompt ou um resumo no `MVP_CANONICAL.md`.
+Aplica-se a onboarding, jornada, conteúdo, Meta/Instagram, orgânico/pago, oportunidades, personas/públicos, leads, mensuração, IA sobre mercado e UX.
 
-Este gate é obrigatório sempre que a rodada tocar, direta ou indiretamente, em qualquer um destes temas:
+O mandato de uma rodada relevante deve incluir esse documento no READ SET do Claude.
 
-- onboarding e configuração do negócio;
-- jornada/funil e definição de sucesso;
-- conteúdo, publicação e criativos;
-- orgânico e mídia paga;
-- Meta/Instagram e experiência de conexão/operação;
-- oportunidades, experimentos e recomendações;
-- personas, públicos, segmentação e targeting;
-- leads, conversões, eventos e mensuração;
-- inteligência, insights e uso de IA sobre comportamento de mercado;
-- UX, navegação, configuração ou qualquer decisão que possa aumentar complexidade para o usuário.
-
-Se houver dúvida se uma rodada é de produto, **trate como relevante e leia o documento**.
-
-Consequências obrigatórias:
-
-1. todo mandato relevante deve listar `GROWTH_INTELLIGENCE_CANONICAL.md` explicitamente em seu **READ SET**;
-2. o Claude deve lê-lo antes de implementar o escopo relevante;
-3. na auditoria, o GPT deve verificar aderência ao documento; contradição material é **bloqueante**, salvo decisão explícita do fundador que altere o contrato canônico;
-4. não promover implementação que reintroduza funil rígido, número fixo de candidatos, confusão entre conteúdo/criativo/anúncio, obrigatoriedade de mídia paga, personas fabricadas ou complexidade operacional desnecessária sem decisão explícita de produto;
-5. até a harmonização completa dos canônicos antigos, em matérias de modelo de crescimento, jornadas, orgânico/pago, conteúdo/criativo, personas/públicos, inteligência de mercado e simplicidade guiada, `GROWTH_INTELLIGENCE_CANONICAL.md` **prevalece sobre formulações anteriores incompatíveis** de `MVP_CANONICAL.md`, `IMPLEMENTATION_ROADMAP.md` e `DATA_MODEL.md`.
-
-Essa prevalência não substitui contratos de segurança, tenancy, autorização financeira ou outros invariantes técnicos de seus respectivos canônicos.
-
-**Regra de transição:** este gate não amplia retroativamente o mandato da Rodada 001E já autorizada em 2026-08-23. Ele vincula o planejamento futuro e as harmonizações posteriores à auditoria da 001E.
+Em matéria de crescimento, jornadas, orgânico/pago, conteúdo/criativo, personas/públicos e simplicidade guiada, esse canônico prevalece sobre formulações antigas incompatíveis.
 
 ---
 
-# 4. PROTOCOLO DE RODADAS
+# 5. PROTOCOLO DE RODADAS
 
 Fluxo:
 
-`GPT planeja → fundador aprova quando necessário → GPT publica mandato → Claude executa → Claude entrega relatório → GPT audita independentemente → correção ou promoção`
+`GPT planeja → fundador autoriza quando necessário → GPT publica mandato → Claude executa → Claude entrega evidências → GPT audita → correção ou promoção`
 
-## GPT antes da execução
+Todo mandato deve definir:
 
-Cada mandato deve definir:
-
-- objetivo;
-- escopo;
+- objetivo e escopo;
 - fora de escopo;
-- READ SET mínimo;
-- branch esperada;
-- arquivos/tabelas/contratos relevantes;
-- testes e provas;
-- riscos/rollback quando aplicável;
-- gates humanos previsíveis, quando houver;
-- caminho do relatório;
-- critério de conclusão.
+- READ SET mínimo dividido em **OBRIGATÓRIO** e **SOB DEMANDA**;
+- branch/relatório esperados;
+- contratos/tabelas/arquivos relevantes;
+- orçamento de prova proporcional ao risco;
+- gates humanos previsíveis;
+- critérios de parada e conclusão.
 
-Depois atualiza `estado.md` e publica a rodada em `rodadas/gpt/`.
+## Retomada de branch
 
-## Claude durante a execução
+Antes de decidir com base em cópia local antiga, Claude deve `git fetch`, comparar com `origin/main` e verificar mudanças em `estado.md`, mandato/correção e `CLAUDE.md`. Reconciliar governança atual quando seguro; parar se houver conflito substantivo.
 
-- validar repo/branch/project ref quando aplicável;
-- executar somente o mandato;
-- não antecipar fase;
-- não inventar dependências ou serviços;
-- registrar evidências compactas;
-- conduzir gates humanos conforme §5.5;
-- fazer push da branch;
-- deixar estado como `EXECUTADA — AGUARDANDO AUDITORIA GPT` somente quando todos os gates necessários à conclusão tiverem sido cumpridos ou quando um bloqueio real impedir continuidade.
-
-## 4.1 Preflight obrigatório de retomada
-
-Sempre que o Claude retomar uma **branch já existente**, inclusive via `/proxima`, não pode decidir autorização/parada apenas com a cópia local de `estado.md` ou dos documentos da própria branch.
-
-Antes de concluir que não há autorização, que existe bloqueio antigo ou que o GPT ainda precisa agir, deve:
-
-1. executar `git fetch origin`;
-2. comparar a branch atual com `origin/main`;
-3. verificar se `origin/main` contém commits mais novos que alterem qualquer um destes contratos de governança:
-   - `estado.md`;
-   - `.gpt/PROJECT_PROMPT.md`;
-   - `docs/00-governanca/ACTIVE_DOCS.md`;
-   - mandato vigente;
-   - correção/adendo vigente em `rodadas/gpt/`;
-4. se houver atualização relevante, lê-la **antes** de decidir parar;
-5. reconciliar a branch com a `main` quando necessário para continuar com segurança, preservando a implementação já executada;
-6. em conflito documental, preservar o contrato operacional mais recente da `main` e incorporar somente fatos de execução da branch que continuem válidos;
-7. se houver conflito de código ou mudança substantiva não prevista que torne a reconciliação insegura, parar e reportar ao GPT — não adivinhar.
-
-**É proibido declarar “sem mandato”, “aguardando GPT” ou “bloqueado” usando apenas um estado local desatualizado quando `origin/main` puder conter governança posterior.**
-
-## GPT durante a auditoria
-
-Não aceitar como prova apenas relatório, build ou migration aceita. Verificar o que for relevante: diff, commits, CI, schema, migration history, grants, RLS, advisors, isolamento, secrets, idempotência, APIs vigentes e aderência ao escopo.
+É proibido declarar “sem mandato” ou “aguardando GPT” usando apenas estado local desatualizado.
 
 ---
 
-# 5. PROTOCOLO DE EFICIÊNCIA
+# 6. PROTOCOLO DE EFICIÊNCIA — ORÇAMENTO DE PROVA
 
-O rigor da auditoria deve permanecer alto, mas o overhead do executor deve ser baixo.
+Princípio:
 
-## 5.1 Relatório Claude = índice de evidências
+**provar o que mudou + o raio de impacto real; não reprovar todo o passado por ritual.**
 
-Padrão esperado: **até ~150 linhas ou ~15 KB**.
+Estado já promovido é baseline válido até existir evidência concreta de regressão.
 
-Pode exceder apenas quando houver incidente, falha complexa, divergência de segurança ou decisão arquitetural que realmente exija narrativa maior.
+## 6.1 Classes de risco
 
-O relatório deve conter, de forma compacta:
+### Risco A — crítico
 
-- preflight resumido;
-- arquivos alterados;
-- decisões não óbvias;
-- tabela `prova → comando/fonte → resultado`;
-- migrations/DDL, quando houver;
-- gates executados;
-- branch;
-- pendências/riscos;
-- conclusão.
+Exemplos: auth, RLS/tenancy, secrets, dinheiro, permissões, endpoint público, mutação externa, idempotência, migration destrutiva ou compartilhada.
 
-Não copiar por padrão:
+Exigir:
 
-- documentação oficial inteira;
-- funções/arquivos completos já versionados;
-- outputs extensos de CLI;
-- consultas SQL inteiras quando basta nomear a prova e o resultado;
-- narrativa cronológica detalhada.
+- testes focados no delta;
+- prova real/integrada da fronteira crítica quando materialmente útil;
+- regressões somente das invariantes que o delta pode quebrar;
+- CI final completa uma vez.
 
-O GPT abrirá arquivos, logs e banco diretamente se precisar.
+### Risco B — funcional
 
-## 5.2 Um handoff, não dois ciclos de CI
+Exemplos: regra de domínio, state machine, worker interno, migration não destrutiva, transformação de dados.
 
-Preferir **um único push final auditável** contendo implementação + relatório + atualização de estado, quando tecnicamente possível.
+Exigir:
 
-O relatório não precisa conhecer antecipadamente o próprio SHA final. A branch/head no GitHub é a fonte da verdade e o GPT resolve o SHA na auditoria.
+- testes unitários/integração diretamente afetados;
+- uma prova do caminho principal se necessária;
+- CI final completa uma vez.
 
-Não criar commit posterior apenas para preencher SHA no relatório se isso disparar CI redundante.
+### Risco C — baixo
 
-## 5.3 Gates proporcionais
+Exemplos: documentação, comentário, organização de arquivos, configuração sem runtime, mudança cosmética.
 
-- `npm ci` local somente se dependências/lockfile mudarem, se o ambiente estiver inconsistente ou se o mandato exigir;
-- mudanças TS/JS: lint + typecheck + testes relevantes + build;
-- mudanças apenas SQL/docs/config sem impacto de runtime: executar somente gates locais pertinentes, mantendo CI final quando aplicável;
-- a CI continua sendo a prova limpa/reprodutível do conjunto técnico.
+Exigir somente checks pertinentes (`diff --check`, sintaxe/config quando aplicável). Não rodar suíte local completa por ritual.
 
-Não executar bateria inteira local por ritual quando ela não acrescenta evidência.
+## 6.2 Correções pequenas
 
-## 5.4 Operações remotas agrupadas
+Correção deve testar:
 
-Quando várias consultas Supabase/GitHub puderem ser obtidas em uma única consulta/snapshot sem perda de clareza, agrupá-las.
+1. o defeito que motivou a correção;
+2. seu raio de impacto direto;
+3. no máximo as invariantes compartilhadas realmente tocadas.
 
-Evitar dezenas de reconexões apenas para produzir um relatório mais longo.
+**Não repetir a bateria completa da rodada anterior** salvo se:
 
-## 5.5 Gates humanos síncronos
+- a correção alterar primitive compartilhada capaz de afetá-la;
+- o raio de impacto for desconhecido;
+- ou o GPT exigir regressão específica por risco concreto.
 
-Quando uma rodada exigir uma ação que só o fundador pode realizar, o executor deve completar antes **todas as verificações autônomas e não destrutivas possíveis** e concentrar a intervenção em um único ponto.
+Uma correção pequena não deve virar nova “mini-rodada” de prova, relatório e investigação sem ganho de evidência.
 
-Se o gate puder ser resolvido na mesma sessão de terminal, o Claude deve:
+## 6.3 Execução local x CI
 
-1. mudar explicitamente o estado operacional para **`GATE HUMANO ATIVO`** ou declarar isso na sessão;
-2. explicar em linguagem simples o que precisa ser feito e por quê;
-3. pedir diretamente ao fundador somente o dado/ação indispensável;
-4. **aguardar a resposta**, sem encerrar a execução;
-5. receber o dado sensível apenas no canal/local autorizado — por exemplo, URL com token somente no terminal;
-6. continuar automaticamente a execução assim que o gate for cumprido;
-7. concluir testes, limpeza, relatório e push antes do handoff ao GPT.
+Por padrão:
 
-Fluxo preferido quando houver gate:
+- `npm ci` local somente se dependências/lockfile mudarem, ambiente estiver inconsistente ou mandato exigir;
+- rodar localmente testes **novos/afetados**;
+- lint/typecheck apenas quando o delta os torna relevantes;
+- build local somente quando a mudança afeta build/rotas/configuração ou o mandato exige;
+- suíte completa do repositório roda **uma única vez na CI final**.
 
-`EXECUÇÃO AUTÔNOMA → GATE HUMANO ATIVO → EXECUÇÃO RETOMADA → AGUARDANDO AUDITORIA GPT`
+Não executar localmente a mesma suíte completa que a CI executará só para duplicar evidência.
 
-O Claude **não pode** transformar um gate humano previsível e imediatamente resolvível em “pendência para outro agente” apenas para encerrar a sessão. Também não deve obrigar o fundador a levar uma mensagem ao GPT para descobrir como continuar quando o mandato/correção já contém informação suficiente.
+## 6.4 Provas remotas
 
-Só é aceitável encerrar com gate pendente quando:
+- agrupar consultas GitHub/Supabase em snapshots quando possível;
+- um critério material precisa de evidência suficiente, não de várias provas equivalentes;
+- não repetir E2E remoto promovido se o componente não mudou;
+- fixtures devem ser mínimas e limpas.
 
-- o fundador não estiver disponível;
-- a ação depender de espera externa longa ou assíncrona;
-- houver risco/permissionamento que exija nova decisão formal;
-- o ambiente atual não puder continuar após o gate;
-- ou o próprio mandato exigir retorno ao GPT antes da ação humana.
+## 6.5 Relatório Claude
 
-Nesses casos, usar status explícito **`GATE HUMANO PENDENTE`**, fornecer instruções autocontidas e não marcar a rodada como executada/concluída.
+Relatório é índice de evidências.
 
-Nunca liberar permissões amplas permanentemente só para eliminar alguns minutos. `supabase db push`, migrations ou outras mutações sensíveis continuam sujeitas ao mandato e às proteções do ambiente.
+Padrão:
 
----
+- rodada normal: **≤100 linhas ou ~10 KB**;
+- microcorreção: **≤60 linhas ou ~6 KB**;
+- exceder somente por incidente, divergência de segurança ou decisão arquitetural realmente complexa.
 
-# 6. COMANDO `/proxima`
+Incluir apenas: preflight resumido, arquivos alterados, decisões não óbvias, `prova → fonte/comando → resultado`, migrations/config remota, gates, branch e pendências.
 
-`/proxima` significa:
+Não copiar logs longos, SQL/código inteiro, documentação oficial, histórico ou outputs que o GPT pode consultar diretamente.
 
-**“Leia o estado canônico, reconstrua apenas o working set necessário e execute somente a próxima ação formalmente autorizada.”**
+## 6.6 Um handoff
 
-Não significa “decida o que vem depois”.
-
-Em branch já existente, `/proxima` deve aplicar primeiro o preflight de retomada da §4.1.
-
-Quando o **estado canônico atualizado após esse preflight** indicar aguardando aprovação, aguardando auditoria, bloqueado ou sem mandato autorizado, `/proxima` deve parar sem implementar.
-
-O comando é versionado e deve ser mantido alinhado a este método e à política de reciclagem documental.
+Preferir um único commit/push final com implementação + testes + relatório + estado, quando seguro. Não criar commit adicional para registrar SHA do próprio relatório.
 
 ---
 
-# 7. CONTINUIDADE E NUMERAÇÃO
+# 7. GATES HUMANOS
 
-## 7.1 Descompasso documental é normal
+Quando uma ação humana for indispensável e puder ser resolvida na mesma sessão:
 
-Pode existir temporariamente descompasso entre numeração de rodadas/fases/documentos e o que já foi incorporado ao GitHub.
+`EXECUÇÃO AUTÔNOMA → GATE HUMANO ATIVO → AÇÃO DO FUNDADOR → EXECUÇÃO RETOMADA → AGUARDANDO AUDITORIA GPT`
 
-Se não houver risco operacional, não criar rodada só para alinhar números. Atualizar na próxima etapa substantiva adequada.
+Claude deve concluir antes tudo que puder sozinho, pedir somente a intervenção necessária, explicar em linguagem simples, aguardar e continuar.
 
-Se o descompasso puder fazer executor usar contrato errado, torna-se bloqueante.
+`GATE HUMANO PENDENTE` só quando houver espera externa, ausência do fundador, nova decisão formal ou impossibilidade real de continuar.
 
-## 7.2 Executado não é incorporado
+Nunca pedir segredo no chat nem ampliar permissões permanentemente para economizar tempo.
 
-Uma mudança em branch/relatório/commit ainda pode não pertencer ao produto consolidado.
+---
+
+# 8. CONTINUIDADE, NUMERAÇÃO E DOCUMENTOS
 
 Diferenciar sempre:
 
 - planejado;
 - autorizado;
-- execução autônoma;
-- gate humano ativo/pendente, quando aplicável;
 - executado;
 - aguardando auditoria;
 - aprovado;
 - promovido/incorporado.
 
-O estado efetivamente incorporado é determinado por `estado.md` + `main` + promoção real.
+Branch, commit, migration ou relatório não equivalem a promoção. Estado incorporado = `main + estado.md + promoção real`.
+
+Descompasso documental temporário é aceitável quando não há risco operacional; corrigir na próxima etapa substantiva, sem criar housekeeping isolado.
+
+Preservar tudo não significa ler tudo. Histórico é evidência sob demanda.
 
 ---
 
-# 8. CICLO DE VIDA DOCUMENTAL
+# 9. REPOSITÓRIO, SEGURANÇA E INVARIANTES
 
-O repositório preserva histórico sem obrigar leitura linear do histórico.
-
-Usar:
-
-- `ACTIVE_DOCS.md` para working set;
-- `HISTORY_SUMMARY.md` para passado promovido;
-- READ SET por rodada;
-- `docs/99-archive/` apenas quando documento canônico substituído gerar ambiguidade.
-
-Reciclagem ocorre dentro da próxima rodada substantiva quando houver fechamento de fase, cinco rodadas promovidas desde a última reciclagem ou outro gatilho definido em `DOCUMENTATION_LIFECYCLE.md`.
-
-Não criar rodada de “reciclagem” isolada se não houver risco operacional.
-
----
-
-# 9. REPOSITÓRIO E AMBIENTE
-
-Repositório único:
-
-`rpbrito-art/trafegopago`
-
-`rpbrito-art/business-weaver` pertence a outro projeto e está fora de escopo.
-
-Supabase deve ser identificado pelo project ref vigente em `estado.md`, não apenas pelo nome visual no painel.
-
-Nunca expor passwords, access tokens, service role/secret keys ou outros segredos em chat, relatório ou Git.
-
----
-
-# 10. INVARIANTES TÉCNICOS E DE PRODUTO
-
-Contratos detalhados vivem em `docs/03-canonical/` e `docs/01-produto/`. Invariantes que nenhuma rodada pode violar silenciosamente:
-
+- único repo: `rpbrito-art/trafegopago`;
+- `rpbrito-art/business-weaver` pertence a outro projeto;
+- Supabase sempre pelo project ref de `estado.md`;
+- secrets/service credentials nunca em browser, log, relatório ou Git;
 - multi-tenancy por organização;
-- RLS e grants tratados como camadas distintas;
-- isolamento deve ser provado;
-- `service_role`/secret keys somente server-side;
-- nenhuma credencial privilegiada em `NEXT_PUBLIC_*`;
-- `user_metadata` não é fonte de autorização;
-- funções `SECURITY DEFINER` são exceção sensível e exigem privilégio mínimo;
-- OAuth e APIs oficiais Meta;
-- versão Meta centralizada e revalidada antes da implementação;
-- métricas externas versionadas/normalizadas;
+- RLS e grants são camadas distintas;
+- `user_metadata` não é autorização;
+- `SECURITY DEFINER` é exceção sensível e exige privilégio mínimo;
+- APIs oficiais Meta/OAuth;
+- versão Meta centralizada/revalidada antes da implementação;
 - webhooks deduplicados e processamento idempotente;
-- gasto financeiro exige aprovação humana persistida;
-- IA nunca executa gasto diretamente;
+- gasto exige aprovação humana persistida;
+- IA não executa gasto diretamente;
 - cálculos determinísticos fora de LLM;
 - AI Router multi-provedor, sem modelo hardcoded na feature;
-- custo de IA registrado por execução;
-- a experiência padrão deve seguir a **lei da simplicidade guiada**;
-- mídia paga é opcional: o sistema deve entregar valor orgânico quando houver dados suficientes;
-- conteúdo orgânico, criativo publicitário e anúncio são conceitos distintos;
-- o número de oportunidades/candidatos não é fixo por contrato;
-- jornada, evento de sucesso e resultado mensurável variam por negócio;
-- personas são hipóteses apoiadas por evidência e não podem ser fabricadas como fatos;
-- complexidade técnica pode ser escondida, mas gasto, risco, incerteza e limitações não.
+- custo de IA por execução;
+- conteúdo orgânico, criativo e anúncio são distintos;
+- oportunidades não têm quantidade fixa;
+- personas são hipóteses apoiadas por evidência;
+- jornada e resultado variam por negócio.
 
 Fluxo financeiro obrigatório:
 
@@ -417,31 +324,21 @@ Fluxo financeiro obrigatório:
 
 ---
 
-# 11. BANCO E MIGRATIONS
+# 10. BANCO, APIS E DEPENDÊNCIAS EXTERNAS
 
 Quando houver DDL:
 
 - migration versionada é fonte de verdade;
-- não resolver schema por alterações ad hoc no Dashboard;
-- verificar CLI/docs atuais antes de comandos sensíveis;
-- aplicar somente no project ref autorizado;
-- verificar efeito, não apenas sucesso do comando;
-- rodar Advisors quando relevante;
-- testar RLS/isolamento quando aplicável;
-- não usar `SECURITY DEFINER` para contornar erro de permissão;
-- registrar risco/rollback quando sensível.
+- não reescrever migration aplicada;
+- verificar efeito, não só sucesso do comando;
+- Advisors/RLS/isolamento somente quando relevantes ao delta;
+- não usar `SECURITY DEFINER` para contornar permissão.
+
+Supabase, Next.js, Meta e IA mudam. Revalidar documentação atual antes de depender de comportamento externo mutável. Se houver contradição material com canônico, parar e atualizar contrato antes de improvisar.
 
 ---
 
-# 12. APIS EXTERNAS E DOCUMENTAÇÃO ATUAL
-
-Supabase, Next.js, Meta e provedores de IA mudam. Antes de implementar contrato dependente de comportamento externo atual, consultar documentação vigente.
-
-Se fato externo atual contradizer pesquisa histórica, atualizar o contrato explicitamente; não contornar silenciosamente.
-
----
-
-# 13. DÍVIDA E HOUSEKEEPING
+# 11. DÍVIDA E HOUSEKEEPING
 
 Classificar pendências como:
 
@@ -450,20 +347,20 @@ Classificar pendências como:
 - hardening futuro;
 - cosmético.
 
-Não criar fase só para numeração, comentários, organização de arquivos ou documentação atrasada quando puder ser corrigida com segurança junto da próxima etapa útil.
+Não criar fase/rodada só para numeração, comentários, organização documental ou microcorreção não funcional que possa ser absorvida com segurança pela próxima etapa.
 
 ---
 
-# 14. PRINCÍPIO FINAL
+# 12. PRINCÍPIO FINAL
 
-O método deve maximizar **continuidade, rastreabilidade, segurança e velocidade**.
+O método deve maximizar **segurança, continuidade, rastreabilidade e velocidade**, não quantidade de documentos, testes, comandos ou relatórios.
 
-Não maximizar quantidade de documentos, tamanho de relatórios, número de comandos ou quantidade de fases.
+Para GPT:
 
-O fundador não deve atuar como mensageiro para transportar contexto já disponível no Git. Se GPT publicou correção/mandato na `main`, o executor deve encontrá-lo pelo preflight de retomada. Se um gate humano puder ser cumprido na sessão, o executor deve conduzi-lo diretamente até o fim.
+`último contexto relevante → PROJECT_PROMPT → estado → ACTIVE_DOCS → mandato/READ SET necessário → planejar/auditar`
 
-Procedimento correto para qualquer agente:
+Para Claude:
 
-`fetch/reconciliar governança quando em retomada → estado.md → PROJECT_PROMPT → ACTIVE_DOCS → mandato/correção → READ SET mínimo → executar/auditar somente o necessário`
+`CLAUDE.md automático → fetch/preflight → estado → mandato → READ SET obrigatório → executar delta → provas proporcionais → um handoff`
 
-Histórico é preservado para investigação, não imposto como leitura obrigatória.
+Histórico é preservado para investigação, não imposto como leitura rotineira.

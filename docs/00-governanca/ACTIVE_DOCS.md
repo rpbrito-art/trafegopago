@@ -1,144 +1,88 @@
 # ACTIVE DOCS — TRÁFEGO PAGO
 
 Atualizado: 2026-08-23
-Última reciclagem: fechamento da Fase 1 após promoção da 001F.
+Última reciclagem: auditoria de eficiência durante a 002C.
 
 ## Estado corrente
 
-**Fase 1 encerrada e promovida.**
-
-**Fase 2 — Operations, Audit, Queues e Segurança Base: EM ANDAMENTO.**
-
-Última promoção: **002B — Queue + Worker Foundation**, com Correção 002B-01.
-
-Estado incorporado: **000–002B**.
-
-Rodada vigente: **002C — Webhook Inbox + Observabilidade Base**.
-
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
-
-Mandato:
-
-`rodadas/gpt/RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
-
-Branch esperada:
-
-`claude/rodada-002c-webhook-inbox-observabilidade`
-
-Relatório esperado:
-
-`rodadas/claude/RELATORIO_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
+- Fase 1: encerrada/promovida.
+- Fase 2: em andamento.
+- Estado incorporado: **000–002B**.
+- Rodada vigente: **002C — Webhook Inbox + Observabilidade Base**.
+- Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO CLAUDE**.
+- Mandato: `rodadas/gpt/RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`.
+- Branch esperada: `claude/rodada-002c-webhook-inbox-observabilidade`.
+- Relatório esperado: `rodadas/claude/RELATORIO_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`.
 
 Fonte operacional: `estado.md`.
 
-## HOT — ler sempre na 002C
+## Bootstrap por agente
+
+### GPT / continuidade
+
+1. `.gpt/PROJECT_PROMPT.md`
+2. `estado.md`
+3. este índice
+4. mandato/correção vigente
+5. READ SET necessário
+
+### Claude Code
+
+`CLAUDE.md` é carregado automaticamente. Em `/proxima`, ler por padrão apenas:
 
 1. `estado.md`
-2. `.gpt/PROJECT_PROMPT.md`
-3. `docs/00-governanca/ACTIVE_DOCS.md`
-4. `rodadas/gpt/RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
+2. mandato/correção vigente
+3. READ SET **OBRIGATÓRIO** do mandato
 
-## Histórico promovido
+**Claude não lê este `ACTIVE_DOCS.md`, `PROJECT_PROMPT.md` ou `HISTORY_SUMMARY.md` por padrão a cada rodada.** Abrir somente se o mandato exigir ou surgir dependência concreta.
 
-Resumo preferencial:
+## READ SET obrigatório da 002C
 
-`docs/00-governanca/HISTORY_SUMMARY.md`
+Além de `estado.md + mandato`:
 
-A 002B está promovida. O resumo histórico pode ser reciclado junto do fechamento da 002C/Fase 2; não criar housekeeping isolado antes disso.
+1. `docs/03-canonical/TECHNICAL_SPEC.md` — §§23, 27, 30, 32–35;
+2. `docs/03-canonical/DATA_MODEL.md` — §§13–14, 16–17;
+3. `docs/03-canonical/SECURITY_MODEL.md` — §§3–9, 15, 20, 23–25;
+4. `.github/workflows/ci.yml` e `package.json`;
+5. migration 002A apenas no trecho de `audit_events`.
 
-## READ SET da 002C
+### Sob demanda
 
-Somente o conjunto indicado pelo mandato:
+- `API_CONTRACTS.md` §§10–13 se surgir dúvida de webhook/retry;
+- migrations/arquivos 002B somente se uma alteração realmente tocar fila/worker;
+- `HISTORY_SUMMARY.md` somente para fato histórico não presente em `estado.md`.
 
-- `HISTORY_SUMMARY.md`;
-- `IMPLEMENTATION_ROADMAP.md` — Fase 2;
-- `TECHNICAL_SPEC.md` — §§3.11, 19–25, 27, 30, 32–35;
-- `DATA_MODEL.md` — §§13, 14, 16–18;
-- `API_CONTRACTS.md` — §§10–13, 17–19;
-- `SECURITY_MODEL.md` — §§3–9, 13, 15, 19–25;
-- `.github/workflows/ci.yml`;
-- migrations/arquivos 002A/002B estritamente necessários ao baseline.
+## Regras de eficiência vigentes
 
-Não reler relatórios antigos completos por ritual.
+- estado promovido = baseline;
+- provar o delta + raio de impacto real;
+- correção pequena não repete bateria anterior sem motivo concreto;
+- testes locais somente novos/afetados;
+- suíte completa uma única vez na CI final;
+- relatório normal ≤100 linhas/~10 KB; microcorreção ≤60 linhas/~6 KB;
+- um único push final quando possível;
+- READ SET normal: até 5 documentos além de `estado + mandato`.
 
-## Escopo ativo 002C
-
-- criar `public.webhook_events` server-only com dedupe `provider + dedupe_hash`;
-- RLS habilitado, zero policies de browser, `anon`/`authenticated` sem acesso;
-- `service_role` somente SELECT/INSERT/UPDATE;
-- nenhuma função `SECURITY DEFINER` nova;
-- adicionar `audit_events_actor_user_id_idx` se o INFO de performance continuar no baseline;
-- adicionar `npm run typecheck:functions` como passo explícito da CI;
-- atualizar `SECURITY_MODEL.md` com matriz curta de secrets/runtime;
-- criar observabilidade read-only por agregados, sem payload/PII;
-- provar somente o delta e deixar a Fase 2 candidata a encerramento.
-
-## Regra de eficiência da rodada
-
-A 002C **não repete as 82 provas da 002B**.
-
-- baseline auditado 002B é reutilizado;
-- testes locais somente do delta;
-- não rerodar E2E remoto da fila/worker se eles não forem alterados;
-- suíte completa apenas na CI final;
-- preferir um único push final;
-- relatório Claude alvo <= 120 linhas;
-- divergência não funcional pequena deve ser classificada proporcionalmente na auditoria, não gerar microciclo automático.
-
-## Baseline a preservar
+## Baseline relevante 002B
 
 - 8 migrations, última `20260823183513`;
-- `pgmq` 1.5.1 e fila `integration_jobs` vazia após cleanup;
-- Edge Function `integration-worker` ACTIVE versão 3;
-- `pgmq_public` não exposto;
-- `pg_cron` não instalado;
+- PGMQ + `integration_jobs` promovidos e limpos;
+- `integration-worker` ACTIVE versão 3;
+- `operations`/`audit_events` server-only;
 - 5 tabelas `public` com RLS;
-- `operations`/`audit_events` server-only e sem fixtures;
+- `pg_cron` não instalado;
 - zero objetos `public` owned por `supabase_admin`;
-- Auth/recovery/tenancy da Fase 1 preservados;
-- nenhuma Meta, Ads, IA ou webhook público iniciados.
+- nenhuma Meta/Ads/IA/webhook público iniciada.
 
-## Dívidas a tratar na 002C
+## Dívidas que afetam a 002C
 
-1. `typecheck:functions` ainda fora da CI — **obrigatório fechar**.
-2. `audit_events.actor_user_id` sem índice — fechar se o Advisor confirmar o baseline.
+1. `typecheck:functions` ainda fora da CI — fechar nesta rodada.
+2. `audit_events.actor_user_id` sem índice — fechar se Advisor confirmar.
 
-Continuam futuras/não bloqueantes:
+Continuam futuras: leaked-password protection, SMTP de produção e default ACL residual de `supabase_admin` enquanto inerte.
 
-- `auth_leaked_password_protection` antes de produção;
-- SMTP/domínio de produção;
-- default ACL residual de `supabase_admin` enquanto inerte.
+## Próxima ação
 
-## Gate de produto
-
-A 002C é infraestrutura interna. Não exige nova leitura integral de Growth Intelligence enquanto permanecer sem endpoint Meta/OAuth/lead/conteúdo/mensuração/UX.
-
-Se o escopo tocar qualquer um desses temas, parar antes de ampliar e retornar ao GPT.
-
-## Fora da 002C
-
-Não executar:
-
-- endpoint público de webhook;
-- Meta/Instagram/OAuth;
-- challenge/assinatura;
-- lead fetch/CRM;
-- cron/pg_cron;
-- nova fila;
-- IA;
-- Ads;
-- conteúdo/publicação;
-- UI;
-- notificações;
-- provider pago;
-- novo segredo humano.
-
-## Próxima ação autorizada
-
-Claude Code pode executar **somente a Rodada 002C** via `/proxima`.
-
-Fluxo esperado:
-
-`AUTORIZADA → EXECUÇÃO CLAUDE → PR/RELATÓRIO → 002C EXECUTADA — AGUARDANDO AUDITORIA GPT`
+Claude Code pode executar **somente a 002C** via `/proxima`.
 
 Nenhuma rodada posterior está autorizada.

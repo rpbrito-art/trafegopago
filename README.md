@@ -1,66 +1,78 @@
 # Tráfego Pago
 
-Plataforma SaaS de otimização contínua de aquisição por tráfego pago assistida por IA, inicialmente focada em Instagram + Meta Ads para pequenas empresas.
+Plataforma SaaS de inteligência e automação de performance para pequenas empresas, inicialmente focada em Instagram + Meta Ads.
 
 ## Missão
 
-Transformar conteúdo orgânico, experimentação paga, leads, conversões e feedback de clientes em um ciclo contínuo de aprendizagem e decisão:
+Transformar contexto do negócio, conteúdo, distribuição orgânica/paga, resultados e feedback em um ciclo contínuo de aprendizagem e ação.
 
-`conteúdo → desempenho orgânico → hipótese → experimento pago → resultado → vencedor → escala → lead → conversão → feedback → nova estratégia`
+Modelo vigente:
 
-## Entrada para novos chats
+`contexto do negócio → objetivo → jornada → público/personas → conteúdo/criativo → distribuição orgânica, paga ou ambas → resultado → aprendizado → nova ação`
 
-Para continuidade do projeto:
+## Continuidade do projeto
 
-- `.gpt/CHAT_ENTRY_PROMPT.md` — prompt curto para iniciar novos chats e encaminhá-los ao contexto correto;
-- `.gpt/PROJECT_PROMPT.md` — prompt permanente e canônico, com método, papéis, regras, arquitetura e protocolo de continuidade;
-- `estado.md` — estado operacional corrente.
+### GPT / novo chat
 
-Novo chat deve começar pelo prompt curto, que exige a leitura do prompt canônico e do estado antes de qualquer planejamento, auditoria ou execução.
+- `.gpt/CHAT_ENTRY_PROMPT.md` — entrada curta;
+- `.gpt/PROJECT_PROMPT.md` — contrato canônico completo;
+- `estado.md` — estado operacional;
+- `docs/00-governanca/ACTIVE_DOCS.md` — índice do working set.
 
-## Estado operacional
+### Claude Code
 
-O estado corrente do projeto está em:
+Claude Code carrega `CLAUDE.md` automaticamente. Para executar a próxima rodada:
 
-`estado.md`
+`/proxima`
 
-Esse arquivo informa a rodada/correção vigente, o mandato que deve ser executado e o relatório esperado.
+O executor lê por padrão:
 
-`.gpt/CURRENT_STATE.md` existe apenas por compatibilidade e aponta para `estado.md`.
+`CLAUDE.md automático → estado.md → mandato vigente → READ SET obrigatório`
 
-## Protocolo GPT ↔ Claude Code
+Ele **não relê `PROJECT_PROMPT.md`, ACTIVE_DOCS ou HISTORY_SUMMARY por ritual** a cada rodada.
 
-- `rodadas/gpt/` — mandatos de execução, correções e auditorias preparados pelo GPT.
-- `rodadas/claude/` — relatórios de execução e evidências entregues pelo Claude Code.
-- `estado.md` — ponte operacional entre ambos.
+## Protocolo GPT ↔ Claude
 
-Fluxo:
+`GPT planeja/especifica → fundador autoriza quando necessário → Claude executa o delta → GPT audita independentemente → correção ou promoção`
 
-`GPT publica mandato → Claude executa → Claude grava relatório → GPT audita → aprova ou publica correção`
+- `rodadas/gpt/` — mandatos, correções e auditorias;
+- `rodadas/claude/` — índices de evidências da execução;
+- `estado.md` — ponte operacional;
+- `docs/00-governanca/HISTORY_SUMMARY.md` — passado promovido comprimido.
 
-O usuário não precisa copiar e colar relatórios entre os agentes quando ambos tiverem acesso ao repositório.
+## Regra de eficiência
+
+Estado promovido é baseline. Cada rodada prova **o que mudou + raio de impacto real**.
+
+- testes locais: novos/afetados;
+- correção pequena: defeito + impacto direto;
+- suíte completa: uma única CI final por padrão;
+- relatório Claude: normal ≤100 linhas/~10 KB; microcorreção ≤60 linhas/~6 KB;
+- READ SET normal: até 5 documentos além de `estado + mandato`.
+
+Detalhes: `.gpt/PROJECT_PROMPT.md` e `docs/00-governanca/DOCUMENTATION_LIFECYCLE.md`.
 
 ## Documentação canônica
 
-- `docs/00-governanca/PROJECT_CHARTER.md` — mandato, princípios e processo de desenvolvimento.
-- `docs/00-governanca/IMPLEMENTATION_ROADMAP.md` — sequência macro de implementação.
-- `docs/01-produto/MVP_CANONICAL.md` — definição funcional canônica do MVP.
-- `docs/02-research/RESEARCH_SYNTHESIS.md` — síntese da investigação técnica e revisão adversarial.
-- `docs/03-canonical/TECHNICAL_SPEC.md` — especificação técnica principal.
-- `docs/03-canonical/DATA_MODEL.md` — modelo conceitual de dados.
-- `docs/03-canonical/API_CONTRACTS.md` — contratos das integrações e serviços.
-- `docs/03-canonical/SECURITY_MODEL.md` — modelo de segurança e isolamento multi-tenant.
-- `docs/03-canonical/AI_ARCHITECTURE.md` — arquitetura de IA em cascata e controle de custos.
-- `.gpt/PROJECT_PROMPT.md` — mandato permanente para planejadores/auditores/executor.
+- `docs/00-governanca/PROJECT_CHARTER.md`
+- `docs/00-governanca/IMPLEMENTATION_ROADMAP.md`
+- `docs/01-produto/MVP_CANONICAL.md`
+- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
+- `docs/03-canonical/TECHNICAL_SPEC.md`
+- `docs/03-canonical/DATA_MODEL.md`
+- `docs/03-canonical/API_CONTRACTS.md`
+- `docs/03-canonical/SECURITY_MODEL.md`
+- `docs/03-canonical/AI_ARCHITECTURE.md`
 
-## Stack-base prevista
+Pesquisa em `docs/02-research/` é histórico/contexto e não prevalece sobre canônicos posteriores.
+
+## Stack-base
 
 - Next.js + TypeScript
-- Supabase: Postgres, Auth, Storage, RLS, Edge Functions, Queues e Cron
-- Meta/Instagram APIs oficiais
-- Camada própria de roteamento de IA multi-provedor
-
-n8n, Make ou outros orquestradores externos não fazem parte da fundação e só poderão ser adicionados se uma necessidade concreta provar que a implementação própria é inadequada.
+- Supabase: Postgres, Auth, Storage, RLS, Edge Functions e Queues
+- Supabase Cron quando surgir necessidade periódica real
+- APIs oficiais Meta/Instagram
+- AI Router próprio multi-provedor
 
 ## Executar localmente
 
@@ -68,36 +80,20 @@ Pré-requisitos: Node.js >= 20.9 e npm.
 
 ```bash
 npm install
-cp .env.example .env.local   # preencher os valores
+cp .env.example .env.local
 npm run dev
 ```
 
-Variáveis de ambiente: ver `.env.example`. Somente valores públicos podem usar
-o prefixo `NEXT_PUBLIC_`; credenciais privilegiadas são server-only e nunca
-entram no Git.
+Somente valores públicos podem usar `NEXT_PUBLIC_*`. Credenciais privilegiadas são server-only e nunca entram no Git.
 
-### Gates de verificação
+### Gates disponíveis
 
 ```bash
 npm run lint
 npm run typecheck
+npm run typecheck:functions
 npm test
 npm run build
 ```
 
-Os mesmos gates rodam na CI (`.github/workflows/ci.yml`) em todo push e pull
-request. O build não depende de credenciais Supabase.
-
-### Estrutura
-
-```text
-src/app/            App Router (rotas, layout, página inicial)
-src/lib/env/        validação e convenção de variáveis de ambiente
-src/lib/supabase/   clientes Supabase (browser e servidor)
-supabase/           configuração da CLI do projeto vinculado
-test/stubs/         stubs restritos ao ambiente de teste
-```
-
-O domínio do MVP (organizações, Meta, conteúdo, experimentos, leads, IA) ainda
-não foi implementado. A ordem de construção está em
-`docs/00-governanca/IMPLEMENTATION_ROADMAP.md`.
+A combinação exata de gates locais depende do delta. A CI executa a suíte limpa/reprodutível final definida em `.github/workflows/ci.yml`.

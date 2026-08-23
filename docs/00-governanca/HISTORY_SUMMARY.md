@@ -2,134 +2,133 @@
 
 Atualizado: 2026-08-23
 
-Este arquivo resume somente estado **auditado e promovido**. Evidências originais permanecem em `rodadas/` e no Git; não devem ser relidas por padrão.
+Resume somente estado **auditado e promovido** e decisões de governança duradouras. Evidência completa permanece em `rodadas/`/Git e não deve ser relida por padrão.
 
 ## Fundação documental
 
-- MVP inicial definido para Instagram + Meta Ads + aprendizagem de aquisição;
-- arquitetura base: Next.js/TypeScript + Supabase + APIs oficiais Meta + AI Router multi-provedor;
-- tenancy por organização, RLS, aprovação humana para gasto, IA sem autonomia financeira e cálculos determinísticos fora de LLM;
-- em 2026-08-23, `GROWTH_INTELLIGENCE_CANONICAL.md` generalizou o produto: mídia paga opcional, jornadas configuráveis, conteúdo/criativo/anúncio distintos, oportunidades sem quantidade fixa, personas como hipótese baseada em evidência e Lei da Simplicidade Guiada.
+- produto: Instagram + Meta Ads + aprendizagem de aquisição, com mídia paga opcional;
+- arquitetura: Next.js/TypeScript + Supabase + APIs oficiais Meta + AI Router multi-provedor;
+- invariantes: tenancy/RLS, aprovação humana de gasto, IA sem autonomia financeira, cálculos determinísticos fora de LLM;
+- `GROWTH_INTELLIGENCE_CANONICAL.md` tornou jornadas configuráveis, separou conteúdo/criativo/anúncio, removeu quantidade fixa de oportunidades e definiu personas como hipóteses baseadas em evidência.
 
-## Rodada 000 — Bootstrap Técnico
+## 000 — Bootstrap Técnico
 
-Promovido: Next.js 16 + React 19 + TypeScript, App Router, lint/typecheck/Vitest/build, GitHub Actions CI e clientes Supabase browser/server sem antecipar schema de domínio.
+Next.js 16/React 19/TypeScript, App Router, Vitest, lint/typecheck/build, CI e clientes Supabase base.
 
 Auditoria: `rodadas/gpt/AUDITORIA_RODADA_000_BOOTSTRAP_TECNICO.md` — PR #1 — merge `9f0f6aaa205fe5b774faab92c34e8373e4ef7d6c`.
 
-## Rodada 001A — Baseline Supabase e Segurança
+## 001A — Baseline Supabase e Segurança
 
-Promovido: hardening de `rls_auto_enable`, `ensure_rls`, privilégios mínimos e prova transacional sem resíduo.
+Hardening de `rls_auto_enable`, `ensure_rls`, privilégios mínimos e prova transacional.
 
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001A_BASELINE_SUPABASE_SEGURANCA.md` — PR #2 — merge `fb9bc62e6cf25e03e39255bff7042e330a80e1d6`.
+PR #2 — merge `fb9bc62e6cf25e03e39255bff7042e330a80e1d6`.
 
-## Rodada 001B — Auth Real
+## 001B — Auth Real
 
-Promovido: auth real por e-mail/senha, confirmação SSR com `token_hash`, sessão em cookies, rota protegida, proteção contra open redirect e E2E real de cadastro/login/logout.
+Cadastro/login/logout reais, confirmação SSR por e-mail, cookies, rota protegida e open-redirect protection.
 
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001B_AUTH_REAL.md` — PR #3 — merge `4819875007784f9bc016abd57202fe1fe9a7063b`.
+PR #3 — merge `4819875007784f9bc016abd57202fe1fe9a7063b`.
 
-## Rodada 001C — Organizations + Membership
+## 001C — Organizations + Membership
 
-Promovido: `organizations` e `organization_members`, constraints, RLS habilitado e base para autorização tenant.
+`organizations` + `organization_members`, constraints, RLS habilitado e base tenant.
 
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001C_ORGANIZATIONS_MEMBERSHIP.md` — PR #4 — merge `a6b2e912f8d54005d1decf69cb4e4bf8335d31ec`.
+PR #4 — merge `a6b2e912f8d54005d1decf69cb4e4bf8335d31ec`.
 
-## Rodada 001D — Grants + RLS + Isolamento
+## 001D — Grants + RLS + Isolamento
 
-Promovido após Correções 001D-01/02: defaults opt-in, grants mínimos, policies de leitura por membership ACTIVE, zero escrita direta, default global de EXECUTE fechado e prova real 2 usuários × 2 organizações com isolamento 21/21.
+Defaults opt-in, grants mínimos, policies por membership ACTIVE, zero escrita direta e isolamento real 2 usuários × 2 organizações.
 
-Decisão persistente: default ACL residual de `supabase_admin` é aceito apenas enquanto nenhum objeto `public` pertencer a essa role.
+Decisão persistente: default ACL residual de `supabase_admin` só é aceito enquanto nenhum objeto `public` pertencer a essa role.
 
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md` — PR #5 — merge `178c2aa0e4ada91ae2bae73d2ff97c21f27c0222`.
+PR #5 — merge `178c2aa0e4ada91ae2bae73d2ff97c21f27c0222`.
 
-## Rodada 001E — Bootstrap de Negócio
+## 001E — Bootstrap de Negócio
 
-Promovido: `business_profiles`, bootstrap atômico organization + owner membership + profile, RPC `SECURITY INVOKER` só para `service_role`, cliente privilegiado server-only, prevenção de dupla submissão e estados explícitos de tenancy em `/conta`.
+`business_profiles`, bootstrap atômico organization + owner membership + profile, RPC server-only e prevenção de dupla submissão.
 
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001E_BUSINESS_BOOTSTRAP.md` — PR #6 — merge `7cf7786320f49c1d5b3f486f4ba8ca4919fa2ffd`.
+PR #6 — merge `7cf7786320f49c1d5b3f486f4ba8ca4919fa2ffd`.
 
-## Rodada 001F — Recovery de Acesso + Fechamento da Fase 1
+## 001F — Recovery + Fechamento da Fase 1
 
-Promovido com Correções 001F-01 e 001F-02:
+Recovery real por e-mail, guard por claims verificadas, resposta anti-enumeração, logout global após troca, refresh anterior revogado e E2E real. Gmail SMTP permanece provisório de desenvolvimento.
 
-- fluxo `entrar → esqueci senha → e-mail real → confirmação SSR → nova senha → login`;
-- template recovery versionado/hosted com `type=recovery` e sem `next` arbitrário;
-- provider real emite `amr=otp`; guard autorizado usa claims verificadas, `sub`/`email`, `otp|recovery` recente ≤15 min, skew futuro ≤60 s e ausência de `password`;
-- `amr` estruturalmente malformado falha fechado;
-- resposta pública do pedido de recovery é idêntica para sucesso, inexistente, rate limit e erro do provider após validação sintática;
-- logout global explícito após troca; refresh token anterior recusado;
-- E2E real **40/40** com e-mail real; suíte final **372 testes**;
-- zero migration/DDL; migration history permanece em 5;
-- `auth.users` volta a 1 conta real, sem fixture residual;
-- Gmail SMTP substituiu Brevo apenas como infraestrutura provisória de desenvolvimento;
-- MVP/roadmap harmonizados proporcionalmente com Growth Intelligence.
+Decisão persistente: novos métodos Auth exigem reabrir o guard de recovery.
 
-Decisões persistentes:
+PR #7 — merge `7f2a1b9631ce134ec9f39585fa2defa3185fcd05`.
 
-- habilitar magic link, phone OTP, invite ou social login exige reabrir o guard de recovery;
-- access token já emitido pode sobreviver até `exp`; refresh revogado não pode renovar;
-- falha do provider no pedido de recovery permanece pública e deliberadamente neutra; observabilidade futura deve ser server-side;
-- a App Password do Gmail permanece necessária enquanto Gmail SMTP for o transporte de recovery em desenvolvimento; revogar/rotacionar quando esse SMTP for substituído ou deixar de ser necessário.
+### Fase 1 encerrada
 
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md` — PR #7 — merge `7f2a1b9631ce134ec9f39585fa2defa3185fcd05`.
+Auth/recovery, organizations/memberships, RLS/isolamento, business_profiles e bootstrap server-only estão promovidos.
 
-## Fechamento da Fase 1
-
-Com a promoção da 001F, a **Fase 1 — Fundação Supabase, Auth e Tenancy está encerrada**.
-
-A fundação incorporada contém Auth real, recovery real, organizations/memberships, grants/RLS/isolamento, business_profiles e bootstrap atômico server-only.
-
-## Rodada 002A — Operations + Audit Foundation
-
-Primeira rodada promovida da Fase 2.
+## 002A — Operations + Audit Foundation
 
 Promovido:
 
-- `public.operations` como memória persistente de intenções técnicas idempotentes;
-- unicidade `(organization_id, operation_type, idempotency_key)` provada inclusive sob concorrência;
-- estados fechados de operação e `correlation_id`;
-- taxonomia de erro e política de retry versionadas em TypeScript;
-- mutação externa sem proteção de idempotência não ganha retry automático por padrão;
-- `UNKNOWN` não autoriza retry cego;
-- `public.audit_events` como histórico append-oriented;
-- browser sem acesso direto às duas tabelas;
-- `service_role` com SELECT/INSERT/UPDATE em `operations`, sem DELETE; e SELECT/INSERT em `audit_events`, sem UPDATE/DELETE;
-- RLS habilitado, zero policies nas tabelas internas server-only;
-- migration history **5 → 6**;
-- suíte final **437 testes**, lint/typecheck/build verdes;
-- zero fixture residual e 1 conta real preservada.
+- `operations` idempotentes por organization/type/key;
+- estados/correlation ids;
+- taxonomia de erro/retry;
+- `audit_events` append-oriented;
+- tabelas internas server-only com grants mínimos;
+- migration history 5 → 6.
 
-Auditoria independente confirmou catálogo remoto, grants, RLS, índices, constraints, owners, migration history, Advisors e CI.
+Dívidas: `audit_events.actor_user_id` sem índice; `approval_id` reservado para fundação financeira posterior.
 
-Ressalvas não bloqueantes:
+Incidente histórico: versão não promovida da migration foi corrigida/reaplicada; `migration repair` não vira padrão.
 
-- uma primeira aplicação ainda não promovida da migration continha CHECKs temporais inadequados; o executor detectou a falha, desfez as tabelas vazias, reparou o histórico e reaplicou a migration final. O estado final ficou coerente e sem drift material detectável. Esse procedimento não vira padrão para migrations futuras;
-- `operations.updated_at` fica sob decisão do worker futuro;
-- `audit_events.actor_user_id` sem índice próprio foi INFO de performance;
-- `approval_id` permanece para a fundação financeira posterior.
+PR #8 — merge `920114d3e04ac1f32c284a6ff867e1c9e53d920b`.
 
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_002A_OPERATIONS_AUDIT_FOUNDATION.md` — PR #8 — merge `920114d3e04ac1f32c284a6ff867e1c9e53d920b`.
+## 002B — Queue + Worker Foundation
+
+Promovida com Correção 002B-01:
+
+- Supabase Queues/PGMQ 1.5.1;
+- fila durável `integration_jobs`;
+- wrappers PGMQ estreitos server-only;
+- claim/conclusão/falha de `operations`;
+- `integration-worker` Edge Function com autenticação por secret key;
+- redelivery, claim concorrente e idempotência provados;
+- poison interno sem falsa taxonomia externa;
+- validador SQL estrito alinhado ao contrato TypeScript;
+- `@supabase/server` pinado + `deno.lock`;
+- migration history 6 → 8;
+- fila/fixtures limpas após provas.
+
+Ressalva incorporada à 002C: `npm run typecheck:functions` existia, mas ainda não estava encadeado à CI.
+
+Auditoria final: `rodadas/gpt/REAUDITORIA_RODADA_002B_CORRECAO_01.md` — PR #9 — merge `c0af987ebe68cd0eafd80efef6a0e63e4c7d7042`.
+
+## Governança de eficiência — decisão de 2026-08-23
+
+Auditoria do método identificou excesso de contexto e prova repetida: `/proxima`, prompt canônico, estado, ACTIVE_DOCS e mandatos repetiam regras; correções pequenas repetiam regressões promovidas.
+
+Contrato permanente adotado:
+
+- Claude Code recebe regras curtas automaticamente em `CLAUDE.md`;
+- bootstrap normal do executor = `estado.md + mandato + READ SET obrigatório`;
+- `PROJECT_PROMPT`, `ACTIVE_DOCS`, `HISTORY_SUMMARY` e evidência antiga não são leitura ritual do Claude;
+- READ SET normal: até 5 documentos além de estado+mandato;
+- estado promovido é baseline;
+- prova por delta + raio de impacto;
+- correção pequena não reprova toda a rodada anterior sem risco concreto;
+- testes locais somente novos/afetados;
+- suíte completa uma única vez na CI final por padrão;
+- relatório normal ≤100 linhas/~10 KB; microcorreção ≤60 linhas/~6 KB;
+- um único handoff/push final quando possível.
+
+A redução é de repetição, não de rigor de segurança.
 
 ## Estado da Fase 2
 
-**Fase 2 — Operations, Audit, Queues e Segurança Base: EM ANDAMENTO.**
+**EM ANDAMENTO.**
 
-A 002A entregou operations, audit, retry taxonomy e correlation IDs. Ainda faltam capacidades posteriores da fase, como fila/job/worker base, webhook inbox e observabilidade mínima, que devem ser divididas em rodadas pequenas e autorizadas separadamente.
+002A e 002B estão promovidas. Restam `webhook_events`, observabilidade mínima e fechamento da estratégia de runtime/secrets antes de a fase poder ser auditada como concluída.
 
-## Pendências transversais abertas
+## Pendências transversais
 
-- `auth_leaked_password_protection` antes de clientes reais/produção;
-- SMTP/domínio de produção; enquanto isso, Gmail SMTP permanece provisório de desenvolvimento;
-- default ACL residual de `supabase_admin` monitorado enquanto inerte;
-- funções futuras exigem GRANT EXECUTE explícito;
-- ambiente de deploy deverá receber `SUPABASE_SECRET_KEY` quando houver deploy;
-- gestão avançada de membros, edição de negócio, multi-org switcher e exclusão continuam posteriores;
-- rate limiting/observabilidade próprios permanecem futuros conforme risco;
+- leaked-password protection antes de produção;
+- SMTP/domínio de produção;
+- default ACL residual de `supabase_admin` enquanto inerte;
+- gestão avançada de membros/edição/multi-org/exclusão posteriores;
+- rate limiting conforme risco;
 - futuras fases de produto devem ser revalidadas contra `GROWTH_INTELLIGENCE_CANONICAL.md`.
-
-## Estado atual
-
-Rodadas 000–002A estão promovidas. Fase 1 encerrada. Fase 2 em andamento. **Não há mandato executável novo.**
-
-Antes de uma nova rodada de produto, aplicar a leitura integral obrigatória de `GROWTH_INTELLIGENCE_CANONICAL.md`. Antes de qualquer nova rodada, o fundador deve receber resumo simples do que será feito antes da autorização.
