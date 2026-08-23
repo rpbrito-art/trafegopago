@@ -84,17 +84,21 @@ function nota(texto) {
 
 const codigoDe = (error) => error?.code ?? "(sem erro)";
 
-/** Invoca a Edge Function como um chamador interno faria: secret key no apikey. */
-async function invocarWorker() {
+/**
+ * Invoca a Edge Function como um chamador interno faria.
+ *
+ * A secret key vai **somente** em `apikey`. Sem `Authorization: Bearer`: o
+ * contrato de `auth: 'secret'` é o header `apikey`, e mandar a mesma chave nos
+ * dois lugares mascararia qual deles está de fato autorizando.
+ */
+async function invocarWorker(headersExtra = null) {
+  const headers = headersExtra ?? { apikey: SECRET_KEY };
+
   const resposta = await fetch(
     `${SUPABASE_URL}/functions/v1/integration-worker`,
     {
       method: "POST",
-      headers: {
-        apikey: SECRET_KEY,
-        authorization: `Bearer ${SECRET_KEY}`,
-        "content-type": "application/json",
-      },
+      headers: { ...headers, "content-type": "application/json" },
       body: "{}",
     },
   );
@@ -243,6 +247,8 @@ try {
     ["defer_integration_job", { p_msg_id: 1, p_visibility_seconds: 30 }],
     ["claim_operation", { p_operation_id: randomUUID(), p_organization_id: randomUUID(), p_correlation_id: randomUUID() }],
     ["complete_operation", { p_operation_id: randomUUID(), p_organization_id: randomUUID(), p_correlation_id: randomUUID() }],
+    ["fail_operation", { p_operation_id: randomUUID(), p_organization_id: randomUUID(), p_correlation_id: randomUUID(), p_error_class: null, p_error_summary: "x" }],
+    ["is_valid_integration_job_message", { p_message: {} }],
   ];
 
   for (const [fn, args] of FRONTEIRA) {
@@ -289,6 +295,16 @@ try {
     ["operationId inválido", envelope({ operationId: "nao-uuid" })],
     ["payload não é objeto", envelope({ payload: [1, 2, 3] })],
     ["payload acima do teto", envelope({ payload: { t: "x".repeat(4100) } })],
+    // Bloqueio B da auditoria: o predicado SQL antigo lia os campos com `->>`,
+    // que converte qualquer escalar para texto — então estes passavam na fila e
+    // só seriam recusados no consumidor.
+    ["version como string", envelope({ version: "1" })],
+    ["version booleana", envelope({ version: true })],
+    ["jobType numérico", envelope({ jobType: 123 })],
+    ["jobType booleano", envelope({ jobType: true })],
+    ["organizationId numérico", envelope({ organizationId: 11111111 })],
+    ["correlationId não-string", envelope({ correlationId: 123 })],
+    ["operationId não-string", envelope({ operationId: 123 })],
   ];
 
   for (const [nome, msg] of INVALIDOS) {
@@ -297,6 +313,54 @@ try {
     });
     prova(`fila recusa envelope com ${nome}`, Boolean(error), `code=${codigoDe(error)}`);
   }
+
+  // A recusa tem de acontecer ANTES da fila: nenhuma das tentativas acima pode
+  // ter deixado mensagem para trás.
+  const { data: aposInvalidos } = await admin.rpc("read_integration_jobs", {
+    p_visibility_seconds: 5,
+    p_quantity: 10,
+  });
+  prova(
+    "nenhum envelope inválido entrou na fila",
+    (aposInvalidos ?? []).length === 0,
+    `mensagens=${(aposInvalidos ?? []).length}`,
+  );
+
+  // Envelope válido continua entrando normalmente depois do endurecimento.
+  const corrSanidade = randomUUID();
+  const { data: msgSanidade, error: erroSanidade } = await admin.rpc(
+    "enqueue_integration_job",
+    { p_message: envelope({ correlationId: corrSanidade }) },
+  );
+  prova(
+    "envelope válido continua sendo aceito",
+    !erroSanidade && typeof msgSanidade === "number",
+    erroSanidade ? `code=${codigoDe(erroSanidade)}` : "",
+  );
+  await admin.rpc("archive_integration_job", { p_msg_id: msgSanidade });
+
+  // -- 2b. Auth da Edge Function (Correção 002B-01 §5.3) ----------------------
+
+  const semChave = await invocarWorker({});
+  prova(
+    "Edge Function recusa chamada sem apikey",
+    semChave.status === 401 || semChave.status === 403,
+    `status=${semChave.status}`,
+  );
+
+  const comPublishable = await invocarWorker({ apikey: PUBLISHABLE_KEY });
+  prova(
+    "Edge Function recusa publishable key",
+    comPublishable.status === 401 || comPublishable.status === 403,
+    `status=${comPublishable.status}`,
+  );
+
+  const comSecret = await invocarWorker();
+  prova(
+    "Edge Function aceita secret key somente no header apikey",
+    comSecret.status === 200,
+    `status=${comSecret.status}`,
+  );
 
   // -- 3. Tetos dos parâmetros de leitura --------------------------------------
 
@@ -573,6 +637,92 @@ try {
     "operação de job não suportado permanece PENDING, não executada",
     opDesconhecidoFinal.status === "PENDING",
     `status=${opDesconhecidoFinal.status}`,
+  );
+
+  // -- 9. Poison message real (Correção 002B-01 §3) ---------------------------
+
+  const corrPoison = randomUUID();
+  const opPoison = await criarOperation(corrPoison);
+  const { data: msgPoison } = await admin.rpc("enqueue_integration_job", {
+    p_message: envelope({
+      operationId: opPoison.id,
+      correlationId: corrPoison,
+    }),
+  });
+
+  // Levar `read_ct` acima do teto sem esperar quatro visibility timeouts:
+  // ler e devolver imediatamente com `defer(0)`. Cada leitura conta.
+  let readCtPoison = 0;
+  for (let i = 0; i < 4; i += 1) {
+    const { data: lote } = await admin.rpc("read_integration_jobs", {
+      p_visibility_seconds: 5,
+      p_quantity: 10,
+    });
+    const alvo = (lote ?? []).find((m) => m.msg_id === msgPoison);
+    if (alvo) readCtPoison = alvo.read_ct;
+    await admin.rpc("defer_integration_job", {
+      p_msg_id: msgPoison,
+      p_visibility_seconds: 0,
+    });
+  }
+
+  prova(
+    "read_ct da mensagem ultrapassa o teto de tentativas",
+    readCtPoison >= 4,
+    `read_ct=${readCtPoison}`,
+  );
+
+  const execucaoPoison = await invocarWorker();
+  prova(
+    "worker arquiva a poison message",
+    execucaoPoison.corpo?.outcomes?.archived_poison >= 1,
+    `outcomes=${JSON.stringify(execucaoPoison.corpo?.outcomes ?? {})}`,
+  );
+
+  const opPoisonFinal = await lerOperation(opPoison.id);
+  prova(
+    "operação da poison message termina FAILED",
+    opPoisonFinal.status === "FAILED",
+    `status=${opPoisonFinal.status}`,
+  );
+
+  const { data: detalhePoison } = await admin
+    .from("operations")
+    .select("last_error_class, last_error_summary")
+    .eq("id", opPoison.id)
+    .single();
+
+  // O bloqueio A: falha interna da fila não pode carregar classe de erro
+  // externo. `null` é a única resposta honesta — nenhum provider foi chamado.
+  prova(
+    "last_error_class é NULL, sem taxonomia externa falsa",
+    detalhePoison?.last_error_class === null,
+    `last_error_class=${detalhePoison?.last_error_class}`,
+  );
+  prova(
+    "last_error_summary interno é preenchido e não cita erro externo",
+    typeof detalhePoison?.last_error_summary === "string" &&
+      detalhePoison.last_error_summary.includes("fila interna") &&
+      !/UPSTREAM|RATE_LIMITED|AUTH_REQUIRED/.test(
+        detalhePoison.last_error_summary,
+      ),
+    `summary=${detalhePoison?.last_error_summary}`,
+  );
+
+  nota("aguardando para confirmar que a poison não reaparece (8s)...");
+  await esperar(8000);
+  const aposPoison = await invocarWorker();
+  prova(
+    "poison message arquivada não reaparece",
+    (aposPoison.corpo?.read ?? 0) === 0,
+    `read=${aposPoison.corpo?.read}`,
+  );
+
+  nota(
+    "O ramo 'poison sem desfecho seguro' (RPC com erro ou retorno " +
+      "desconhecido) não é forçável remotamente sem DDL ad hoc, que a correção " +
+      "proíbe. Ele é coberto de forma determinística por " +
+      "src/lib/operations/poison.test.ts, e o worker usa exatamente essa função.",
   );
 } finally {
   // -- 9. Cleanup --------------------------------------------------------------

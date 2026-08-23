@@ -1,10 +1,10 @@
-# RELATÓRIO — RODADA 002B — QUEUE + WORKER FOUNDATION
+# RELATÓRIO — RODADA 002B + CORREÇÃO 002B-01 — QUEUE + WORKER FOUNDATION
 
 Executor: Claude Code
 Data: 2026-08-23
 Branch: `claude/rodada-002b-queue-worker-foundation`
 
-Status: **002B EXECUTADA — AGUARDANDO AUDITORIA GPT**
+Status: **002B + CORREÇÃO 002B-01 EXECUTADAS — AGUARDANDO REAUDITORIA GPT**
 
 ---
 
@@ -24,6 +24,53 @@ produto/UX surgiu.
 
 ---
 
+## 1-A. Correção 002B-01 — os três bloqueios da auditoria
+
+Retomada na mesma branch, reconciliada com `origin/main` (conflito só em `estado.md`,
+resolvido pela versão da `main`).
+
+### Bloqueio A — poison com taxonomia externa falsa
+
+O worker marcava exaustão de fila como `UNKNOWN_UPSTREAM`. Nenhum provider foi chamado:
+rotular assim inventa um erro externo e envenena qualquer política de retry que leia
+`last_error_class`.
+
+Agora `fail_operation` recebe `p_error_class = null` e um resumo interno curto, e a
+mensagem **só é arquivada após desfecho conhecido**. A decisão saiu do worker para
+`src/lib/operations/poison.ts`, com testes — erro de RPC e retorno desconhecido preservam
+a mensagem, e a visibility timeout a devolve.
+
+**Limite declarado:** o ramo "sem desfecho seguro" não é forçável remotamente sem revogar
+grants (DDL ad hoc, proibido pela §8). Está coberto de forma determinística nos testes
+unitários, e o worker usa exatamente essa função — não uma cópia.
+
+### Bloqueio B — validador SQL menos estrito que o TypeScript
+
+O predicado lia os campos com `->>`, que converte qualquer escalar para texto: `version: "1"`,
+`jobType: 123` e `jobType: true` passavam na fila e só seriam recusados no consumidor.
+
+Migration corretiva **nova** (`20260823183513`, histórico 7 → 8), com
+`CREATE OR REPLACE FUNCTION` — a migration `20260823180000` **não** foi reescrita e nenhum
+`migration repair` foi usado. O predicado agora exige `jsonb_typeof` antes de olhar o valor.
+Validado em transação revertida, com os casos da auditoria, antes de aplicar.
+
+### Bloqueio C — gate da Edge Function
+
+- pin exato `npm:@supabase/server@1.4.1`. Revalidei: 1.4.1 continua a última estável
+  (1.5.0-beta/rc não são). Sem mudança material, segui sem parar.
+- `deno check` real, agora reproduzível: `deno` entrou como devDependency e
+  `npm run typecheck:functions` roda o gate — inclusive na CI. `supabase/functions/deno.json`
+  existe para o Deno resolver o specifier `npm:` do mesmo modo que o bundle.
+- **O `deno check` encontrou um erro de tipo que o bundle do deploy não pegava**: minha
+  anotação de `ctx` conflitava com `SupabaseContext`. Corrigido com uma ponte de tipo única
+  e comentada, em vez de casts espalhados. É exatamente o defeito que este gate existia para
+  revelar.
+- redeploy: função **ACTIVE, versão 2+**, `verify_jwt=false`.
+- auth provada remotamente: sem `apikey` → **401**; publishable key → **401**; secret key
+  somente em `apikey` → **200**. O `Authorization: Bearer` foi removido do script.
+
+---
+
 ## 2. Arquivos
 
 Novos:
@@ -34,8 +81,17 @@ Novos:
 - `scripts/queue-worker-002b.mjs` — prova funcional;
 - `scripts/sql/queue-worker-002b-catalog.sql` — provas estruturais versionadas.
 
-Alterados: `supabase/config.toml` (declara a função com `verify_jwt = false`),
-`tsconfig.json` e `eslint.config.mjs` (excluem `supabase/functions` — ver §3.5),
+Da Correção 002B-01:
+
+- `supabase/migrations/20260823183513_tighten_integration_job_message_types.sql` (novo);
+- `src/lib/operations/poison.ts` + `poison.test.ts` (novos);
+- `supabase/functions/deno.json` e `deno.lock` (novos);
+- `supabase/functions/integration-worker/index.ts` (pin, poison, tipagem);
+- `scripts/queue-worker-002b.mjs` e `scripts/sql/queue-worker-002b-catalog.sql` (provas novas);
+- `package.json` (`deno` + script `typecheck:functions`), `.gitignore`.
+
+Alterados na 002B: `supabase/config.toml` (declara a função com `verify_jwt = false`),
+`tsconfig.json` e `eslint.config.mjs` (excluem `supabase/functions` — ver §3.8),
 `estado.md`, este relatório.
 
 ---
@@ -71,8 +127,10 @@ Alterados: `supabase/config.toml` (declara a função com `verify_jwt = false`),
    dos tetos.
 8. **`supabase/functions` fora do `tsc`/ESLint da aplicação.** Código Deno usa specifier
    `npm:` e import com extensão `.ts`, que o tsconfig do Next não resolve — o typecheck
-   falhava por diferença de runtime, não por defeito. A validação da função é o bundle do
-   `supabase functions deploy`, que executei e passou.
+   falhava por diferença de runtime, não por defeito. O gate próprio da função é
+   `npm run typecheck:functions` (`deno check`), acrescentado pela Correção 002B-01. O
+   bundle do deploy **não** substitui esse gate: ele deixou passar um erro de tipo que o
+   `deno check` pegou.
 9. **Ordem "concluir operação → confirmar mensagem".** Se o processo morrer entre as duas, a
    mensagem reaparece e o claim seguinte encontra `ALREADY_SUCCEEDED`, que remove a mensagem
    sem repetir efeito. A ordem inversa perderia o registro do trabalho feito.
@@ -83,12 +141,20 @@ Alterados: `supabase/config.toml` (declara a função com `verify_jwt = false`),
 
 ## 4. Provas
 
-Funcionais — `node scripts/queue-worker-002b.mjs`: **60/60**, com a Edge Function real
-invocada remotamente.
+Funcionais — `node scripts/queue-worker-002b.mjs`: **82/82** após a Correção 002B-01, com a
+Edge Function real invocada remotamente.
 
 | prova | resultado |
 | --- | --- |
-| `anon` e `authenticated` nos 7 pontos da fronteira (5 wrappers de fila + 2 helpers) | `42501` em todos os 14 |
+| `anon` e `authenticated` nos **9** pontos da fronteira (5 wrappers de fila + 4 funções: claim/complete/fail/validador) | `42501` em todos os 18 |
+| **auth da Edge Function**: sem `apikey` / publishable / secret só em `apikey` | **401 / 401 / 200** |
+| **tipos JSON inválidos** recusados antes da fila (`version:"1"`, `version:true`, `jobType:123`, `jobType:true`, org numérico, correlation não-string, operationId não-string) | `22023` em todos |
+| nenhum envelope inválido entrou na fila | 0 mensagens |
+| envelope válido continua aceito após o endurecimento | ok |
+| **poison real**: `read_ct` acima do teto → arquivada | `archived_poison` |
+| operação da poison termina `FAILED` com **`last_error_class = NULL`** | ok |
+| `last_error_summary` interno, sem citar erro externo | "mensagem excedeu 3 entregas na fila interna" |
+| poison arquivada não reaparece | `read=0` |
 | `pgmq_public` na Data API | `PGRST106` — schema não exposto |
 | browser continua lendo as tabelas de domínio | ok |
 | envelope inválido recusado na entrada da fila (8 variações) | `22023` |
@@ -111,7 +177,9 @@ Estruturais — `scripts/sql/queue-worker-002b-catalog.sql`:
 
 | prova | resultado |
 | --- | --- |
-| migration history | **7**, última `20260823180000` |
+| migration history | **8**, última `20260823183513` (local == remoto) |
+| validador estrito | `version:"1"`, `jobType:123`, org numérico → `false`; envelope válido → `true` |
+| validador continua INVOKER | `search_path=""`, ACL só `postgres`+`service_role` |
 | `pgmq` | 1.5.1 instalado |
 | fila `integration_jobs` | `q_` e `a_` com `relpersistence='p'` — durável, não unlogged |
 | `pgmq_public` | schema inexistente |
@@ -127,8 +195,13 @@ Estruturais — `scripts/sql/queue-worker-002b-catalog.sql`:
 
 ## 5. Migration/DDL
 
-Uma única migration, histórico **6 → 7**. Nenhuma migration promovida foi modificada.
-Nenhum DDL fora da migration.
+Duas migrations no total desta rodada: a fundação `20260823180000` (**6 → 7**) e a corretiva
+`20260823183513` (**7 → 8**), criada pelo comando vigente da CLI com
+`CREATE OR REPLACE FUNCTION`.
+
+**A migration já aplicada não foi reescrita**, e não houve `migration repair` nem DDL ad hoc
+— exatamente a restrição da §8 e do `estado.md` §10.1. Ambas foram validadas em transação
+revertida antes de aplicar.
 
 Rollback: `drop extension pgmq cascade` remove fila e tabelas de mensagem; os wrappers e
 helpers são funções novas em `public` e saem por `drop function`. Nada da fundação
@@ -150,8 +223,9 @@ promovida 000–002A depende deles.
 
 ## 7. Gates
 
-lint (0 warnings), typecheck da aplicação, `vitest run` (22 arquivos / **491** testes, eram
-437) e build — todos verdes. Edge Function validada pelo bundle do deploy. CI na branch/PR.
+lint (0 warnings), typecheck da aplicação, **`deno check` da Edge Function**, `vitest run`
+(**510** testes, eram 491) e build — todos verdes. Migration history local == remoto = **8**.
+Edge Function **ACTIVE, versão 2+** após redeploy. CI na branch/PR.
 
 **Security Advisor:** idêntico ao baseline — WARN conhecido `auth_leaked_password_protection`
 e os dois INFO `rls_enabled_no_policy` já aceitos na 002A. **Nenhum ERROR/WARN novo.**
@@ -173,9 +247,12 @@ merge na `main`, sem force push.
 
 1. **Sem scheduler.** A função é invocável mas nada a invoca automaticamente (mandato §5.6).
    A decisão de frequência/custo/frescor é da próxima sub-rodada.
-2. **Poison message encerra a operação como `FAILED` com `UNKNOWN_UPSTREAM`.** É a
-   classificação menos falsa disponível: não houve provider externo envolvido. Se uma
-   categoria interna própria for desejada, é decisão de contrato do GPT.
+2. **Poison encerra a operação como `FAILED` com `last_error_class = NULL`** (corrigido pela
+   002B-01). Se uma categoria interna própria for desejada no futuro, é decisão de contrato
+   do GPT — esta correção não podia criar taxonomia nova.
+3. **O ramo "poison sem desfecho seguro" não tem prova remota.** Forçá-lo exigiria revogar
+   grants no banco, que é DDL ad hoc proibido. Está coberto por teste unitário determinístico
+   em `poison.test.ts`, e o worker usa exatamente essa função.
 3. **Lote pequeno e em série** (5 mensagens). Correção antes de concorrência, conforme §5.5.
 4. `audit_events.actor_user_id` sem índice — INFO de performance, dívida herdada.
 5. `auth_leaked_password_protection` continua hardening pré-produção.
@@ -196,7 +273,13 @@ nenhuma delas nem quando o usuário é membro ativo do tenant.
 O worker é a Edge Function realmente deployada, invocada com secret key, e levou uma
 operação de `PENDING` a `SUCCEEDED` no projeto hospedado.
 
-Diferente da 002A, a migration foi validada em transação revertida **antes** de ser
-aplicada, e não houve nenhuma correção de schema após a aplicação.
+Diferente da 002A, as migrations foram validadas em transação revertida **antes** de serem
+aplicadas, e não houve nenhuma correção de schema após a aplicação.
 
-`002B EXECUTADA — AGUARDANDO AUDITORIA GPT`
+Os três bloqueios da auditoria estão fechados com prova real: o poison não inventa mais erro
+externo e só arquiva após desfecho conhecido; o validador SQL recusa os tipos JSON que antes
+passavam, antes da fila; e a Edge Function tem dependência pinada, `deno check` reprodutível
+— que, aliás, revelou um erro de tipo que o bundle do deploy não pegava — e auth provada
+negativa e positivamente.
+
+`002B + CORREÇÃO 002B-01 EXECUTADAS — AGUARDANDO REAUDITORIA GPT`

@@ -1,4 +1,5 @@
--- Provas estruturais da Rodada 002B — Queue + Worker Foundation.
+-- Provas estruturais da Rodada 002B — Queue + Worker Foundation,
+-- atualizadas pela Correção 002B-01.
 --
 -- Complementa `scripts/queue-worker-002b.mjs`, que prova comportamento pela
 -- Data API e pela Edge Function real mas não alcança `pg_catalog`. Read-only;
@@ -7,11 +8,12 @@
 -- Resultado esperado descrito acima de cada bloco.
 
 -- ---------------------------------------------------------------------------
--- 1. Migration history: 7 migrations, a última desta rodada.
+-- 1. Migration history: 8 migrations apos a Correcao 002B-01.
 -- ---------------------------------------------------------------------------
 select count(*) as total, max(version) as ultima
 from supabase_migrations.schema_migrations;
--- esperado: total = 7, ultima = 20260823180000
+-- esperado apos a Correcao 002B-01: total = 8, ultima = 20260823183513
+-- (20260823180000 = fundacao 002B; 20260823183513 = validador estrito)
 
 -- ---------------------------------------------------------------------------
 -- 2. `pgmq` instalado e fila DURÁVEL.
@@ -123,3 +125,44 @@ select count(*) as pg_cron_instalado
 from pg_extension
 where extname = 'pg_cron';
 -- esperado: 0
+
+-- ---------------------------------------------------------------------------
+-- 9. Correção 002B-01 — validador com tipos JSON exatos.
+--
+-- Bloqueio B da auditoria: a versão anterior lia os campos com `->>`, que
+-- converte qualquer escalar para texto, de modo que `version: "1"`,
+-- `jobType: 123` e `jobType: true` entravam na fila.
+-- ---------------------------------------------------------------------------
+select
+  public.is_valid_integration_job_message(
+    '{"version":1,"organizationId":"11111111-1111-1111-1111-111111111111",
+      "correlationId":"22222222-2222-2222-2222-222222222222",
+      "jobType":"SYSTEM_HEALTHCHECK","operationId":null,"payload":{}}'::jsonb
+  ) as valido,
+  public.is_valid_integration_job_message(
+    '{"version":"1","organizationId":"11111111-1111-1111-1111-111111111111",
+      "correlationId":"22222222-2222-2222-2222-222222222222",
+      "jobType":"X","payload":{}}'::jsonb
+  ) as version_string,
+  public.is_valid_integration_job_message(
+    '{"version":1,"organizationId":"11111111-1111-1111-1111-111111111111",
+      "correlationId":"22222222-2222-2222-2222-222222222222",
+      "jobType":123,"payload":{}}'::jsonb
+  ) as jobtype_numero,
+  public.is_valid_integration_job_message(
+    '{"version":1,"organizationId":11111111,
+      "correlationId":"22222222-2222-2222-2222-222222222222",
+      "jobType":"X","payload":{}}'::jsonb
+  ) as org_numero;
+-- esperado: valido = t; os demais = f
+
+-- O validador continua INVOKER, com search_path vazio e ACL mínima.
+select p.proname, p.prosecdef as security_definer,
+       array_to_string(p.proconfig, ',') as config,
+       array_to_string(p.proacl, ' | ') as acl
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname = 'is_valid_integration_job_message';
+-- esperado: security_definer = f, config = search_path="",
+--           acl somente postgres e service_role

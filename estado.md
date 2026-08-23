@@ -46,7 +46,9 @@ Classificação: **APROVADA COM RESSALVAS NÃO BLOQUEANTES E PROMOVIDA**.
 
 **002B — QUEUE + WORKER FOUNDATION**
 
-Status: **BLOQUEADA EM AUDITORIA — CORREÇÃO 002B-01 AUTORIZADA — AGUARDANDO EXECUÇÃO CLAUDE**.
+Status: **002B EXECUTADA COM CORREÇÃO 002B-01 — AGUARDANDO REAUDITORIA GPT**.
+
+Claude não aprova, não promove e não inicia 002C.
 
 Mandato-base:
 
@@ -74,9 +76,25 @@ CI auditada:
 
 `32657729531` — success (install/lint/typecheck/491 testes/build).
 
-`/proxima` está autorizado **somente a retomar a mesma 002B e executar a Correção 002B-01**.
-
 Nenhuma 002C está autorizada.
+
+### Execução da Correção 002B-01 (2026-08-23)
+
+Retomada na mesma branch, reconciliada com `origin/main` (conflito só em `estado.md`, resolvido pela versão da `main`).
+
+**Bloqueio A — poison sem erro externo falso.** `fail_operation` passa a receber `p_error_class = null` e resumo interno curto; a mensagem só é arquivada após desfecho conhecido. A decisão saiu do worker para `src/lib/operations/poison.ts`, com testes cobrindo erro de RPC e retorno desconhecido — ambos preservam a mensagem para o redelivery.
+
+**Bloqueio B — validador SQL estrito.** Migration corretiva nova `20260823183513`, histórico remoto **7 → 8**, com `CREATE OR REPLACE FUNCTION`. A migration `20260823180000` **não** foi reescrita; nenhum `migration repair`; nenhum DDL ad hoc. O predicado agora exige `jsonb_typeof` antes do valor, recusando `version:"1"`, `version:true`, `jobType:123`, `jobType:true`, org numérico, correlation e operationId não-string.
+
+**Bloqueio C — gate da Edge Function.** Pin exato `npm:@supabase/server@1.4.1` (revalidado: continua a última estável; 1.5.0-* são beta/rc). `deno` entrou como devDependency e `npm run typecheck:functions` roda `deno check` de forma reprodutível, inclusive na CI. **O `deno check` revelou um erro de tipo que o bundle do deploy não pegava** — corrigido. Redeploy: função **ACTIVE, versão 2+**. Auth provada remotamente: sem `apikey` → 401; publishable → 401; secret somente em `apikey` → 200 (o `Authorization: Bearer` foi removido do script).
+
+Provas: **82/82** (eram 60), incluindo poison real com `last_error_class` NULL e resumo interno, tipos JSON recusados antes da fila, e as regressões de redelivery, claim concorrente, idempotência, healthcheck remoto e unsupported. Cleanup deixou fila ativa/arquivada, operations, organizations e fixtures em zero.
+
+Gates: lint (0 warnings), typecheck da aplicação, **`deno check`**, `vitest run` (**510** testes, eram 491) e build — verdes. Migration history local == remoto = **8**.
+
+**Advisors:** Security sem novo ERROR/WARN (WARN `auth_leaked_password_protection` + dois INFO `rls_enabled_no_policy` já aceitos). Performance com o INFO herdado de `audit_events.actor_user_id`.
+
+**Limite declarado:** o ramo "poison sem desfecho seguro" não é forçável remotamente sem revogar grants — DDL ad hoc proibido pela correção §8. Está coberto por teste unitário determinístico em `poison.test.ts`, e o worker usa exatamente essa função.
 
 ## 5. O que a 002B já executou remotamente
 
@@ -184,10 +202,8 @@ Não autorizado agora:
 
 ## 10. Próxima ação autorizada
 
-Claude Code deve retomar **a mesma branch 002B**, fazer o preflight de retomada contra `origin/main`, ler a auditoria e a Correção 002B-01, executar somente essa correção, atualizar o relatório existente e manter PR #9 draft.
+A Correção 002B-01 está **executada**. Cumprido pelo executor: preflight de retomada e reconciliação, leitura da auditoria e da correção, fechamento dos três bloqueios com prova real, migration corretiva 7 → 8 sem reescrever a aplicada, redeploy da Edge Function, gates completos incluindo `deno check`, relatório atualizado e PR #9 mantida draft.
 
-Estado final esperado do executor:
+**A próxima ação é do GPT: reauditar a 002B com a Correção 002B-01 e decidir aprovação, correção ou promoção.**
 
-`002B + CORREÇÃO 002B-01 EXECUTADAS — AGUARDANDO REAUDITORIA GPT`
-
-Depois disso, a próxima ação volta a ser do GPT.
+Claude não promove, não inicia 002C e não adiciona cron/webhook/Meta por proximidade.

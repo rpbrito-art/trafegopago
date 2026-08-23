@@ -26,7 +26,10 @@
  * (`SECURITY_MODEL.md` §15).
  */
 
-import { withSupabase } from "npm:@supabase/server@1";
+// Versão exata, não faixa: o bundle da Edge Function precisa ser reprodutível.
+// Baseline revalidado em 2026-08-23 — 1.4.1 continua a última estável
+// (1.5.0-* são beta/rc).
+import { withSupabase } from "npm:@supabase/server@1.4.1";
 
 import {
   isSupportedJobType,
@@ -34,6 +37,10 @@ import {
   requiresOperation,
   SYSTEM_HEALTHCHECK_JOB,
 } from "../../../src/lib/operations/job-message.ts";
+import {
+  decidePoisonArchival,
+  poisonSummary,
+} from "../../../src/lib/operations/poison.ts";
 
 /**
  * Janela em que a mensagem fica invisível para outros consumidores.
@@ -58,6 +65,14 @@ const MAX_ATTEMPTS = 3;
 /** Janela para considerar um claim abandonado. Maior que a visibilidade. */
 const STALE_CLAIM_SECONDS = 900;
 
+/** Cliente Supabase reduzido ao que este worker usa. */
+type SupabaseLike = {
+  rpc: (
+    fn: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { code?: string } | null }>;
+};
+
 type QueueRow = {
   msg_id: number;
   read_ct: number;
@@ -73,14 +88,20 @@ type Outcome =
   | "archived_invalid"
   | "archived_unsupported"
   | "archived_poison"
+  | "poison_adiado"
   | "archived_unclaimable"
   | "failed_unexpected";
 
 export default {
-  fetch: withSupabase(
-    { auth: "secret" },
-    async (_req: Request, ctx: { supabaseAdmin: SupabaseLike }) => {
-      const supabase = ctx.supabaseAdmin;
+  fetch: withSupabase({ auth: "secret" }, async (_req, ctx) => {
+      // O cliente do wrapper é tipado contra o schema gerado do projeto, que
+      // este worker não carrega — daí a ponte explícita, isolada num único
+      // ponto em vez de espalhar casts por cada chamada. Os nomes e argumentos
+      // dos RPCs são os da migration 002B, e o `deno check` cobre todo o resto.
+      const supabase: SupabaseLike = {
+        rpc: (fn, args) =>
+          (ctx.supabaseAdmin.rpc as unknown as SupabaseLike["rpc"])(fn, args),
+      };
 
       const { data, error } = await supabase.rpc("read_integration_jobs", {
         p_visibility_seconds: VISIBILITY_SECONDS,
@@ -106,16 +127,7 @@ export default {
       }
 
       return Response.json({ ok: true, read: rows.length, outcomes });
-    },
-  ),
-};
-
-/** Cliente Supabase reduzido ao que este worker usa. */
-type SupabaseLike = {
-  rpc: (
-    fn: string,
-    args: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: { code?: string } | null }>;
+  }),
 };
 
 async function processar(
@@ -134,13 +146,40 @@ async function processar(
       if (parsed.ok && parsed.message.operationId) {
         // Encerrar a operação junto: deixá-la CLAIMED para sempre esconderia
         // um trabalho que nunca vai acontecer.
-        await supabase.rpc("fail_operation", {
-          p_operation_id: parsed.message.operationId,
-          p_organization_id: parsed.message.organizationId,
-          p_correlation_id: parsed.message.correlationId,
-          p_error_class: "UNKNOWN_UPSTREAM",
-          p_error_summary: `poison message arquivada apos ${attempt} entregas`,
+        //
+        // `p_error_class = null`, e não uma classe da taxonomia externa: esta
+        // é uma falha **interna** da fila — nenhum provider foi chamado. Rotulá-la
+        // como `UNKNOWN_UPSTREAM` inventaria um erro externo que não aconteceu,
+        // e envenenaria qualquer política de retry que leia essa coluna.
+        const { data: desfecho, error: erroFalha } = await supabase.rpc(
+          "fail_operation",
+          {
+            p_operation_id: parsed.message.operationId,
+            p_organization_id: parsed.message.organizationId,
+            p_correlation_id: parsed.message.correlationId,
+            p_error_class: null,
+            p_error_summary: poisonSummary(MAX_ATTEMPTS),
+          },
+        );
+
+        // Só arquiva depois de um desfecho conhecido. A regra vive em
+        // `poison.ts`, com testes que cobrem erro de RPC e retorno inesperado —
+        // casos que não dá para forçar com segurança no banco hospedado.
+        const decisao = decidePoisonArchival({
+          outcome: desfecho,
+          hasError: Boolean(erroFalha),
         });
+
+        if (!decisao.archive) {
+          console.error("poison sem desfecho seguro; mensagem preservada", {
+            jobId,
+            attempt,
+            correlationId: parsed.message.correlationId,
+            reason: decisao.reason,
+            code: erroFalha?.code,
+          });
+          return "poison_adiado";
+        }
       }
 
       await supabase.rpc("archive_integration_job", { p_msg_id: jobId });

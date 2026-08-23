@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# node_modules criado pelo `deno check` das Edge Functions (nodeModulesDir: auto)
+supabase/functions/node_modules/
