@@ -58,117 +58,114 @@ Migration incorporada: `20260823111051_create_business_profiles_and_bootstrap.sq
 
 **RODADA 001F — RECOVERY DE ACESSO + FECHAMENTO DA FASE 1**
 
-Status: **CORREÇÃO 001F-01 AUTORIZADA — GATE HUMANO DO TEMPLATE CONFIRMADO — RETOMADA PELO CLAUDE CODE AUTORIZADA**.
+Status: **AUDITORIA GPT REALIZADA — PROMOÇÃO BLOQUEADA — CORREÇÃO 001F-02 AUTORIZADA**.
 
 Mandato original:
 
 `rodadas/gpt/RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 
-Correção vigente e prevalente sobre o ponto divergente do mandato:
+Correções vigentes:
 
-`rodadas/gpt/CORRECAO_001F_01_AMR_RECOVERY_PROVIDER_REAL.md`
+- `rodadas/gpt/CORRECAO_001F_01_AMR_RECOVERY_PROVIDER_REAL.md`
+- `rodadas/gpt/CORRECAO_001F_02_ANTI_ENUMERACAO_AMR_FAIL_CLOSED.md`
 
-Branch entregue/em correção:
+Branch existente:
 
 `claude/rodada-001f-recovery-fechamento-fase1`
 
-PR de auditoria: **#7 — draft, não promover**.
+PR #7: **draft, não promover**.
 
-Head entregue antes da correção:
+Head entregue e auditado antes da 001F-02:
 
-`4d9e4276609f9d3bb9484ede2bf313e6ac38a0c8`
-
-O fundador confirmou em 2026-08-23 que atualizou manualmente no Supabase hospedado o template **Reset Password / Recovery** com o conteúdo versionado. Isso libera a retomada, mas **não equivale a verificação técnica do template**: a conformidade remota só será aceita quando o smoke final receber e usar um e-mail real do Auth hospedado e comprovar o link esperado.
+`1fcb8c6fbeaee755a034d1ca195b6625e758fe5e`
 
 O estado promovido continua **000–001E**. A 001F não foi aprovada nem incorporada.
 
 Nenhuma Fase 2 ou rodada posterior está autorizada.
 
-## 5. Bloqueio descoberto e decisão GPT
+## 5. O que a auditoria independente confirmou
 
-O mandato original exigia sessão com `amr.method = recovery`.
+A entrega 001F passou em grande parte e o E2E real **não precisa ser repetido** nesta correção:
 
-A execução mediu no Supabase hospedado atual:
+- E2E real com e-mail: **40/40 provas**, já executado pelo fundador;
+- logs do Auth hospedado confirmam pedido de recovery, `verify`, troca de senha, logout global, login com senha nova, reuso recusado e remoção da fixture;
+- template hospedado efetivo chegou no formato SSR esperado com `type=recovery`;
+- Gmail SMTP funcionou como SMTP provisório de desenvolvimento;
+- `auth.users` voltou a apenas 1 conta real;
+- exatamente 5 migrations; zero migration/DDL da 001F;
+- Security Advisor permanece apenas com o WARN conhecido `auth_leaked_password_protection`;
+- RLS/grants/baseline da fundação preservados;
+- CI do head entregue estava verde;
+- harmonização MVP/roadmap compatível com `GROWTH_INTELLIGENCE_CANONICAL.md`.
 
-- login por senha → `password`;
-- `verifyOtp(type=recovery)` → `otp`;
-- `verifyOtp(type=signup)` → `otp`.
+A correção upstream de `signOut` local já está incluída na versão usada do SDK (`@supabase/supabase-js 2.112.3`); não há ação adicional autorizada nesse ponto.
 
-A documentação externa atual é inconsistente nesse detalhe. A correção 001F-01 substitui o requisito literal por um predicado compatível com o provider real, sem introduzir hook, tabela, cookie assinado, secret novo ou admin API.
+## 6. Bloqueios encontrados na auditoria
 
-Novo contrato resumido:
+### 6.1 Anti-enumeração no pedido de recovery
 
-- claims verificadas por `getClaims()`;
-- `sub` e `email` válidos;
-- AMR com `recovery` **ou** `otp`;
-- nenhuma entrada `password`;
-- AMR autorizador recente: máximo **15 minutos**, com até 60 s de clock skew futuro;
-- sessão password comum continua recusada;
-- se métodos Auth adicionais forem habilitados no futuro, o guard deve ser reaberto antes da promoção dessa capacidade.
+A aplicação diferencia publicamente `429/rate limit` no pedido de recuperação.
 
-## 6. Sessões após redefinição
+No Supabase Auth atual, e-mail inexistente retorna `200` antes de entrar no envio; conta existente passa pelo controle de frequência e pode retornar `429`. Portanto, repetir pedidos pode permitir distinguir se uma conta existe.
 
-A correção também exige:
+A 001F-02 exige resposta pública idêntica depois que o e-mail passou pela validação sintática, inclusive para sucesso, usuário inexistente, rate limit e erro do provider.
 
-- `signOut({ scope: "global" })` explícito após `updateUser({ password })`;
-- tratar o retorno do logout, sem ignorar erro;
-- provar que o refresh token de sessão anterior deixa de funcionar;
-- aceitar como propriedade conhecida do Supabase que access tokens já emitidos podem continuar válidos até `exp`;
-- se logout global retornar sucesso e refresh anterior ainda funcionar, parar e retornar ao GPT.
+### 6.2 AMR parcialmente malformado
 
-Nenhuma admin API/secret key é autorizada para esse logout funcional.
+O parser atual descarta entradas malformadas de `amr` e preserva as válidas. Isso pode fazer um claim misto continuar autorizável, embora a 001F-01 tenha exigido `amr` bem formado.
 
-## 7. Gate humano do template Recovery hosted
+A 001F-02 exige falha fechada: entrada estruturalmente inválida torna o claim inteiro não autorizável.
 
-**Cumprido pelo fundador em 2026-08-23; verificação técnica ainda pendente no E2E final.**
+### 6.3 Reconciliação/documentação
 
-O template hospedado foi informado como atualizado no Supabase em **Reset Password / Recovery** usando o conteúdo versionado em:
+No momento da auditoria, a branch estava 3 commits atrás da `main`, apenas em governança. Antes de corrigir, deve reconciliar pelo preflight obrigatório.
 
-`supabase/templates/recovery.html`
+O `estado.md` da branch também contém uma frase antiga dizendo que a verificação técnica do template ainda está pendente, embora o E2E 40/40 já a tenha concluído. Corrigir no próximo handoff.
 
-Link esperado no e-mail real:
+## 7. Infraestrutura de e-mail de desenvolvimento
 
-`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`
+O SMTP provisório de desenvolvimento é **Gmail SMTP** com App Password, substituindo Brevo e o provider nativo do Supabase.
 
-Sem `next`.
+Causa já comprovada: projetos Free novos usando o provider nativo do Supabase não aplicam templates customizados de Auth; com SMTP customizado, o template SSR funcionou e o E2E passou.
 
-Claude deve verificar isso empiricamente no smoke final. Se o e-mail real não vier nesse formato, parar e reportar; não usar `supabase config push` nem contornar com link administrativo.
+Gmail SMTP é apenas desenvolvimento, não produção.
 
-Nenhum segredo SMTP deve ser solicitado ou exposto.
+**Após auditoria final e promoção da 001F**, o fundador deve revogar a App Password criada especificamente para este E2E. Não revogar antes da promoção final, para preservar a configuração até o fechamento.
 
 ## 8. Próxima execução autorizada
 
-Claude Code deve retomar **a mesma branch** e executar somente a Correção 001F-01:
+Claude Code deve retomar **a mesma branch** e executar somente:
 
-- sincronizar/reconciliar a branch com a `main` atual sem perder a implementação já entregue;
-- ajustar o guard de recovery para o predicado temporal autorizado;
-- tornar o logout global explícito e testado;
-- atualizar testes/smoke/comentários necessários;
-- executar o smoke final com e-mail real;
-- verificar no e-mail real que o template hosted efetivo corresponde ao link versionado;
-- manter zero migration/DDL;
-- preservar a harmonização MVP/roadmap já entregue;
-- rodar gates e CI;
-- atualizar relatório e `estado.md`.
+`rodadas/gpt/CORRECAO_001F_02_ANTI_ENUMERACAO_AMR_FAIL_CLOSED.md`
 
-Durante o smoke, qualquer URL real de recovery contendo `token_hash` deve ser fornecida somente ao processo local/terminal e nunca registrada em relatório, Git ou chat.
+A correção manda:
 
-Conclusão esperada, se tudo passar:
+- reconciliar a branch com a `main` atual;
+- fechar o canal de enumeração por rate limit/erro do provider;
+- tornar o parser de AMR fail-closed para claim estruturalmente malformado;
+- corrigir a contradição documental;
+- atualizar relatório/PR;
+- rodar lint, typecheck, testes, build e CI;
+- confirmar read-only que migrations continuam em 5 e sem fixture residual.
 
-`001F EXECUTADA COM CORREÇÃO 001F-01 — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO AUDITORIA GPT`
+**Não repetir o E2E de e-mail real, não mexer no Gmail/Supabase Dashboard e não pedir nova ação manual ao fundador.**
 
-Claude não aprova, não promove e não inicia Fase 2.
+Handoff esperado:
+
+`001F EXECUTADA COM CORREÇÕES 001F-01 E 001F-02 — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO REAUDITORIA GPT`
+
+Depois disso, GPT reaudita somente o delta corretivo + estado final necessário e decide promoção/fechamento da Fase 1.
 
 ## 9. Baseline e riscos conhecidos
 
 1. `auth_leaked_password_protection` permanece desabilitado: hardening obrigatório antes de clientes reais/produção e recurso Pro+ conforme documentação vigente.
-2. Brevo Free permanece SMTP provisório de desenvolvimento.
+2. Gmail SMTP é provisório de desenvolvimento e inadequado para clientes reais/produção.
 3. Default ACL residual de `supabase_admin` continua aceito somente enquanto `public` tiver zero objetos owned por essa role.
 4. Funções futuras exigem GRANT EXECUTE explícito.
 5. `SUPABASE_SECRET_KEY` nunca pode entrar no fluxo funcional de recovery, `NEXT_PUBLIC_*`, browser, logs ou respostas.
-6. Access tokens revogados no servidor podem permanecer criptograficamente válidos até `exp`; ações futuras de alta sensibilidade podem exigir validação de sessão mais forte conforme risco.
-7. Gestão avançada de membros, edição ampla, multi-org e exclusão permanecem posteriores e não bloqueiam o fechamento da Fase 1.
-8. A Fase 1 só pode ser declarada encerrada pela auditoria GPT após recovery real aprovado e promoção da 001F.
+6. Access tokens revogados no servidor podem permanecer criptograficamente válidos até `exp`; refresh tokens anteriores devem permanecer revogados no contrato da 001F.
+7. Habilitar magic link, phone OTP, invite ou social login exige reabrir o guard de recovery antes de promover essa capacidade.
+8. Gestão avançada de membros, edição ampla, multi-org e exclusão permanecem posteriores e não bloqueiam o fechamento da Fase 1.
 
 ## 10. Gate obrigatório de produto
 
@@ -180,6 +177,6 @@ A harmonização entregue não pode reintroduzir paid-first, funil rígido, form
 
 ## 11. Continuidade
 
-Branch/relatório/commit não significam incorporação. O estado efetivamente promovido continua 000–001E até auditoria e promoção formal da 001F.
+Branch/relatório/commit não significam incorporação. O estado efetivamente promovido continua 000–001E até auditoria final e promoção formal da 001F.
 
 Descompasso documental temporário deve ser resolvido junto da próxima etapa substantiva quando não houver risco operacional.
