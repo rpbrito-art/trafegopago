@@ -8,7 +8,7 @@ Próximo gatilho ordinário: fechamento da Fase 1, se a 001F for aprovada e prom
 
 Rodada vigente: **001F — Recovery de Acesso + Fechamento da Fase 1**.
 
-Status: **CORREÇÃO 001F-01 AUTORIZADA — AGUARDANDO GATE HUMANO DO TEMPLATE E RETOMADA PELO CLAUDE CODE**.
+Status: **CORREÇÃO 001F-01 AUTORIZADA — GATE HUMANO DO TEMPLATE CONFIRMADO — RETOMADA PELO CLAUDE CODE AUTORIZADA**.
 
 Mandato original:
 
@@ -96,9 +96,11 @@ Após `updateUser({ password })`:
 - access token já emitido pode permanecer válido até `exp`, conforme Supabase, e isso deve ser registrado como propriedade conhecida;
 - se refresh anterior continuar válido após logout global bem-sucedido, parar para GPT.
 
-## Gate humano ainda pendente
+## Gate humano do template Recovery
 
-O founder deve atualizar no Supabase hospedado o template **Reset Password / Recovery** usando o arquivo versionado:
+**Cumprido pelo fundador em 2026-08-23; verificação técnica ainda pendente no E2E real.**
+
+O founder informou ter atualizado no Supabase hospedado o template **Reset Password / Recovery** usando o arquivo versionado:
 
 `supabase/templates/recovery.html`
 
@@ -108,9 +110,28 @@ O link esperado é:
 
 Sem `next`.
 
-Não usar `supabase config push` para essa configuração hosted.
+Essa confirmação manual libera a retomada do Claude, mas o hosted só será considerado comprovado quando `npm run smoke:recovery` receber um e-mail real e validar o link efetivo.
 
-Depois da confirmação do gate humano, Claude pode retomar `/proxima` na mesma branch e executar somente a Correção 001F-01.
+Se o e-mail vier diferente, parar e reportar. Não usar `supabase config push` nem link administrativo para mascarar divergência.
+
+## Próxima ação autorizada
+
+Claude pode retomar **a mesma branch** e executar somente a Correção 001F-01.
+
+Na retomada deve:
+
+- reconciliar a branch com a `main` atual;
+- ajustar o predicado temporal de recovery;
+- tornar o logout global explícito e verificar erro;
+- atualizar testes/smoke/comentários;
+- executar o E2E final com e-mail real;
+- provar o template hosted efetivo, senha antiga/nova, one-time link e revogação do refresh anterior;
+- manter zero migration/DDL;
+- preservar a harmonização MVP/roadmap;
+- rodar gates e CI;
+- atualizar relatório e `estado.md`.
+
+Qualquer URL real contendo `token_hash` deve ser inserida apenas no terminal local quando o smoke solicitar; nunca em relatório, Git ou chat.
 
 ## Resumo histórico preferencial
 
