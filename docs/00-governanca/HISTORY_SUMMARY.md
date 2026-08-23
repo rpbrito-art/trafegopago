@@ -80,7 +80,42 @@ Com a promoção da 001F, a **Fase 1 — Fundação Supabase, Auth e Tenancy est
 
 A fundação incorporada contém Auth real, recovery real, organizations/memberships, grants/RLS/isolamento, business_profiles e bootstrap atômico server-only.
 
-A Fase 2 existe no roadmap, mas não foi autorizada automaticamente pelo fechamento.
+## Rodada 002A — Operations + Audit Foundation
+
+Primeira rodada promovida da Fase 2.
+
+Promovido:
+
+- `public.operations` como memória persistente de intenções técnicas idempotentes;
+- unicidade `(organization_id, operation_type, idempotency_key)` provada inclusive sob concorrência;
+- estados fechados de operação e `correlation_id`;
+- taxonomia de erro e política de retry versionadas em TypeScript;
+- mutação externa sem proteção de idempotência não ganha retry automático por padrão;
+- `UNKNOWN` não autoriza retry cego;
+- `public.audit_events` como histórico append-oriented;
+- browser sem acesso direto às duas tabelas;
+- `service_role` com SELECT/INSERT/UPDATE em `operations`, sem DELETE; e SELECT/INSERT em `audit_events`, sem UPDATE/DELETE;
+- RLS habilitado, zero policies nas tabelas internas server-only;
+- migration history **5 → 6**;
+- suíte final **437 testes**, lint/typecheck/build verdes;
+- zero fixture residual e 1 conta real preservada.
+
+Auditoria independente confirmou catálogo remoto, grants, RLS, índices, constraints, owners, migration history, Advisors e CI.
+
+Ressalvas não bloqueantes:
+
+- uma primeira aplicação ainda não promovida da migration continha CHECKs temporais inadequados; o executor detectou a falha, desfez as tabelas vazias, reparou o histórico e reaplicou a migration final. O estado final ficou coerente e sem drift material detectável. Esse procedimento não vira padrão para migrations futuras;
+- `operations.updated_at` fica sob decisão do worker futuro;
+- `audit_events.actor_user_id` sem índice próprio foi INFO de performance;
+- `approval_id` permanece para a fundação financeira posterior.
+
+Auditoria: `rodadas/gpt/AUDITORIA_RODADA_002A_OPERATIONS_AUDIT_FOUNDATION.md` — PR #8 — merge `920114d3e04ac1f32c284a6ff867e1c9e53d920b`.
+
+## Estado da Fase 2
+
+**Fase 2 — Operations, Audit, Queues e Segurança Base: EM ANDAMENTO.**
+
+A 002A entregou operations, audit, retry taxonomy e correlation IDs. Ainda faltam capacidades posteriores da fase, como fila/job/worker base, webhook inbox e observabilidade mínima, que devem ser divididas em rodadas pequenas e autorizadas separadamente.
 
 ## Pendências transversais abertas
 
@@ -95,6 +130,6 @@ A Fase 2 existe no roadmap, mas não foi autorizada automaticamente pelo fechame
 
 ## Estado atual
 
-Rodadas 000–001F estão promovidas. Fase 1 encerrada. Não há mandato executável novo.
+Rodadas 000–002A estão promovidas. Fase 1 encerrada. Fase 2 em andamento. **Não há mandato executável novo.**
 
-Antes de uma nova rodada de produto, aplicar a leitura integral obrigatória de `GROWTH_INTELLIGENCE_CANONICAL.md`.
+Antes de uma nova rodada de produto, aplicar a leitura integral obrigatória de `GROWTH_INTELLIGENCE_CANONICAL.md`. Antes de qualquer nova rodada, o fundador deve receber resumo simples do que será feito antes da autorização.
