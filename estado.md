@@ -47,7 +47,9 @@ Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 
 **RODADA 002A — OPERATIONS + AUDIT FOUNDATION**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **002A EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+
+Claude não aprova, não promove e não inicia 002B.
 
 Mandato:
 
@@ -57,9 +59,32 @@ Branch esperada:
 
 `claude/rodada-002a-operations-audit-foundation`
 
-Relatório esperado:
+Relatório entregue:
 
 `rodadas/claude/RELATORIO_RODADA_002A_OPERATIONS_AUDIT_FOUNDATION.md`
+
+### Execução (2026-08-23)
+
+Branch criada a partir de `origin/main`. Baseline confirmado antes de mutar: 5 migrations, última `20260823111051`, 3 tabelas em `public` todas com RLS, zero objetos owned por `supabase_admin`, 1 conta real, zero fixture.
+
+Entregue:
+
+- migration única `20260823160000_create_operations_and_audit_events.sql` — histórico remoto **5 → 6**;
+- `public.operations` e `public.audit_events` tenant-scoped, com CHECKs, FKs, índices e o único de idempotência `(organization_id, operation_type, idempotency_key)`;
+- grants de privilégio mínimo: `operations` = `service_role` SELECT/INSERT/UPDATE (sem DELETE); `audit_events` = SELECT/INSERT apenas;
+- RLS habilitado e **zero policies** nas duas: são infraestrutura interna server-only, sem acesso de browser;
+- `src/lib/operations/contracts.ts` — statuses, taxonomia de erro e política de retry, com teste de paridade contra os CHECKs do banco;
+- `scripts/operations-audit-002a.mjs` (prova funcional) e `scripts/sql/operations-audit-002a-catalog.sql` (provas estruturais versionadas).
+
+Provas: **42/42** no script funcional, incluindo 6 inserts concorrentes com a mesma chave em que exatamente um sobrevive, e recusa de UPDATE/DELETE em `audit_events` mesmo para `service_role` — que é BYPASSRLS, de modo que o append-only se apoia na ACL e não em policy. Cleanup deixou zero resíduo.
+
+Gates: lint (0 warnings), typecheck, `vitest run` (21 arquivos / **437** testes, eram 372) e build — verdes.
+
+**Advisor:** o WARN de baseline `auth_leaked_password_protection` permanece. Surgiram dois lints novos de nível **INFO** (`rls_enabled_no_policy` em `operations` e `audit_events`), que descrevem o design autorizado — RLS sem policy porque nenhuma role de browser deve alcançar essas tabelas. Não são ERROR nem WARN; o critério §5.18 do mandato está atendido.
+
+**Desvio registrado:** a primeira aplicação da migration incluía dois CHECK de coerência temporal (`updated_at >= created_at` e equivalente para `completed_at`) que eu acrescentei e o mandato não pedia. A prova os reprovou: `created_at` vem de `now()` no servidor e `updated_at` de quem chama, e o skew de relógio (~0,6 s neste projeto) quebrava o update imediato — exatamente o caminho do worker futuro. Com a migration ainda não commitada nem promovida e as tabelas vazias, corrigi na origem: `db query` para remover as tabelas, `migration repair --status reverted` (mecanismo oficial do CLI) e `db push` da versão corrigida. Houve, portanto, manipulação do histórico de migration remoto, sobre migration não promovida. Detalhes na §4 do relatório.
+
+Nenhuma configuração remota alterada, nenhum segredo novo, nenhum gate humano solicitado.
 
 A autorização do fundador em 2026-08-23 inicia a primeira rodada substantiva da Fase 2. **Isso não significa que a Fase 2 inteira está executada ou promovida.**
 
@@ -114,18 +139,9 @@ Antes da 002A:
 
 ## 8. Próxima ação autorizada
 
-Claude Code deve executar **somente a Rodada 002A** a partir da `main` atual.
+A Rodada 002A está **executada**. Cumprido pelo executor: preflight, branch a partir da `main`, READ SET, escopo 002A, migration aplicada e provada, gates e CI, PR draft e relatório.
 
-Ao receber `/proxima`, deve:
-
-1. fazer o preflight previsto no `PROJECT_PROMPT.md`;
-2. criar/usar a branch `claude/rodada-002a-operations-audit-foundation` a partir da `main` atual;
-3. ler o READ SET do mandato;
-4. executar somente o escopo 002A;
-5. aplicar e provar a migration autorizada;
-6. rodar testes/gates e CI;
-7. abrir PR draft e entregar relatório;
-8. parar em `002A EXECUTADA — AGUARDANDO AUDITORIA GPT`.
+**A próxima ação é do GPT: auditar a 002A e decidir aprovação, correção ou promoção.**
 
 Claude não promove, não inicia 002B e não decide o restante da Fase 2.
 
