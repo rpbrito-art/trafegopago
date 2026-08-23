@@ -52,7 +52,9 @@ Auditoria:
 
 **RODADA 002B — QUEUE + WORKER FOUNDATION**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **002B EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+
+Claude não aprova, não promove e não inicia 002C.
 
 Mandato:
 
@@ -62,9 +64,33 @@ Branch esperada:
 
 `claude/rodada-002b-queue-worker-foundation`
 
-Relatório esperado:
+Relatório entregue:
 
 `rodadas/claude/RELATORIO_RODADA_002B_QUEUE_WORKER_FOUNDATION.md`
+
+### Execução (2026-08-23)
+
+Branch criada de `origin/main`. Baseline confirmado antes de mutar: 6 migrations (última `20260823160000`), `pgmq` disponível 1.5.1 e **não instalado**, `pg_cron` não instalado, 5 tabelas `public` todas com RLS, `operations`/`audit_events` vazias, 1 conta real, zero objetos owned por `supabase_admin`.
+
+Entregue:
+
+- migration única `20260823180000_create_queue_and_worker_foundation.sql` — histórico remoto **6 → 7**;
+- `pgmq` 1.5.1 instalado e fila `integration_jobs` **durável** (`relpersistence='p'`);
+- cinco wrappers de fila em `public`, `SECURITY DEFINER`, `search_path=""`, owner `postgres`, fila hardcoded, sem SQL dinâmico, EXECUTE só para `service_role`;
+- helpers `claim_operation` / `complete_operation` / `fail_operation` como **SECURITY INVOKER** — a exceção de DEFINER do mandato §2.2 foi usada apenas na fronteira da fila;
+- `src/lib/operations/job-message.ts` (contrato do envelope, importado também pela Edge Function) e validação equivalente no banco;
+- Edge Function `integration-worker` deployada, autorizada por `withSupabase({ auth: 'secret' })`, com `verify_jwt = false` declarado em `config.toml`;
+- `scripts/queue-worker-002b.mjs` (prova funcional) e `scripts/sql/queue-worker-002b-catalog.sql` (provas estruturais versionadas).
+
+Provas: **60/60**, com a Edge Function real invocada remotamente. Entre elas: redelivery efetivo após a visibility timeout com `read_ct` 1 → 2; dois claims concorrentes com exatamente um vencedor; mensagem duplicada tardia reconhecida como já concluída, mantendo uma única `SUCCEEDED` e `attempt_count=1`; job de tipo não suportado arquivado sem reaparecer; `anon` e `authenticated` recusados (`42501`) nos sete pontos da fronteira; `pgmq_public` não exposto (`PGRST106`). Cleanup deixou fila ativa e arquivada, operations, organizations e fixtures em zero.
+
+Gates: lint (0 warnings), typecheck da aplicação, `vitest run` (22 arquivos / **491** testes, eram 437) e build — verdes. Edge Function validada pelo bundle do deploy.
+
+**Advisors:** Security idêntico ao baseline (WARN `auth_leaked_password_protection` + os dois INFO `rls_enabled_no_policy` já aceitos na 002A); nenhum ERROR/WARN novo. Performance com um INFO, `unindexed_foreign_keys` em `audit_events.actor_user_id`, que a §10.2 deste estado já registrava como dívida da 002A — não é regressão da 002B.
+
+**Sem repetir o incidente da 002A:** a migration foi validada rodando o arquivo inteiro em `begin; … rollback;` antes de aplicar, com confirmação de que nada persistiu. Só então `db push`. Nenhum DDL ad hoc e nenhum `migration repair` nesta rodada.
+
+Nenhum cron criado (`pg_cron` continua não instalado), nenhuma `public.integration_jobs`, nenhum segredo humano novo, nenhum gate humano solicitado.
 
 A autorização do fundador em 2026-08-23 autoriza **somente a 002B**. Não autoriza 002C nem o restante da Fase 2.
 
@@ -115,20 +141,9 @@ Antes da 002B:
 
 ## 8. Próxima ação autorizada
 
-Claude Code deve executar **somente a Rodada 002B** a partir da `main` atual.
+A Rodada 002B está **executada**. Cumprido pelo executor: preflight, branch a partir da `main`, READ SET, escopo 002B, migration única aplicada e provada, Edge Function versionada e implantada sem segredo novo, provas de fila/redelivery/idempotência/segurança/cleanup, gates e CI, PR draft e relatório.
 
-Ao receber `/proxima`, deve:
-
-1. fazer o preflight previsto no `PROJECT_PROMPT.md`;
-2. criar/usar a branch `claude/rodada-002b-queue-worker-foundation` a partir da `main` atual;
-3. ler o READ SET do mandato;
-4. executar somente o escopo 002B;
-5. criar/aplicar uma única migration, levando o histórico de 6 para 7 se tecnicamente aprovada na execução;
-6. versionar e implantar a Edge Function `integration-worker` sem novo segredo humano;
-7. provar fila, redelivery, idempotência do worker, segurança e cleanup;
-8. rodar gates e CI;
-9. abrir PR draft e entregar relatório;
-10. parar em `002B EXECUTADA — AGUARDANDO AUDITORIA GPT`.
+**A próxima ação é do GPT: auditar a 002B e decidir aprovação, correção ou promoção.**
 
 Claude não promove, não inicia 002C e não adiciona cron/webhook/Meta por proximidade.
 
