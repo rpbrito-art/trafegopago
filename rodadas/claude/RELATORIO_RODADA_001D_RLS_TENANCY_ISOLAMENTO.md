@@ -1,157 +1,171 @@
 # RELATÓRIO — RODADA 001D — DEFAULT PRIVILEGES + GRANTS + RLS + ISOLAMENTO
 
-Status: **BLOQUEADA — PARADA DETERMINADA PELO PRÓPRIO MANDATO (§4.4). NENHUMA MUTAÇÃO APLICADA.**
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**
 Data: 2026-08-22
 Branch: `claude/rodada-001d-rls-tenancy-isolamento`
+Mandato: `rodadas/gpt/RODADA_001D_RLS_TENANCY_ISOLAMENTO.md` + `rodadas/gpt/CORRECAO_001D_01_DEFAULT_PRIVILEGES_SCOPE.md`
+
+Esta versão substitui o relatório de bloqueio anterior (parada em §4.4, sem mutação, registrada no
+histórico da branch). A retomada seguiu a Correção 001D-01: default privileges tratados somente para
+`role postgres`, `supabase_admin` como risco residual aceito.
+
+**Uma pendência bloqueante nova, provada e não contornada — ver §9.1.**
 
 ## 1. Preflight
 
 | Item | Resultado |
 |---|---|
-| toplevel | `C:/Users/rpbri/Documents/trafegopago` OK |
-| remote origin | `rpbrito-art/trafegopago` OK |
-| working tree | limpa, `main` sincronizada com origin OK |
-| `estado.md` / `.gpt/PROJECT_PROMPT.md` | presentes OK |
-| CLI | supabase 2.115.0 |
-| project ref linkado | `cbnxdoxpyioxjwgjhbtq` OK |
-| migration history | local == remoto (`20260822212544`, `20260822234354`) OK |
+| toplevel / remote | `C:/Users/rpbri/Documents/trafegopago` · `rpbrito-art/trafegopago` OK |
+| branch / working tree | branch esperada · limpa OK |
+| project ref linkado | `cbnxdoxpyioxjwgjhbtq` OK · CLI 2.115.0 |
+| árvore vs `origin/main` | idêntica exceto por este relatório (docs da correção já batem) |
+| baseline §3 | reconfirmado integralmente antes de mutar — 2 tabelas, RLS on, 0 policies, ACL sem browser roles, `ensure_rls` ativo (`evtenabled='O'`), `rls_auto_enable` ACL da 001A intacta, objetos `public` owned por `supabase_admin` = **0** |
 
-## 2. Motivo da parada
+## 2. Arquivos alterados
 
-O mandato §4.4 determina:
+- `supabase/migrations/20260823003128_harden_default_privileges_grants_and_rls_policies.sql` (novo);
+- `scripts/rls-isolation-001d.mjs` (novo — prova §9, versionado para reexecução na auditoria);
+- `rodadas/claude/RELATORIO_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`;
+- `estado.md` (campos de execução).
 
-> "se `supabase_admin` não puder ser tratado de forma reprodutível por migration com o papel
-> executor autorizado, **parar antes de aplicar solução parcial** e reportar ao GPT"
+Nenhum código de produto (`src/`) alterado.
 
-Essa condição foi **acionada e comprovada empiricamente**. Não apliquei migration, grants,
-policies nem qualquer alteração remota. O banco permanece no baseline promovido da 001C.
+## 3. Decisões não óbvias
 
-## 3. Baseline reconfirmado (§3 do mandato) — conforme `estado.md`
+1. **`revoke all` em vez da lista nominal de privilégios** nos default privileges de `postgres`: é a
+   forma da doc oficial e é superconjunto do exigido pela correção §2 (cobre também TRUNCATE,
+   REFERENCES, TRIGGER).
+2. **`service_role` recebe `grant all` explícito** nas duas tabelas. O acesso efetivo atual vinha do
+   default privilege que esta migration revoga; sem o grant explícito, o caminho server-side passaria
+   a depender de um default que deixou de existir. Preserva exatamente o `arwdDxtm` anterior.
+3. **Policy de `organizations` usa `id in (subquery)`** em vez de `EXISTS` correlacionado: a subquery
+   é avaliada por statement e usa `organization_members_user_id_idx`, em vez de rodar por linha.
+4. **Nenhuma `SECURITY DEFINER` criada** — §6.4 não precisou ser acionado. A única `SECURITY DEFINER`
+   em `public` continua sendo `rls_auto_enable` (001A), com ACL preservada.
+5. **Comentário da migration corrigido após aplicação** para não afirmar um efeito que a prova
+   desmentiu (§9.1). Os statements executáveis não mudaram em nenhum caractere; nada foi reaplicado.
 
-| Prova | Fonte | Resultado |
-|---|---|---|
-| tabelas existem | `pg_class`/`pg_namespace` | `organizations`, `organization_members` OK |
-| RLS habilitado | `relrowsecurity` | `true` em ambas OK |
-| zero policies | `pg_policies` | 0 linhas OK |
-| ACL sem browser roles | `relacl` | `postgres`, `service_role` apenas OK |
-| `ensure_rls` ativo | `pg_event_trigger` | `evtenabled='O'` -> `rls_auto_enable()` OK |
-| ACL de `rls_auto_enable()` | `pg_proc.proacl` | `postgres=X`, `service_role=X` (001A preservada) OK |
-| nenhuma outra tabela de domínio | `pg_class` | 2 tabelas em `public` OK |
-| `pg_default_acl` inseguro | `pg_default_acl` | pendência confirmada — ver §4 |
-| Advisor security | `supabase db advisors --linked` | 2 INFO `rls_enabled_no_policy` + 1 WARN `auth_leaked_password_protection`; zero ERROR OK |
+## 4. Migration / DDL
 
-## 4. O bloqueio, em detalhe
+Statements, em três camadas:
 
-`pg_default_acl` em `public` tem entradas para **duas** roles criadoras, ambas concedendo a
-`anon`/`authenticated` — para tabelas (`r`), funções (`f`) e sequências (`S`):
+- default privileges de `postgres` em `public`: `revoke all` sobre tables/sequences/functions para
+  `anon`, `authenticated`, `service_role`; `revoke execute on functions from public`;
+- grants: `anon` sem nada; `authenticated` com `SELECT` nas duas tabelas; `service_role` com `all`
+  explícito;
+- policies `SELECT` `TO authenticated`: `organization_members_select_own`
+  (`user_id = (select auth.uid())`) e `organizations_select_by_active_membership`
+  (`status = 'ACTIVE'` + membership `ACTIVE` do próprio `auth.uid()`).
 
-- `postgres` — tratável;
-- `supabase_admin` — **não tratável pelo executor**.
+Zero policies de escrita. `supabase_admin` não foi tocado (correção §1.1).
+
+Rollback conceitual (não executado): `drop policy` nas duas policies, `revoke select ... from
+authenticated`, e `alter default privileges ... grant` restaurando o baseline anterior.
+
+## 5. Provas — default privileges e probe
 
 | Prova | Comando/fonte | Resultado |
 |---|---|---|
-| executor não é superuser | `pg_roles.rolsuper` p/ `postgres` | `false` |
-| executor não é membro de `supabase_admin` | `pg_has_role('postgres','supabase_admin','MEMBER')` | `false` |
-| tentativa real (transacional, rollback) | `alter default privileges for role supabase_admin in schema public revoke all on tables from anon, authenticated` | **`ERROR 42501: permission denied to change default privileges`** |
-| tratamento de `postgres` funciona | mesmo comando `for role postgres`, transacional | aceito; ACL resultante com `postgres`+`service_role` apenas, nos 3 objtypes (`r`,`f`,`S`) |
+| defaults de `postgres` em `public` | `pg_default_acl` pós-migration | `r`, `f`, `S` reduzidos a `{postgres=.../postgres}` — `anon`/`authenticated`/`service_role` fora OK |
+| defaults de `supabase_admin` | idem | inalterados, como decidido OK |
+| objetos `public` owned por `supabase_admin` | `pg_class`/`pg_get_userbyid` | **0** — gatilho de reabertura não acionado OK |
+| probe tabela (tx + rollback) | `create table` em `public` | RLS auto-habilitado por `ensure_rls`; `relacl` owner-only; `has_table_privilege` **false** para os 3 papéis OK |
+| probe sequência (tx + rollback) | `create sequence` | `has_sequence_privilege` **false** para os 3 papéis OK |
+| probe função `SECURITY INVOKER` (tx + rollback) | `create function` | `has_function_privilege` **true** para PUBLIC/anon/authenticated/service_role — **FALHA, ver §9.1** |
+| resíduo de probes | `pg_class`/`pg_proc`/`pg_namespace` like `probe_001d%` | 0 OK |
 
-### Fatos que o GPT precisa para decidir
+## 6. Prova §9 — isolamento real, 2 usuários × 2 organizações
 
-1. **A doc oficial vigente do Supabase trata exclusivamente `role postgres`.**
-   `guides/api/securing-your-api` -> "Default privileges for new tables and functions" prescreve
-   somente `alter default privileges for role postgres in schema public revoke ...` (tables,
-   functions, sequences, e `revoke execute on functions from public`). `supabase_admin` não é
-   mencionado em nenhum ponto do caminho oficial.
-2. **Nenhum objeto de `public` pertence a `supabase_admin`.** Levantamento por owner:
-   2 tabelas, 3 índices e 1 função — **todos** owned por `postgres`. O default ACL de
-   `supabase_admin` é, hoje, inerte: só se materializaria se a própria plataforma criasse objeto
-   em `public`, o que está fora do controle do repositório e não seria regressão nossa.
-3. **O gate humano não resolve.** O SQL Editor do Dashboard também executa como `postgres`.
-   Tratar `supabase_admin` exigiria escalonamento ao suporte Supabase — não é ação que o
-   fundador possa executar por conta própria.
+`node scripts/rls-isolation-001d.mjs` — usuários criados pela API admin, sessões/JWT reais por Auth,
+todas as leituras/escritas pela Data API com publishable key. A=`owner`, B=`member`.
 
-### Recomendação (decisão é do GPT)
+**21/21 provas aprovadas.** Sem PII no output (e-mails `@example.com` descartáveis, nunca impressos).
 
-Autorizar a 001D a tratar **apenas `role postgres`**, com `supabase_admin` registrado como risco
-residual aceito e documentado. Justificativa: é o caminho oficial vigente, cobre integralmente o
-vetor real (todas as migrations do projeto executam como `postgres`) e não deixa exposição
-alcançável. A alternativa — chamado ao suporte Supabase — bloquearia a fundação por um default
-ACL que nenhum objeto do projeto consome.
+| Grupo | Resultado |
+|---|---|
+| leitura de `organizations` | A e B leem só a própria; consulta direta à org alheia → 0 linhas |
+| leitura de `organization_members` | cada um lê só a própria linha; membership alheia → 0 linhas |
+| membership `INACTIVE` | A perde o tenant (0 linhas) e o recupera ao reativar |
+| org `INACTIVE` | não é lida nem pelo `owner` |
+| `anon` | `42501` em ambas as tabelas |
+| escrita `authenticated` | UPDATE/INSERT/DELETE em org própria e alheia → `42501`, inclusive para `owner` |
+| escalação de role | B (`member`) tentando virar `owner` → `42501` |
+| limpeza | memberships caem por CASCADE; orgs e usuários removidos; resíduo 0 |
 
-Não implementei essa opção por conta própria: §4.4 reservou a decisão ao GPT.
+Confirmação pós-limpeza: `organizations`=0, `organization_members`=0, `auth.users`=1 (o usuário real
+pré-existente), usuários `@example.com`=0, tabelas em `public`=2.
 
-## 5. Verificação adiantada do desenho §6 (não destrutiva, rollback)
+## 7. Advisor
 
-Para que a decisão do GPT não exija nova rodada exploratória, validei o desenho autorizado de
-policies em transação revertida, com fixtures efêmeras (2 usuários x 2 organizações),
-`SET LOCAL ROLE` + `request.jwt.claims`. **Isto não substitui a prova §9 com sessões/JWTs reais
-via Data API**, que pertence à execução.
+`supabase db advisors --linked --type security`: **os dois INFO `rls_enabled_no_policy` desapareceram**.
+Resta apenas o WARN pré-existente `auth_leaked_password_protection`. Zero ERROR, nenhum WARN novo.
+`ensure_rls` ativo; ACL de `rls_auto_enable()` segue `{postgres=X/postgres,service_role=X/postgres}`.
 
-| # | Prova | Resultado |
-|---|---|---|
-| 1 | A lê orgs | somente a própria OK |
-| 2 | A lê memberships | 1 linha (a própria) OK |
-| 3 | B lê orgs | somente a própria OK |
-| 4 | B lê memberships | 1 linha (a própria) OK |
-| 5 | A com membership `INACTIVE` | zero orgs OK |
-| 6 | `anon` lê `organizations` | NEGADO 42501 OK |
-| 7 | `owner` faz UPDATE na **própria** org | NEGADO 42501 OK |
-| 8 | A faz UPDATE na org **B** | NEGADO 42501 OK |
-
-Conclusões relevantes:
-
-- o desenho **funciona sem `SECURITY DEFINER`** — §6.4 não precisa ser acionado;
-- **não há recursão**: a policy de `organization_members` (`user_id = (select auth.uid())`) não
-  referencia `organizations`, então o `EXISTS` da policy de `organizations` termina;
-- `role='owner'` **não** concede bypass de escrita — a negação vem da ausência de grant (42501),
-  antes mesmo da camada RLS.
-
-Resíduo pós-rollback: `organizations`=0, `organization_members`=0, policies=0, usuários-probe=0,
-tabelas em `public`=2, ACL de `organizations` inalterada. **Zero resíduo.**
-
-## 6. Arquivos alterados
-
-- `rodadas/claude/RELATORIO_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md` (este arquivo);
-- `estado.md` (campos de execução -> bloqueio).
-
-Nenhum arquivo SQL, TS/JS ou de configuração criado ou alterado. Nenhuma migration criada.
-
-## 7. Migrations / DDL
-
-Nenhuma. `supabase/migrations/` permanece com as duas migrations promovidas.
-
-## 8. Configuração remota
-
-Nenhuma aplicada. Nenhuma pendente por ação do fundador — a pendência de `supabase_admin` é
-decisão de escopo do GPT, não gate humano executável (ver §4, fato 3).
-
-## 9. Gates
-
-Conforme §12 do mandato (nenhum TS/JS/lockfile alterado; mudança restrita a documentação):
+## 8. Gates
 
 | Gate | Resultado |
 |---|---|
 | `git diff --check` | limpo |
-| `npm ci` / lint / typecheck / test / build | não executados — nenhum código de runtime alterado |
-| provas SQL não destrutivas | executadas, ver §3/§4/§5 |
-| CI remota | roda sobre o head desta branch |
+| `npm run lint` | limpo |
+| `npm run typecheck` | limpo |
+| `npm ci` / `npm test` / `npm run build` | não executados localmente — nenhuma dependência, lockfile ou código de runtime alterado (§12); a CI roda a bateria completa sobre o head |
+| `supabase migration list --linked` | local == remoto nas três migrations |
+| provas SQL / Auth / Data API | §5, §6, §7 |
 
-## 10. Pendências, riscos e divergências
+Branch: `claude/rodada-001d-rls-tenancy-isolamento`. Um único push com implementação, prova,
+relatório e `estado.md`.
 
-1. **BLOQUEANTE — decisão do GPT:** tratar apenas `role postgres` (recomendado) ou escalar
-   `supabase_admin` ao suporte Supabase. Nada da 001D avança antes disso.
-2. Divergência correlata a ratificar: o mandato §4.1 permite manter `service_role` nos default
-   privileges; a doc oficial revoga também `service_role`. Segui o mandato na simulação
-   (mantive `service_role`), mas registro para decisão explícita do GPT.
-3. `auth_leaked_password_protection` permanece WARN pré-existente conhecido — não bloqueia.
-4. Nenhum arquivo não rastreado relevante ao mandato.
+## 9. Pendências, riscos e divergências
 
-## 11. Conclusão
+### 9.1 BLOQUEANTE — default EXECUTE de funções não é fechável por `ALTER DEFAULT PRIVILEGES`
 
-Baseline reconfirmado integralmente. A condição de parada prevista em §4.4 do mandato foi
-acionada com prova reproduzível (`42501`), e o executor parou **antes** de aplicar solução
-parcial, conforme instruído. Como verificação não destrutiva adicional, o desenho de policies §6
-está validado e dispensa `SECURITY DEFINER`.
+O critério de conclusão §14 ("default EXECUTE inseguro de futuras funções em `public` estiver
+corrigido") **não foi atingido**, e não o contornei.
 
-Banco remoto e repositório permanecem no estado promovido da 001C. Aguardando decisão do GPT
-sobre o escopo de `supabase_admin` para retomar a execução da 001D.
+Provado em três medições independentes, todas transacionais com rollback:
+
+1. em `public`, após a migration, uma função `SECURITY INVOKER` nova nasce com `proacl` **nulo** →
+   PUBLIC mantém EXECUTE, e `anon`/`authenticated`/`service_role` o herdam;
+2. o mesmo ocorre em um schema recém-criado, com o `ALTER` aplicado na mesma transação — não é
+   particularidade de `public` nem cache;
+3. **causa raiz:** num schema virgem, `REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC` não chega a criar a
+   linha em `pg_default_acl` (`count = 0`). O comando é aceito e descartado. Idem para
+   `REVOKE ALL ... FROM PUBLIC` e para a forma sem `FOR ROLE`. Já um `GRANT ... TO anon` no mesmo
+   schema grava normalmente (`{anon=X/postgres}`) e a função seguinte nasce com
+   `{=X/postgres,postgres=X/postgres,anon=X/postgres}` — ou seja, `defaclacl` funciona como delta
+   sobre o `acldefault()` built-in, e o EXECUTE de PUBLIC embutido nesse built-in é inexpressável
+   como remoção. PostgreSQL 17.6.
+
+O que **foi** atingido: os grants nominais de `anon`/`authenticated`/`service_role` saíram dos
+defaults de funções, e tabelas e sequências futuras estão efetivamente fechadas (§5).
+
+Divergência com a doc oficial do Supabase, que prescreve exatamente esse `revoke` como caminho de
+hardening. Não implementei mitigação alternativa (event trigger ou equivalente): seria arquitetura
+nova, fora do escopo autorizado.
+
+Mitigação já vigente e suficiente hoje: nenhuma função nova foi criada nesta rodada, e a única
+função em `public` (`rls_auto_enable`) teve a ACL fechada explicitamente na 001A. O padrão a manter —
+até decisão do GPT — é **REVOKE explícito na migration que cria cada função**.
+
+**Decisão pedida ao GPT:** aceitar esse padrão como regra permanente, autorizar um mecanismo
+automático em rodada própria, ou escalar ao Supabase.
+
+### 9.2 Demais
+
+- `supabase_admin`: default ACL residual segue existente e inerte; `count` de objetos `public` owned
+  por ele permanece 0 — condição da correção §1.2 mantida.
+- `auth_leaked_password_protection`: WARN conhecido de Auth, não bloqueia (correção §6).
+- `scripts/rls-isolation-001d.mjs` lê `.env.local` e usa a secret key apenas localmente,
+  fora do bundle. Nenhum segredo, token, e-mail ou PII em código, log, commit ou neste relatório.
+
+## 10. Conclusão
+
+Fundação de autorização multi-tenant fechada nas três camadas para as tabelas promovidas: defaults de
+`postgres` endurecidos, `authenticated` somente com SELECT, `anon` sem acesso, `service_role`
+explícito, duas policies de leitura não recursivas, e isolamento provado com sessões reais —
+21/21, incluindo negação de escrita para `owner` e limpeza sem resíduo. Advisor sem regressão e com
+os dois INFO da 001C resolvidos.
+
+Fica aberta a pendência §9.1, com causa raiz provada e sem solução improvisada.
+
+Parado aguardando auditoria GPT. Nenhuma etapa posterior iniciada.

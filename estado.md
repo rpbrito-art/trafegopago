@@ -34,7 +34,24 @@ Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 **RODADA 001D — DEFAULT PRIVILEGES + GRANTS + RLS + ISOLAMENTO**
 
-Status: **CORREÇÃO 001D-01 AUTORIZADA — RETOMADA PELO CLAUDE CODE**.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+
+Executada conforme a Correção 001D-01. Migration aplicada ao project ref autorizado:
+`20260823003128_harden_default_privileges_grants_and_rls_policies`.
+
+Entregue:
+
+- default privileges de `role postgres` em `public` endurecidos para tabelas, funções e sequências;
+- `authenticated` somente com SELECT nas duas tabelas; `anon` sem acesso; `service_role` preservado por grant explícito;
+- duas policies de leitura não recursivas, sem policy de escrita e sem `SECURITY DEFINER` nova;
+- prova real 2 usuários × 2 organizações via Auth/JWT/Data API — 21/21, com limpeza e zero resíduo;
+- Advisor sem regressão: os dois INFO `rls_enabled_no_policy` desapareceram.
+
+**Pendência bloqueante para decisão do GPT (relatório §9.1):** `ALTER DEFAULT PRIVILEGES ... REVOKE
+EXECUTE ON FUNCTIONS FROM PUBLIC` é aceito porém inefetivo neste servidor — não chega a criar linha
+em `pg_default_acl`. Funções futuras em `public` continuam executáveis por `anon`/`authenticated` por
+herança de PUBLIC. O critério §14 do mandato relativo a funções **não foi atingido** e não foi
+contornado. Tabelas e sequências futuras estão efetivamente fechadas.
 
 Mandato-base:
 
@@ -52,7 +69,8 @@ Relatório:
 
 `rodadas/claude/RELATORIO_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`
 
-`/proxima` está autorizado a **retomar somente a Rodada 001D conforme a Correção 001D-01**.
+A 001D está executada e entregue. `/proxima` **não** tem mandato executável enquanto o GPT não
+auditar esta entrega e decidir sobre a pendência do relatório §9.1.
 
 Nenhuma etapa posterior está autorizada.
 
