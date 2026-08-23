@@ -8,17 +8,23 @@ Próximo gatilho ordinário: fechamento da Fase 1, se a 001F for aprovada e prom
 
 Rodada vigente: **001F — Recovery de Acesso + Fechamento da Fase 1**.
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **CORREÇÃO 001F-01 AUTORIZADA — AGUARDANDO GATE HUMANO DO TEMPLATE E RETOMADA PELO CLAUDE CODE**.
 
-Mandato vigente:
+Mandato original:
 
 `rodadas/gpt/RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 
-Branch esperada:
+Correção vigente:
+
+`rodadas/gpt/CORRECAO_001F_01_AMR_RECOVERY_PROVIDER_REAL.md`
+
+Branch:
 
 `claude/rodada-001f-recovery-fechamento-fase1`
 
-`/proxima` está autorizado a executar **somente a Rodada 001F**.
+PR #7 está aberta como **draft de auditoria; não promover**.
+
+O estado incorporado continua 000–001E.
 
 Nenhuma Fase 2 ou rodada posterior está autorizada.
 
@@ -30,6 +36,7 @@ A fonte operacional é `estado.md`.
 2. `.gpt/PROJECT_PROMPT.md`
 3. `docs/00-governanca/ACTIVE_DOCS.md`
 4. `rodadas/gpt/RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
+5. `rodadas/gpt/CORRECAO_001F_01_AMR_RECOVERY_PROVIDER_REAL.md`
 
 ## GATE OBRIGATÓRIO — planejamento e auditoria de produto
 
@@ -49,20 +56,61 @@ Regras permanentes:
 - até harmonização completa, Growth Intelligence prevalece em modelo de crescimento, jornadas, orgânico/pago, conteúdo/criativo, personas/públicos, inteligência de mercado e simplicidade guiada;
 - essa prevalência não substitui contratos técnicos de segurança, tenancy ou autorização financeira.
 
-## READ SET específico da 001F
+## READ SET específico da retomada 001F-01
 
-Conforme o mandato:
+Ler:
 
-- `docs/00-governanca/HISTORY_SUMMARY.md`;
-- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` — integral;
-- `docs/01-produto/MVP_CANONICAL.md` — §§1–4, 19–21;
-- `docs/00-governanca/IMPLEMENTATION_ROADMAP.md` — Fase 1 e sequência imediata;
-- `docs/03-canonical/SECURITY_MODEL.md` — Auth/sessão/secrets aplicáveis;
-- código Auth/Supabase/Proxy atual listado no mandato;
-- `supabase/config.toml` e templates de Auth;
-- documentação oficial Supabase vigente para recovery SSR/PKCE, `resetPasswordForEmail`, `verifyOtp(recovery)`, `updateUser`, JWT `amr`, sessões, templates e redirect URLs.
+- `estado.md`;
+- `.gpt/PROJECT_PROMPT.md`;
+- este `ACTIVE_DOCS.md`;
+- mandato original 001F;
+- Correção 001F-01 integralmente;
+- `docs/00-governanca/HISTORY_SUMMARY.md` apenas como resumo promovido;
+- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` integralmente;
+- arquivos Auth/recovery alterados pela branch;
+- documentação oficial Supabase vigente para AMR, recovery, `updateUser`, `signOut`/scopes, sessões e templates.
 
 Não reler relatórios completos das Rodadas 000–001E salvo dependência concreta.
+
+## Decisão técnica da Correção 001F-01
+
+O Supabase hospedado atual mede:
+
+- password login → `amr=password`;
+- `verifyOtp(type=recovery)` → `amr=otp`;
+- signup OTP → `amr=otp`.
+
+Portanto o requisito literal antigo `amr=recovery` foi corrigido. O guard deve exigir claims verificadas + `sub`/`email` válidos + `otp|recovery` recente (máx. 15 min) + ausência total de `password`.
+
+Essa decisão evita introduzir hook, tabela, cookie assinado, secret novo ou admin API apenas para distinguir tipos que o provider atual colapsa em `otp`.
+
+Se futuramente magic link, phone OTP, invite, social login ou outro método forem habilitados, reabrir o guard antes da promoção dessa capacidade.
+
+## Sessões após reset
+
+Após `updateUser({ password })`:
+
+- usar `signOut({ scope: "global" })` explicitamente;
+- verificar erro;
+- provar que o refresh token de sessão anterior foi revogado;
+- access token já emitido pode permanecer válido até `exp`, conforme Supabase, e isso deve ser registrado como propriedade conhecida;
+- se refresh anterior continuar válido após logout global bem-sucedido, parar para GPT.
+
+## Gate humano ainda pendente
+
+O founder deve atualizar no Supabase hospedado o template **Reset Password / Recovery** usando o arquivo versionado:
+
+`supabase/templates/recovery.html`
+
+O link esperado é:
+
+`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`
+
+Sem `next`.
+
+Não usar `supabase config push` para essa configuração hosted.
+
+Depois da confirmação do gate humano, Claude pode retomar `/proxima` na mesma branch e executar somente a Correção 001F-01.
 
 ## Resumo histórico preferencial
 
@@ -108,14 +156,14 @@ Auditoria promovida mais recente:
 
 `rodadas/gpt/AUDITORIA_RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-## Corte da Rodada 001F
+## Corte da Rodada 001F permanece
 
 Dentro:
 
 - pedido de recuperação por e-mail sem enumeração;
 - template Recovery versionado + hosted efetivo;
 - confirmação SSR `type=recovery`;
-- nova senha somente com sessão `amr=recovery`;
+- nova senha sob o predicado corrigido da 001F-01;
 - prova real de senha antiga/nova, link one-time e sessões;
 - UX mínima para erro técnico de `/conta`;
 - harmonização proporcional de `MVP_CANONICAL.md` e roadmap para fechamento da Fase 1/Growth Intelligence.
@@ -131,15 +179,15 @@ Fora:
 - MFA/passkeys/social login;
 - infraestrutura de produção.
 
-A 001F **não cria migration/schema**. Se isso parecer necessário, parar e retornar ao GPT.
+A 001F **não cria migration/schema**.
 
 ## Condição de fechamento da Fase 1
 
 Claude não pode declarar a fase encerrada.
 
-Se a 001F entregar todos os gates, deve parar em:
+Se a 001F corrigida entregar todos os gates, deve parar em:
 
-`001F EXECUTADA — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO AUDITORIA GPT`
+`001F EXECUTADA COM CORREÇÃO 001F-01 — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO AUDITORIA GPT`
 
 Somente GPT, após auditoria independente e promoção, poderá declarar Fase 1 encerrada.
 
