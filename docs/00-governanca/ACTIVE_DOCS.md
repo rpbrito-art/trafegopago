@@ -13,109 +13,132 @@ Atualizado: 2026-08-23
 
 Estado incorporado: **000–002B**.
 
-Próxima etapa: **002C — Webhook Inbox + Observabilidade Base**.
+Rodada vigente: **002C — Webhook Inbox + Observabilidade Base**.
 
-Status: **PLANEJADA — NÃO AUTORIZADA**.
+Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
 
-Plano:
+Mandato:
 
-`rodadas/gpt/PLANO_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
+`rodadas/gpt/RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
 
-Não existe mandato executável 002C. `/proxima` deve parar.
+Branch esperada:
+
+`claude/rodada-002c-webhook-inbox-observabilidade`
+
+Relatório esperado:
+
+`rodadas/claude/RELATORIO_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
 
 Fonte operacional: `estado.md`.
 
-## HOT — ler agora
+## HOT — ler sempre na 002C
 
 1. `estado.md`
 2. `.gpt/PROJECT_PROMPT.md`
 3. `docs/00-governanca/ACTIVE_DOCS.md`
-4. `rodadas/gpt/PLANO_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md` somente para discussão/avaliação — não para executar
+4. `rodadas/gpt/RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
 
-## Histórico promovido relevante
+## Histórico promovido
 
 Resumo preferencial:
 
 `docs/00-governanca/HISTORY_SUMMARY.md`
 
-A reauditoria final da última rodada está em:
+A 002B está promovida. O resumo histórico pode ser reciclado junto do fechamento da 002C/Fase 2; não criar housekeeping isolado antes disso.
 
-`rodadas/gpt/REAUDITORIA_RODADA_002B_CORRECAO_01.md`
+## READ SET da 002C
 
-O `HISTORY_SUMMARY.md` pode incorporar 002B junto da próxima etapa substantiva; não criar housekeeping isolado só para alinhamento.
+Somente o conjunto indicado pelo mandato:
 
-## Baseline técnico a preservar
+- `HISTORY_SUMMARY.md`;
+- `IMPLEMENTATION_ROADMAP.md` — Fase 2;
+- `TECHNICAL_SPEC.md` — §§3.11, 19–25, 27, 30, 32–35;
+- `DATA_MODEL.md` — §§13, 14, 16–18;
+- `API_CONTRACTS.md` — §§10–13, 17–19;
+- `SECURITY_MODEL.md` — §§3–9, 13, 15, 19–25;
+- `.github/workflows/ci.yml`;
+- migrations/arquivos 002A/002B estritamente necessários ao baseline.
+
+Não reler relatórios antigos completos por ritual.
+
+## Escopo ativo 002C
+
+- criar `public.webhook_events` server-only com dedupe `provider + dedupe_hash`;
+- RLS habilitado, zero policies de browser, `anon`/`authenticated` sem acesso;
+- `service_role` somente SELECT/INSERT/UPDATE;
+- nenhuma função `SECURITY DEFINER` nova;
+- adicionar `audit_events_actor_user_id_idx` se o INFO de performance continuar no baseline;
+- adicionar `npm run typecheck:functions` como passo explícito da CI;
+- atualizar `SECURITY_MODEL.md` com matriz curta de secrets/runtime;
+- criar observabilidade read-only por agregados, sem payload/PII;
+- provar somente o delta e deixar a Fase 2 candidata a encerramento.
+
+## Regra de eficiência da rodada
+
+A 002C **não repete as 82 provas da 002B**.
+
+- baseline auditado 002B é reutilizado;
+- testes locais somente do delta;
+- não rerodar E2E remoto da fila/worker se eles não forem alterados;
+- suíte completa apenas na CI final;
+- preferir um único push final;
+- relatório Claude alvo <= 120 linhas;
+- divergência não funcional pequena deve ser classificada proporcionalmente na auditoria, não gerar microciclo automático.
+
+## Baseline a preservar
 
 - 8 migrations, última `20260823183513`;
-- `pgmq` 1.5.1 instalado;
-- fila durável `integration_jobs` vazia após cleanup;
+- `pgmq` 1.5.1 e fila `integration_jobs` vazia após cleanup;
 - Edge Function `integration-worker` ACTIVE versão 3;
-- 5 wrappers PGMQ `SECURITY DEFINER`, fila hardcoded, ACL apenas `postgres` + `service_role`;
-- helpers/validador `SECURITY INVOKER` com ACL mínima;
 - `pgmq_public` não exposto;
 - `pg_cron` não instalado;
 - 5 tabelas `public` com RLS;
-- `operations`/`audit_events` server-only;
-- zero fixtures e zero objetos `public` owned por `supabase_admin`;
-- auth/recovery/tenancy da Fase 1 preservados;
-- nenhuma Meta, Ads, IA, webhook público ou UI de integração iniciada.
+- `operations`/`audit_events` server-only e sem fixtures;
+- zero objetos `public` owned por `supabase_admin`;
+- Auth/recovery/tenancy da Fase 1 preservados;
+- nenhuma Meta, Ads, IA ou webhook público iniciados.
 
-## Ressalvas/dívidas abertas
+## Dívidas a tratar na 002C
 
-1. `typecheck:functions` ainda não roda no workflow CI; fechar na próxima rodada substantiva antes de ampliar Edge Functions.
-2. `audit_events.actor_user_id` sem índice próprio — INFO de performance.
-3. WARN `auth_leaked_password_protection` — hardening pré-produção.
-4. Gmail SMTP/App Password continuam apenas para desenvolvimento.
-5. default ACL residual de `supabase_admin` é aceito somente enquanto não houver objetos `public` owned por essa role.
+1. `typecheck:functions` ainda fora da CI — **obrigatório fechar**.
+2. `audit_events.actor_user_id` sem índice — fechar se o Advisor confirmar o baseline.
 
-## Planejamento 002C
+Continuam futuras/não bloqueantes:
 
-Objetivo proposto:
-
-- `webhook_events` como inbox durável server-only;
-- dedupe por provider/hash;
-- observabilidade mínima por contagens/status sem payload/PII;
-- estratégia canônica de secrets/runtime;
-- encadear `typecheck:functions` à CI;
-- possivelmente encerrar a Fase 2 na própria auditoria da 002C.
-
-Decisão planejada: **não criar cron ainda**. Não existe job de negócio periódico; scheduler entra quando houver necessidade real.
-
-## Regra de eficiência reforçada
-
-Para 002C e correções futuras:
-
-- provar o delta, não repetir capacidades já auditadas;
-- suíte completa em uma única CI final;
-- testes locais apenas novos/relevantes;
-- não rerodar o E2E remoto de 82 casos da 002B se fila/worker não forem alterados;
-- relatório Claude alvo <= 120 linhas;
-- o GPT deve absorver divergência não funcional auditável como ressalva quando for seguro, em vez de devolver microcorreção sem ganho real.
+- `auth_leaked_password_protection` antes de produção;
+- SMTP/domínio de produção;
+- default ACL residual de `supabase_admin` enquanto inerte.
 
 ## Gate de produto
 
-A 002C planejada é infraestrutura interna. Enquanto permanecer nesse escopo, não exige releitura de `GROWTH_INTELLIGENCE_CANONICAL.md`.
+A 002C é infraestrutura interna. Não exige nova leitura integral de Growth Intelligence enquanto permanecer sem endpoint Meta/OAuth/lead/conteúdo/mensuração/UX.
 
-Se o escopo tocar endpoint Meta, OAuth, conteúdo, Ads, leads, mensuração, IA ou UX, aplicar o gate integral de produto antes de planejar/autorizar.
+Se o escopo tocar qualquer um desses temas, parar antes de ampliar e retornar ao GPT.
 
-## Fora de escopo atual
+## Fora da 002C
 
-Não autorizado:
+Não executar:
 
-- 002C executável;
-- cron/pg_cron;
 - endpoint público de webhook;
 - Meta/Instagram/OAuth;
-- conteúdo/publicação;
-- Ads/aprovações;
+- challenge/assinatura;
+- lead fetch/CRM;
+- cron/pg_cron;
+- nova fila;
 - IA;
+- Ads;
+- conteúdo/publicação;
 - UI;
 - notificações;
 - provider pago;
 - novo segredo humano.
 
-## Próxima ação
+## Próxima ação autorizada
 
-O fundador avalia o plano 002C.
+Claude Code pode executar **somente a Rodada 002C** via `/proxima`.
 
-Somente autorização explícita permite ao GPT publicar o mandato executável e liberar `/proxima`.
+Fluxo esperado:
+
+`AUTORIZADA → EXECUÇÃO CLAUDE → PR/RELATÓRIO → 002C EXECUTADA — AGUARDANDO AUDITORIA GPT`
+
+Nenhuma rodada posterior está autorizada.
