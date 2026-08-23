@@ -11,7 +11,9 @@ Atualizado: 2026-08-23
 
 `estado operacional ≠ documentação canônica`
 
-O projeto deve minimizar dois custos: contexto lido por agentes e quantidade de arquivos alterados por rodada.
+`mutação externa ≠ trabalho que pode existir só localmente`
+
+O projeto deve minimizar dois custos: contexto lido por agentes e quantidade de arquivos alterados por rodada, sem permitir que Supabase/Meta/deploy avancem à frente do Git.
 
 ## 2. Responsabilidade única por documento
 
@@ -88,7 +90,39 @@ Não reler por ritual `PROJECT_PROMPT`, `ACTIVE_DOCS`, `HISTORY_SUMMARY`, relat�
 
 READ SET normal: até 5 documentos além de `estado + mandato`; preferir seções.
 
-## 5. Prova proporcional
+## 5. Durabilidade antes de mutação externa
+
+Uma rodada nunca deve deixar Supabase, Meta, deploy ou outro sistema compartilhado mais avançado que o Git.
+
+Antes da primeira mutação externa:
+
+1. a branch exata da rodada já existe localmente e em `origin`;
+2. o executor confirmou que não está em `main`/detached HEAD;
+3. os artefatos responsáveis pela mutação já estão versionáveis na branch;
+4. **migration/DDL precisa estar commitada e publicada antes de ser aplicada remotamente**;
+5. deploy/configuração externa relevante deve ter seu código/config commitado antes quando tecnicamente possível.
+
+É permitido um **checkpoint pré-mutação agrupado**, seguido de um handoff final. Isso é preferível a dezenas de commits pequenos e elimina o risco de “remoto avançou, Git ficou para trás”.
+
+Não criar commit por teste/comando. Agrupar tudo que puder ser versionado com segurança antes da mutação.
+
+## 6. Handoff como gate técnico
+
+Handoff não é documentação opcional no fim da sessão. É condição de conclusão.
+
+Antes de declarar a rodada terminada, Claude deve confirmar:
+
+- branch correta existe em `origin`;
+- HEAD local está publicado e coincide com a branch remota;
+- relatório esperado está no commit remoto;
+- `estado.md` da branch mostra o estado final de execução;
+- PR para `main` existe quando previsto e aponta para o HEAD correto;
+- CI exigida está verde, salvo blocker explicitamente previsto;
+- working tree não contém trabalho autorizado esquecido.
+
+Se qualquer item falhar, a rodada continua **EM EXECUÇÃO/BLOQUEADA**. O executor corrige o handoff sem repetir provas já válidas.
+
+## 7. Prova proporcional
 
 Estado promovido é baseline.
 
@@ -99,7 +133,7 @@ Estado promovido é baseline.
 
 Suíte completa uma única vez na CI final por padrão.
 
-## 6. CI sem duplicação por evento
+## 8. CI sem duplicação por evento
 
 A suíte completa não deve rodar simultaneamente por `push` de branch e `pull_request` do mesmo commit.
 
@@ -108,9 +142,9 @@ Padrão:
 - `pull_request` para `main`: valida branch antes de promoção;
 - `push` apenas em `main`: valida estado já incorporado.
 
-Branches de execução não disparam CI completa só pelo push quando ainda não há PR.
+Branches de execução não disparam CI completa só pelo push quando ainda não há PR. Isso permite publicar o checkpoint pré-mutação sem duplicar a suíte.
 
-## 7. Relatórios
+## 9. Relatórios
 
 - rodada normal: ≤100 linhas/~10 KB;
 - microcorreção: ≤60 linhas/~6 KB;
@@ -118,7 +152,7 @@ Branches de execução não disparam CI completa só pelo push quando ainda não
 
 Não copiar logs, código, SQL ou documentação oficial quando o GPT pode consultar a fonte.
 
-## 8. Gatilhos de reciclagem
+## 10. Gatilhos de reciclagem
 
 Reciclar dentro de etapa substantiva quando:
 
@@ -130,6 +164,6 @@ Reciclar dentro de etapa substantiva quando:
 
 Não criar rodada só para housekeeping.
 
-## 9. Resultado esperado
+## 11. Resultado esperado
 
-O custo de documentação por rodada permanece quase constante, mesmo que o repositório acumule anos de história.
+O custo de documentação por rodada permanece quase constante, e qualquer mudança externa relevante sempre possui uma trilha durável no Git antes de acontecer.

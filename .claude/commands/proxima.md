@@ -59,9 +59,19 @@ Depois leia:
 
 Não varra `rodadas/`, `docs/02-research/`, histórico ou todos os canônicos “por segurança”.
 
-Se o mandato pedir mais de 7 documentos obrigatórios, registre a justificativa existente; não amplie ainda mais sem necessidade.
+## 4. Preparar a branch antes de executar
 
-## 4. Executar o delta
+Antes de implementação/mutação:
+
+1. obtenha de `estado.md` a branch exata esperada;
+2. crie ou mude para essa branch sem destruir trabalho existente;
+3. confirme que não está em `main` nem detached HEAD;
+4. se for retomada/handoff incompleto, preserve o working tree e reconcilie sem `reset --hard`/`clean`;
+5. publique a branch em `origin` **antes da primeira mutação externa**.
+
+A existência da branch remota é checkpoint de continuidade; como a CI completa roda pelo PR, esse push inicial não deve gerar a bateria completa por si só.
+
+## 5. Executar o delta
 
 Execute somente o escopo autorizado e siga o orçamento de prova do mandato/`CLAUDE.md`.
 
@@ -76,9 +86,21 @@ Princípios:
 - agrupar consultas remotas;
 - não ampliar permissões para facilitar teste.
 
-Quando houver Supabase, confirme o project ref indicado por `estado.md` antes de mutar. Migration aplicada não pode ser reescrita.
+### Trava antes de mutação externa
 
-## 5. Gate humano
+Antes de alterar Supabase remoto, Meta, deploy ou outro estado compartilhado:
+
+- confirme branch correta já existente em `origin`;
+- identifique os arquivos que causam a mutação;
+- para migration/DDL, **o arquivo exato deve estar commitado e publicado na branch antes de aplicar remotamente**;
+- para deploy/configuração externa relevante, versione primeiro o código/config correspondente quando tecnicamente possível;
+- agrupe artefatos em um único checkpoint pré-mutação quando seguro.
+
+Nunca aplicar migration que exista apenas localmente sem commit. Migration aplicada não pode ser reescrita, renomeada ou “consertada” por `migration repair` sem mandato explícito.
+
+Se uma mutação externa exigir algo que não pode ser versionado antes com segurança, pare e reporte ao GPT.
+
+## 6. Gate humano
 
 Se indispensável e resolvível na sessão:
 
@@ -91,18 +113,30 @@ Se indispensável e resolvível na sessão:
 
 Não peça segredo no chat.
 
-## 6. Handoff
+## 7. Handoff — gate obrigatório de conclusão
 
-Ao concluir:
+Ao concluir o delta:
 
-- execute somente os gates previstos pelo delta;
-- deixe a suíte completa para a CI final, salvo exigência explícita diferente;
-- produza relatório compacto no caminho de `estado.md`;
-- rodada normal: ≤100 linhas/~10 KB; microcorreção: ≤60 linhas/~6 KB;
-- atualize `estado.md` apenas com fatos de execução;
-- prefira um único commit/push final;
-- abra PR draft se o mandato exigir;
-- pare em `EXECUTADA — AGUARDANDO AUDITORIA GPT`.
+- produza relatório compacto no caminho esperado;
+- atualize `estado.md` da branch apenas com fatos de execução;
+- faça commit/push final;
+- abra PR para `main` se previsto;
+- aguarde a CI exigida pelo mandato.
+
+**Antes de dizer que terminou, prove os 8 itens:**
+
+1. branch atual = branch esperada;
+2. `origin/<branch>` existe;
+3. `HEAD` local = `HEAD` remoto da branch;
+4. relatório esperado existe no commit remoto;
+5. `estado.md` remoto indica `EXECUTADA — AGUARDANDO AUDITORIA GPT` ou estado final previsto;
+6. PR existe, aponta para `main` e usa o `HEAD` correto quando exigido;
+7. CI exigida está verde, salvo blocker explicitamente permitido;
+8. `git status -sb` não mostra trabalho autorizado esquecido.
+
+Se algum item falhar, **não declare conclusão**. Corrija o handoff na própria sessão; não repita testes já válidos sem motivo.
+
+Rodada normal: relatório ≤100 linhas/~10 KB. Microcorreção: ≤60 linhas/~6 KB.
 
 Nunca autoaprove, autopromova ou inicie a rodada seguinte.
 
@@ -110,7 +144,7 @@ Nunca autoaprove, autopromova ou inicie a rodada seguinte.
 
 ### Com autorização
 
-`preflight → estado → mandato → READ SET obrigatório → executar delta → provas proporcionais → CI final → relatório compacto → handoff GPT`
+`preflight → estado → mandato → READ SET → branch remota → implementar → checkpoint pré-mutação quando necessário → mutações/provas → relatório → commit/push → PR/CI → verificar handoff → auditoria GPT`
 
 ### Sem autorização
 
