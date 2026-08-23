@@ -33,7 +33,6 @@ PR: #1. Merge: `9f0f6aaa205fe5b774faab92c34e8373e4ef7d6c`.
 
 Resultado promovido:
 
-- baseline remoto inventariado;
 - migration `20260822212544_harden_rls_auto_enable_privileges.sql` aplicada e versionada;
 - `EXECUTE` de `public.rls_auto_enable()` removido de `PUBLIC`, `anon` e `authenticated`;
 - `postgres` e `service_role` permanecem com EXECUTE;
@@ -50,30 +49,52 @@ PR: #2. Merge: `fb9bc62e6cf25e03e39255bff7042e330a80e1d6`.
 Resultado promovido:
 
 - autenticação real por e-mail/senha com Supabase Auth;
-- confirmação de e-mail obrigatória;
-- endpoint SSR `/auth/confirm` usando `token_hash` + `verifyOtp`;
-- template de confirmação versionado e remoto com `type=email`;
+- confirmação SSR `/auth/confirm` usando `token_hash` + `verifyOtp`;
+- template de confirmação versionado/remoto com `type=email`;
 - sessão SSR em cookies com `@supabase/ssr`;
-- Next.js 16 `proxy.ts` para refresh/propagação da sessão;
-- autorização mínima de página protegida com `getClaims()` server-side;
+- Next.js 16 `proxy.ts` para refresh/propagação;
+- página protegida validando identidade com `getClaims()` server-side;
 - proteção contra open redirect;
-- cadastro, confirmação, logout, bloqueio pós-logout e login posterior validados por passagem E2E humana 9/9;
-- smoke de integração real mantido como prova complementar, sem ser rotulado como E2E de UI;
-- SMTP Brevo Free configurado apenas para desenvolvimento, permitindo customização de template no plano Free;
-- nenhuma tabela, organization, membership ou RLS de domínio antecipada;
-- CI final verde no head auditado `ea886def6face318e032f2ae940a7044a1ce0552`.
+- fluxo cadastro → e-mail → confirmação → `/conta` → logout → bloqueio → login posterior → `/conta` validado 9/9;
+- SMTP Brevo Free configurado somente para desenvolvimento;
+- nenhuma tabela/tenancy antecipada.
 
 Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001B_AUTH_REAL.md`
 Relatório original: `rodadas/claude/RELATORIO_RODADA_001B_AUTH_REAL.md`
 PR: #3. Merge: `4819875007784f9bc016abd57202fe1fe9a7063b`.
 
-Pendências que sobrevivem:
+## Rodada 001C — Organizations + Membership
+
+Resultado promovido:
+
+- migration `20260822234354_create_organizations_and_members.sql` aplicada e versionada;
+- criadas somente `public.organizations` e `public.organization_members`;
+- PKs, FKs, CHECKs, defaults e índice por `organization_members.user_id` conforme contrato;
+- RLS explicitamente habilitado nas duas tabelas;
+- zero policies deliberadamente, deixando autorização para a 001D;
+- `anon` e `authenticated` sem SELECT/INSERT/UPDATE/DELETE nas duas tabelas atuais;
+- `service_role` preservado para acesso server-side;
+- constraints e cascades provados transacionalmente sem resíduos;
+- `ensure_rls` permaneceu ativo;
+- nenhuma função ou trigger de domínio criada;
+- CI final verde.
+
+Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001C_ORGANIZATIONS_MEMBERSHIP.md`
+Relatório original: `rodadas/claude/RELATORIO_RODADA_001C_ORGANIZATIONS_MEMBERSHIP.md`
+PR: #4. Merge: `a6b2e912f8d54005d1decf69cb4e4bf8335d31ec`.
+
+Achado importante incorporado ao próximo gate:
+
+- `pg_default_acl` ainda concede privilégios automáticos de novas tabelas `public` a `anon`/`authenticated` para roles criadoras observadas; as tabelas atuais foram fechadas por REVOKE escopado, mas o default precisa ser corrigido antes de ampliar o schema.
+
+## Pendências transversais ainda abertas
 
 - `auth_leaked_password_protection` desabilitado: hardening antes de clientes reais/produção;
 - SMTP de produção/domínio autenticado ainda não definido;
-- default privileges para futuras funções próprias antes de função sensível em schema exposto;
-- rate limiting próprio quando necessário além do provider.
+- rate limiting próprio quando necessário além do provider;
+- políticas de escrita/gestão de Organizations/Membership ainda não definidas;
+- `business_profiles` ainda não criado.
 
 ## Estado após esta reciclagem
 
-Auth real está promovido. A próxima direção planejada é **Organizations + Membership**, seguida da fundação de RLS/isolamento de domínio. Não é necessário reler relatórios completos das Rodadas 000/001A/001B por padrão; consultar este resumo e abrir evidência histórica apenas quando surgir dependência concreta.
+Auth e schema mínimo de tenancy estão promovidos. A etapa corrente passa a fechar **default privileges, grants mínimos e RLS de leitura/isolamento** sobre `organizations` e `organization_members`. Não é necessário reler relatórios completos das Rodadas 000/001A/001B/001C por padrão; consultar este resumo e abrir evidência histórica apenas quando surgir dependência concreta.
