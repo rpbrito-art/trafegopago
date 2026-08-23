@@ -29,6 +29,39 @@ A fonte operacional é `estado.md`.
 3. `docs/00-governanca/ACTIVE_DOCS.md`
 4. `rodadas/gpt/RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
+## GATE OBRIGATÓRIO — planejamento e auditoria de produto
+
+Antes de formular, refinar, dividir, autorizar ou auditar qualquer rodada que afete produto/experiência, o GPT deve ler **integralmente**:
+
+`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
+
+Isso é obrigatório, e não pode ser substituído por referência curta, resumo de chat ou trecho do `MVP_CANONICAL.md`.
+
+Considere a rodada afetada por produto/experiência se tocar em qualquer destes temas:
+
+- onboarding ou configuração do negócio;
+- jornada/funil ou definição do evento de sucesso;
+- conteúdo, publicação ou criativo;
+- orgânico ou mídia paga;
+- Meta/Instagram;
+- oportunidades, experimentos ou recomendações;
+- personas, públicos, segmentação ou targeting;
+- leads, conversões ou mensuração;
+- inteligência, insights ou IA aplicada ao comportamento de mercado;
+- UX, navegação, configuração ou simplificação/complexidade da operação.
+
+Se houver dúvida, tratar como relevante e ler o documento.
+
+Regras de execução/auditoria:
+
+- todo mandato relevante deve listar `GROWTH_INTELLIGENCE_CANONICAL.md` explicitamente no READ SET;
+- o Claude deve lê-lo antes de implementar o escopo relevante;
+- a auditoria GPT deve verificar aderência; contradição material é bloqueante salvo decisão explícita do fundador que atualize o contrato canônico;
+- até a harmonização dos canônicos antigos, o Growth Intelligence prevalece em modelo de crescimento, jornadas, orgânico/pago, conteúdo/criativo, personas/públicos, inteligência de mercado e simplicidade guiada;
+- essa prevalência não substitui contratos técnicos de segurança, tenancy, autorização financeira ou outros invariantes de seus próprios canônicos.
+
+**Transição 001E:** este gate não amplia o mandato já autorizado da 001E e não deve gerar retrabalho nela. Vincula planejamento futuro e harmonizações posteriores à auditoria da 001E.
+
 ## READ SET específico da 001E
 
 Conforme mandato:
@@ -69,7 +102,7 @@ O resumo incorpora 000–001D.
 ### Produto
 
 - `docs/01-produto/MVP_CANONICAL.md`
-- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` — modelo de crescimento/inteligência e lei detalhada de simplicidade; vincula planejamento futuro sem ampliar a 001E.
+- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` — modelo de crescimento/inteligência e lei detalhada de simplicidade; leitura integral obrigatória no planejamento/auditoria de rodadas relevantes.
 
 ### Arquitetura
 
