@@ -2,7 +2,6 @@
 
 Atualizado: 2026-08-23
 Última reciclagem: fechamento da Fase 1 após promoção da 001F.
-Próximo gatilho ordinário: cinco rodadas substantivas promovidas desde essa reciclagem, fechamento da próxima fase macro ou outro gatilho de `DOCUMENTATION_LIFECYCLE.md`.
 
 ## Estado corrente
 
@@ -10,151 +9,113 @@ Próximo gatilho ordinário: cinco rodadas substantivas promovidas desde essa re
 
 **Fase 2 — Operations, Audit, Queues e Segurança Base: EM ANDAMENTO.**
 
-Última promoção: **002A — Operations + Audit Foundation**.
+Última promoção: **002B — Queue + Worker Foundation**, com Correção 002B-01.
 
-Rodada vigente: **002B — Queue + Worker Foundation**.
+Estado incorporado: **000–002B**.
 
-Status: **BLOQUEADA EM AUDITORIA — CORREÇÃO 002B-01 AUTORIZADA**.
+Próxima etapa: **002C — Webhook Inbox + Observabilidade Base**.
 
-Mandato-base:
+Status: **PLANEJADA — NÃO AUTORIZADA**.
 
-`rodadas/gpt/RODADA_002B_QUEUE_WORKER_FOUNDATION.md`
+Plano:
 
-Auditoria vigente:
+`rodadas/gpt/PLANO_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
 
-`rodadas/gpt/AUDITORIA_RODADA_002B_QUEUE_WORKER_FOUNDATION.md`
-
-Correção vigente:
-
-`rodadas/gpt/CORRECAO_RODADA_002B_01_CONTRATO_POISON_EDGE_GATE.md`
-
-Branch:
-
-`claude/rodada-002b-queue-worker-foundation`
-
-PR #9 deve permanecer draft.
-
-O estado incorporado continua 000–002A até reauditoria e promoção real da 002B.
+Não existe mandato executável 002C. `/proxima` deve parar.
 
 Fonte operacional: `estado.md`.
 
-## HOT — ler sempre na retomada 002B-01
+## HOT — ler agora
 
 1. `estado.md`
 2. `.gpt/PROJECT_PROMPT.md`
 3. `docs/00-governanca/ACTIVE_DOCS.md`
-4. `rodadas/gpt/RODADA_002B_QUEUE_WORKER_FOUNDATION.md`
-5. `rodadas/gpt/AUDITORIA_RODADA_002B_QUEUE_WORKER_FOUNDATION.md`
-6. `rodadas/gpt/CORRECAO_RODADA_002B_01_CONTRATO_POISON_EDGE_GATE.md`
+4. `rodadas/gpt/PLANO_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md` somente para discussão/avaliação — não para executar
 
-## Resumo histórico preferencial
+## Histórico promovido relevante
+
+Resumo preferencial:
 
 `docs/00-governanca/HISTORY_SUMMARY.md`
 
-O resumo incorpora somente estado promovido 000–002A. Não reler relatórios antigos completos por ritual.
+A reauditoria final da última rodada está em:
 
-## READ SET específico da Correção 002B-01
+`rodadas/gpt/REAUDITORIA_RODADA_002B_CORRECAO_01.md`
 
-Além dos HOT, ler somente o necessário para os três bloqueios:
+O `HISTORY_SUMMARY.md` pode incorporar 002B junto da próxima etapa substantiva; não criar housekeeping isolado só para alinhamento.
 
-- `src/lib/operations/contracts.ts`;
-- `src/lib/operations/job-message.ts` + testes;
-- `supabase/migrations/20260823180000_create_queue_and_worker_foundation.sql`;
-- `supabase/functions/integration-worker/index.ts`;
-- `scripts/queue-worker-002b.mjs`;
-- `scripts/sql/queue-worker-002b-catalog.sql`;
-- `supabase/config.toml`;
-- documentação Supabase vigente de Edge Function `auth: 'secret'`, secret keys, `deno check` e pinning de dependências.
+## Baseline técnico a preservar
 
-Abrir canônicos adicionais apenas se surgir dependência concreta. O contrato técnico da 002B continua sendo o mandato-base + correção.
+- 8 migrations, última `20260823183513`;
+- `pgmq` 1.5.1 instalado;
+- fila durável `integration_jobs` vazia após cleanup;
+- Edge Function `integration-worker` ACTIVE versão 3;
+- 5 wrappers PGMQ `SECURITY DEFINER`, fila hardcoded, ACL apenas `postgres` + `service_role`;
+- helpers/validador `SECURITY INVOKER` com ACL mínima;
+- `pgmq_public` não exposto;
+- `pg_cron` não instalado;
+- 5 tabelas `public` com RLS;
+- `operations`/`audit_events` server-only;
+- zero fixtures e zero objetos `public` owned por `supabase_admin`;
+- auth/recovery/tenancy da Fase 1 preservados;
+- nenhuma Meta, Ads, IA, webhook público ou UI de integração iniciada.
+
+## Ressalvas/dívidas abertas
+
+1. `typecheck:functions` ainda não roda no workflow CI; fechar na próxima rodada substantiva antes de ampliar Edge Functions.
+2. `audit_events.actor_user_id` sem índice próprio — INFO de performance.
+3. WARN `auth_leaked_password_protection` — hardening pré-produção.
+4. Gmail SMTP/App Password continuam apenas para desenvolvimento.
+5. default ACL residual de `supabase_admin` é aceito somente enquanto não houver objetos `public` owned por essa role.
+
+## Planejamento 002C
+
+Objetivo proposto:
+
+- `webhook_events` como inbox durável server-only;
+- dedupe por provider/hash;
+- observabilidade mínima por contagens/status sem payload/PII;
+- estratégia canônica de secrets/runtime;
+- encadear `typecheck:functions` à CI;
+- possivelmente encerrar a Fase 2 na própria auditoria da 002C.
+
+Decisão planejada: **não criar cron ainda**. Não existe job de negócio periódico; scheduler entra quando houver necessidade real.
+
+## Regra de eficiência reforçada
+
+Para 002C e correções futuras:
+
+- provar o delta, não repetir capacidades já auditadas;
+- suíte completa em uma única CI final;
+- testes locais apenas novos/relevantes;
+- não rerodar o E2E remoto de 82 casos da 002B se fila/worker não forem alterados;
+- relatório Claude alvo <= 120 linhas;
+- o GPT deve absorver divergência não funcional auditável como ressalva quando for seguro, em vez de devolver microcorreção sem ganho real.
 
 ## Gate de produto
 
-A 002B-01 permanece infraestrutura interna e não altera produto/UX. Portanto não exige nova leitura de Growth Intelligence enquanto não houver proposta de produto.
+A 002C planejada é infraestrutura interna. Enquanto permanecer nesse escopo, não exige releitura de `GROWTH_INTELLIGENCE_CANONICAL.md`.
 
-Se surgir proposta que afete experiência, onboarding, conteúdo, Meta, anúncios, leads, mensuração ou IA, parar e aplicar o gate integral de `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` antes de planejar/implementar.
+Se o escopo tocar endpoint Meta, OAuth, conteúdo, Ads, leads, mensuração, IA ou UX, aplicar o gate integral de produto antes de planejar/autorizar.
 
-Princípio permanente: **a complexidade pertence ao sistema, não ao usuário**.
+## Fora de escopo atual
 
-## O que já foi auditado e não deve ser redesenhado
+Não autorizado:
 
-Preservar:
-
-- Supabase Queues / `pgmq` como provider;
-- fila física única `integration_jobs`;
-- fila durável/logged;
-- `pgmq_public` fora da Data API;
-- ausência de cron nesta rodada;
-- ausência de `public.integration_jobs`;
-- cinco wrappers de fila com nome hardcoded, sem SQL dinâmico, `SECURITY DEFINER`, `search_path=''` e EXECUTE somente `service_role`;
-- helpers de `operations` como `SECURITY INVOKER`;
-- claim por UPDATE condicional;
-- identidade `operation_id + organization_id + correlation_id`;
-- stale 900 > visibility 60;
-- ordem `concluir operation → remover mensagem`;
-- lote pequeno em série;
-- `withSupabase({ auth: 'secret' })`;
-- nenhuma credencial humana nova.
-
-## Bloqueios ativos a corrigir
-
-1. Poison interno não pode usar `UNKNOWN_UPSTREAM`; usar `last_error_class = null` e tratar erro/retorno do `fail_operation` antes de arquivar.
-2. Validador SQL precisa impor tipos JSON estritos e equivalentes ao TypeScript; migration corretiva nova leva 7 → 8, sem reescrever migration aplicada.
-3. Edge Function precisa de dependência exata pinada, `deno check`, redeploy e provas de auth com `apikey`.
-
-## Fora da Correção 002B-01
-
-Não executar:
-
-- 002C;
-- cron/scheduler;
-- nova fila;
-- `public.integration_jobs`;
-- webhook;
+- 002C executável;
+- cron/pg_cron;
+- endpoint público de webhook;
 - Meta/Instagram/OAuth;
 - conteúdo/publicação;
 - Ads/aprovações;
 - IA;
-- notificações;
 - UI;
-- nova taxonomia de erro;
-- `migration repair`;
-- reescrita de migration já aplicada;
-- novo provider/segredo humano.
+- notificações;
+- provider pago;
+- novo segredo humano.
 
-## Gate humano
+## Próxima ação
 
-**Nenhum gate humano esperado.**
+O fundador avalia o plano 002C.
 
-Se `deno check` não puder ser executado por mecanismo reproduzível já disponível, Claude deve investigar primeiro o caminho oficial do runtime/CLI e, se realmente exigir intervenção nova do fundador, parar para GPT em vez de improvisar instalação ou pedir segredo.
-
-## Próxima ação autorizada
-
-Claude Code pode executar **somente a Correção 002B-01** via `/proxima`, na branch existente.
-
-Fluxo esperado:
-
-`002B BLOQUEADA → CORREÇÃO 002B-01 → PR #9 draft / relatório atualizado → AGUARDANDO REAUDITORIA GPT`
-
-Nenhuma 002C está autorizada.
-
-## Canônicos ativos por área
-
-### Governança
-
-- `docs/00-governanca/PROJECT_CHARTER.md`
-- `docs/00-governanca/IMPLEMENTATION_ROADMAP.md`
-- `docs/00-governanca/DOCUMENTATION_LIFECYCLE.md`
-
-### Produto
-
-- `docs/01-produto/MVP_CANONICAL.md`
-- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
-
-### Arquitetura
-
-- `docs/03-canonical/TECHNICAL_SPEC.md`
-- `docs/03-canonical/DATA_MODEL.md`
-- `docs/03-canonical/API_CONTRACTS.md`
-- `docs/03-canonical/SECURITY_MODEL.md`
-- `docs/03-canonical/AI_ARCHITECTURE.md`
+Somente autorização explícita permite ao GPT publicar o mandato executável e liberar `/proxima`.
