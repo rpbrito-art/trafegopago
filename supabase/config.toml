@@ -425,3 +425,12 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# Worker interno da fila `integration_jobs` (Rodada 002B).
+#
+# `verify_jwt = false` porque o chamador apresenta uma **secret key**, que não é
+# JWT — a verificação da plataforma rejeitaria a chamada antes do handler. A
+# autorização real acontece dentro da função, via `withSupabase({auth:'secret'})`,
+# e não há caminho anônimo.
+[functions.integration-worker]
+verify_jwt = false

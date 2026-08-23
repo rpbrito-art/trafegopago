@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Ver a nota em tsconfig.json: outro runtime, outras regras de módulo.
+    "supabase/functions/**",
   ]),
 ]);
 

@@ -30,5 +30,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    // Edge Functions rodam em Deno, não no runtime do Next: usam specifiers
+    // `npm:` e imports com extensão `.ts`, que o tsc desta aplicação não
+    // resolve. A validação delas é o bundle do `supabase functions deploy`.
+    "supabase/functions"
+  ]
 }

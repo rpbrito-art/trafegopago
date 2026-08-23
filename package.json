@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:auth": "node scripts/smoke-auth.mjs",
-    "smoke:recovery": "node scripts/recovery-001f.mjs"
+    "smoke:recovery": "node scripts/recovery-001f.mjs",
+    "typecheck:functions": "deno check --config supabase/functions/deno.json supabase/functions/integration-worker/index.ts"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.4",
@@ -30,6 +31,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "deno": "^2.9.5",
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
     "tailwindcss": "^4",

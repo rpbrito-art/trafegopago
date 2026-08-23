@@ -1,0 +1,4 @@
+{
+  "//": "Configuração do runtime Deno das Edge Functions. Existe para que `deno check` resolva o specifier `npm:` da mesma forma que o bundle do deploy — sem isso o gate de typecheck não roda de forma reprodutível (Correção 002B-01 §5.2).",
+  "nodeModulesDir": "auto"
+}
