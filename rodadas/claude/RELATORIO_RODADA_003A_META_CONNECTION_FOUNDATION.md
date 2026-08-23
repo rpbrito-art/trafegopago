@@ -1,16 +1,62 @@
-# RELATÓRIO — RODADA 003A — META CONNECTION FOUNDATION
+# RELATÓRIO — RODADA 003A + CORREÇÃO 003A-02 — META CONNECTION FOUNDATION
 
 Executor: Claude Code · 2026-08-23
 Branch: `claude/rodada-003a-meta-connection-foundation`
 
-Status: **003A EXECUTADA — AGUARDANDO AUDITORIA GPT**
+Status: **003A + CORREÇÃO 003A-02 EXECUTADAS — AGUARDANDO REAUDITORIA GPT**
 
-> ⚠️ **O E2E real de conexão/desconexão Meta NÃO foi realizado.** O gate humano do
-> mandato §5 segue aberto: o app Meta não existe e o `.env.local` não tem
-> `META_APP_ID`/`META_APP_SECRET`/`META_LOGIN_CONFIG_ID`. Pelo critério §8 do mandato
-> original a rodada **não** está completa — ver "Pendência bloqueante".
+> ⚠️ **O gate Meta real NÃO foi concluído — bloqueio externo, não técnico.** O caminho
+> de autorização autorizado pelo mandato §2 está indisponível nesta conta. Detalhe em
+> "Bloqueio do gate". Os seis bloqueios de código da auditoria estão fechados e provados.
 
-## A falha de handoff que esta correção fecha
+## Delta da Correção 003A-02 — os seis bloqueios de código
+
+| # | bloqueio | correção |
+| --- | --- | --- |
+| 3.1 | desconexão exigia só conhecer o UUID da organização | membership ACTIVE reconferida **antes** de ler ou revogar |
+| 3.2 | callback não reconferia membership | recusa antes de chamar a Meta e antes de persistir |
+| 3.3 | callback negado não consumia o `state` | consumo atômico **antes** de decidir o desfecho |
+| 3.4 | `upsert(onConflict)` contra índice único **parcial** | `begin_meta_connection`: atualiza a viva ou insere nova |
+| 3.5 | token guardado + falha ao marcar `ACTIVE` devolvia sucesso | `activate_meta_connection`: Vault + status na mesma transação |
+| 3.6 | desconexão limpava só o local | `DELETE /{user-id}/permissions` **antes** da limpeza; falha indeterminada não vira sucesso |
+
+O 3.3 era o mais sutil: bastava forjar `error=` no callback para preservar o `state` e
+reapresentá-lo depois. O 3.4 tinha consequência dupla — `ON CONFLICT (organization_id)` não
+cobre o índice parcial e, se cobrisse, colidiria com linhas terminais e destruiria o
+histórico que o índice existe para preservar.
+
+`read_meta_connection_token` é a única fronteira que devolve o token, criada porque revogar
+de verdade exige apresentá-lo à Meta. É `security invoker`, `search_path=''`, EXECUTE só
+para `service_role`.
+
+Migration `20260823203915` — histórico **13**, local == remoto, sem editar migration
+anterior.
+
+**Provas do delta:** 69 testes em `src/lib/meta` — cross-tenant recusado, membership sumida
+no meio do fluxo, replay após negado, corrida de consumo, ausência de `upsert`, falha de
+ativação sem sucesso e ordem segura da revogação. Lint, typecheck e build verdes.
+
+## Bloqueio do gate Meta
+
+O mandato §2 escolheu **Facebook Login for Business** por compatibilidade com Instagram
+profissional **e** Marketing API. Ao conduzir o gate:
+
+1. a conta recusou reivindicar o app: *"Sua empresa está proibida de fazer publicidade"* —
+   restrição da Meta no portfólio empresarial;
+2. o app foi criado **sem** vínculo empresarial, e o redirect OAuth foi salvo;
+3. mas o produto **Login do Facebook para Empresas não aparece** — nem instalado, nem na
+   lista de produtos disponíveis;
+4. a documentação oficial confirma a causa: *"Your Meta app must be a business type app"*.
+   App tipo Business exige portfólio empresarial — exatamente o que está restrito.
+
+Portanto **não houve OAuth real**: troca `code → token`, escopos concedidos e
+conexão/desconexão ponta a ponta seguem não provados contra a Meta.
+
+**Não troquei para o Login comum (`scope`) por conta própria.** Seria substituir uma decisão
+de arquitetura tomada pelo GPT, com efeito direto sobre a Marketing API na Fase 3. O mandato
+§2 manda parar e devolver a divergência — é o que faço.
+
+## A falha de handoff que a Correção 003A-01 fechou
 
 Apliquei três migrations no Supabase remoto e parei no gate humano **sem publicar nada
 no Git**. O GPT encontrou o schema alterado sem branch, PR ou relatório para auditar.
@@ -58,11 +104,24 @@ Typecheck, lint, `deno check` e build verdes; suíte completa fica para a CI. Ad
 novo ERROR/WARN — o INFO novo (`meta_oauth_intents` sem policy) é o desenho server-only
 sendo reportado.
 
-## Pendência bloqueante
+## Pendência bloqueante — decisão do GPT
 
-**Gate humano do mandato §5 aberto.** Sem app Meta não houve OAuth real: troca
-`code → token`, escopos concedidos reais e conexão/desconexão ponta a ponta continuam
-**não provados**. O código está pronto e o caminho local provado; falta a credencial, que
-vai direto ao `.env.local` — não peço segredo por chat.
+O gate Meta depende de uma destas saídas, e nenhuma é do executor:
 
-`003A EXECUTADA — AGUARDANDO AUDITORIA GPT`
+1. regularizar o portfólio empresarial junto à Meta (apelação com documentos; prazo típico
+   de dias a semanas) e então criar app tipo Business;
+2. usar outro portfólio empresarial já habilitado;
+3. autorizar explicitamente o Login do Facebook comum (`scope`) para a 003A, registrando o
+   impacto sobre a Marketing API na Fase 3;
+4. mover o gate para uma sub-rodada própria e promover a 003A pela fundação já provada.
+
+Nenhum segredo foi pedido por chat; `META_APP_ID`/`META_APP_SECRET` permanecem fora do
+repositório e do `.env.local`.
+
+## Desvio próprio registrado
+
+Apliquei a migration `20260823203915` **antes** de commitá-la, contrariando o checkpoint
+durável que a governança introduziu em `4144c03`. Corrigi a ordem em seguida: o commit
+`60a6bff` publicou o delta antes do gate — que é o que a 003A-01 existiu para ensinar.
+
+`003A + CORREÇÃO 003A-02 EXECUTADAS — AGUARDANDO REAUDITORIA GPT`

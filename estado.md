@@ -24,7 +24,9 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **BLOQUEADA EM AUDITORIA — CORREÇÃO 003A-02 AUTORIZADA**.
+Status: **003A + CORREÇÃO 003A-02 EXECUTADAS — AGUARDANDO REAUDITORIA GPT**.
+
+⚠️ **O gate Meta real não foi concluído — bloqueio externo.** Ver §5. Claude não aprova, não promove e não inicia 003B.
 
 Mandato original:
 
@@ -59,29 +61,48 @@ A Correção 003A-01 foi **APROVADA como handoff/reconciliação**:
 
 Ela não promove a 003A porque o gate Meta real continua ausente e a auditoria encontrou bloqueios adicionais no gateway.
 
-## 5. Bloqueios da 003A
+## 5. Resultado da Correção 003A-02
 
-A auditoria independente encontrou:
+Os **seis bloqueios de código** da auditoria foram fechados e provados:
 
-1. desconexão privilegiada sem reconfirmar membership — risco cross-tenant;
-2. callback não reconfirma membership vigente antes de trocar código/persistir;
-3. callback negado pela Meta não consome o `state`, contrariando single-use;
-4. `upsert(onConflict: organization_id)` não é compatível com o índice unique parcial que preserva histórico;
-5. atualização final para `ACTIVE` ignora erro e pode retornar sucesso incorreto;
-6. desconexão atual remove apenas o estado local e não executa revogação oficial na Meta quando aplicável;
-7. OAuth real ponta a ponta ainda não foi realizado.
+| # | correção |
+| --- | --- |
+| 3.1 | desconexão reconfirma membership ACTIVE antes de ler ou revogar |
+| 3.2 | callback reconfirma membership antes de chamar a Meta e antes de persistir |
+| 3.3 | `state` é consumido antes de decidir o desfecho — callback negado também é single-use |
+| 3.4 | `upsert` removido; `begin_meta_connection` atualiza a conexão viva ou insere nova, preservando histórico |
+| 3.5 | `activate_meta_connection` grava Vault e marca `ACTIVE` na mesma transação |
+| 3.6 | revogação oficial `DELETE /{user-id}/permissions` antes da limpeza local; falha indeterminada não vira sucesso |
+
+Migration `20260823203915` — histórico **13**, local == remoto, sem editar migration anterior. 69 testes em `src/lib/meta`; lint, typecheck e build verdes.
+
+### Bloqueio do gate Meta (item 7 da auditoria) — NÃO resolvido
+
+O caminho autorizado pelo mandato §2 (**Facebook Login for Business**) está indisponível nesta conta:
+
+1. a Meta recusou reivindicar o app — *"Sua empresa está proibida de fazer publicidade"*;
+2. o app foi criado sem vínculo empresarial e o redirect OAuth foi salvo;
+3. o produto **Login do Facebook para Empresas não aparece**, nem instalado nem disponível;
+4. a documentação oficial confirma: *"Your Meta app must be a business type app"* — e app tipo Business exige o portfólio empresarial que está restrito.
+
+**Não houve OAuth real.** Troca `code → token`, escopos concedidos e conexão/desconexão ponta a ponta seguem não provados contra a Meta.
+
+O executor **não** trocou para o Login comum (`scope`) por conta própria: isso substituiria uma decisão de arquitetura do GPT com efeito direto sobre a Marketing API na Fase 3. O mandato §2 manda parar e devolver a divergência.
+
+### Saídas possíveis — decisão do GPT
+
+1. regularizar o portfólio empresarial junto à Meta e criar app tipo Business;
+2. usar outro portfólio já habilitado;
+3. autorizar explicitamente o Login comum (`scope`) para a 003A, registrando o impacto na Fase 3;
+4. mover o gate para sub-rodada própria e promover a 003A pela fundação já provada.
 
 ## 6. Próxima ação autorizada
 
-Claude Code deve executar **somente a Correção 003A-02** via `/proxima`.
+A Correção 003A-02 está **executada** na parte que dependia do executor. PR #11 atualizada.
 
-A correção deve ser por delta: corrigir autorização/atomicidade/revogação, realizar o único gate humano Meta e atualizar o mesmo PR #11.
+**A próxima ação é do GPT: reauditar o delta corretivo e decidir uma das saídas da §5 para o gate Meta bloqueado.**
 
-Não iniciar 003B e não repetir baterias antigas por ritual.
-
-Estado final esperado:
-
-`003A + CORREÇÃO 003A-02 EXECUTADAS — AGUARDANDO REAUDITORIA GPT`
+Claude não promove, não inicia 003B e não altera o caminho de autorização por conta própria.
 
 ## 7. Pendências não bloqueantes
 
