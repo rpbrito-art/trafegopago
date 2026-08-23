@@ -1,6 +1,6 @@
 # ESTADO — Tráfego Pago
 
-Atualizado: 2026-08-22
+Atualizado: 2026-08-23
 
 Este é o **estado operacional canônico da execução corrente**. Para histórico promovido, usar `docs/00-governanca/HISTORY_SUMMARY.md`; não reler relatórios antigos por padrão.
 
@@ -32,7 +32,7 @@ Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 **RODADA 001D — DEFAULT PRIVILEGES + GRANTS + RLS + ISOLAMENTO**
 
-Status: **CORREÇÃO 001D-02 AUTORIZADA — AGUARDANDO RETOMADA PELO CLAUDE CODE**.
+Status: **RODADA 001D — EXECUTADA COM CORREÇÃO 001D-02 — AGUARDANDO AUDITORIA GPT**.
 
 Mandato-base:
 
@@ -47,15 +47,19 @@ Branch:
 
 `claude/rodada-001d-rls-tenancy-isolamento`
 
-`/proxima` está autorizado a **retomar somente a Rodada 001D conforme a Correção 001D-02**.
+Relatório:
 
-Nenhuma etapa posterior está autorizada.
+`rodadas/claude/RELATORIO_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`
+
+A Correção 001D-02 foi executada integralmente. Nenhuma etapa posterior foi iniciada nem está
+autorizada. Próxima ação: **auditoria GPT** sobre a branch.
 
 ## 4. Estado técnico já executado da 001D
 
-Migration aplicada:
+Migrations aplicadas:
 
-`20260823003128_harden_default_privileges_grants_and_rls_policies`.
+- `20260823003128_harden_default_privileges_grants_and_rls_policies` (001D base);
+- `20260823103521_revoke_global_default_execute_on_functions` (correção 001D-02).
 
 Já comprovado e preservado:
 
@@ -71,23 +75,35 @@ Já comprovado e preservado:
 - limpeza sem resíduo;
 - Advisor sem os dois INFO `rls_enabled_no_policy`.
 
-A prova 21/21 não precisa ser repetida na 001D-02 se policies/grants de tabela não mudarem.
+A prova 21/21 não precisa ser repetida na 001D-02 se policies/grants de tabela não mudarem — não
+mudaram, e a prova não foi reexecutada.
+
+Executado na correção 001D-02:
+
+- prova prévia em transação revertida do `alter default privileges for role postgres revoke execute
+  on functions from public` (sem `IN SCHEMA`) aprovada, com rollback sem resíduo;
+- migration nova aplicada ao ref autorizado; local e remoto pareados em 4/4;
+- default global de funções de `postgres` = `{postgres=X/postgres}`, sem `PUBLIC EXECUTE`;
+- probe `SECURITY INVOKER` nasce sem EXECUTE para PUBLIC, `anon`, `authenticated` e `service_role`;
+- ACL das 50 funções existentes owned por `postgres` inalterada (diff vazio);
+- `rls_auto_enable()` e `ensure_rls` preservados; defaults de tabelas/sequências da 001D intactos;
+- `supabase_admin` segue com zero objetos owned em `public`;
+- Advisor sem novo WARN/ERROR; zero resíduo de probes.
 
 ## 5. Causa do bloqueio e decisão GPT
 
-A migration 001D usou `ALTER DEFAULT PRIVILEGES ... IN SCHEMA public ... REVOKE EXECUTE ... FROM PUBLIC`.
+A migration 001D usou:
+
+`ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`.
 
 O PostgreSQL 17 documenta que um `REVOKE` por schema não pode remover privilégios concedidos pelo default **global**. Portanto, o efeito observado pelo Claude era esperado; a conclusão de que o privilégio seria inexpressável estava incorreta.
 
-Correção autorizada:
+Correção autorizada e **já aplicada**:
 
 `ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`.
 
-Sem `IN SCHEMA`.
-
-Antes de aplicar, o Claude deve provar esse comando em transação revertida com função `SECURITY INVOKER` de probe. Se a prova falhar, parar e devolver ao GPT.
-
-Se funcionar, criar **nova migration**; não reescrever SQL executável da migration já aplicada `20260823003128_*`.
+Sem `IN SCHEMA`. Provada em transação revertida antes de aplicar, entregue em migration nova
+(`20260823103521_*`). A migration `20260823003128_*` não teve SQL executável alterado.
 
 O efeito global sobre funções futuras owned por `postgres` é aceito: funções atuais owned por `postgres` já possuem ACL explícita e `ALTER DEFAULT PRIVILEGES` não altera objetos existentes. Funções futuras que precisem de execução devem receber `GRANT EXECUTE` explícito por migration.
 
