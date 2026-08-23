@@ -32,6 +32,8 @@ Gate: build limpo + smoke test + nenhum secret versionado.
 
 ## Fase 1 — Fundação Supabase, Auth e Tenancy
 
+**Status: ENCERRADA E PROMOVIDA em 2026-08-23 após a Rodada 001F.**
+
 Entregas:
 
 - projeto Supabase conectado;
@@ -41,16 +43,17 @@ Entregas:
 - `business_profiles`;
 - auth por e-mail/senha com confirmação e recuperação de acesso;
 - RLS;
-- fixtures de duas organizações;
 - provas de isolamento.
 
-Gate: usuário A não lê/escreve org B por browser/Data API; papel/tenancy provados; recuperação de acesso funciona por e-mail real.
+Gate concluído: usuário A não lê/escreve org B por browser/Data API; papel/tenancy provados; recuperação de acesso funciona por e-mail real.
 
-Escopo do encerramento: gestão avançada de membros — convites, troca de papel, transferência de ownership, multi-org switcher — **não bloqueia** o fechamento desta fase. A fundação multiusuário, papéis, tenancy e isolamento já está provada; a UI dessas operações pertence a fases posteriores.
+Gestão avançada de membros — convites, troca de papel, transferência de ownership, multi-org switcher — não bloqueou o fechamento e continua em fases posteriores.
 
-Estado em 2026-08-23: Rodadas 000–001E promovidas. A recuperação de acesso é a última lacuna funcional objetiva da fase, tratada na Rodada 001F. O encerramento depende de auditoria GPT, não de declaração do executor.
+Rodadas incorporadas no fechamento: 000, 001A, 001B, 001C, 001D, 001E e 001F.
 
 ## Fase 2 — Operations, Audit, Queues e Segurança Base
+
+**Não autorizada automaticamente pelo fechamento da Fase 1.** Exige mandato próprio.
 
 Entregas:
 
