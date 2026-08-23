@@ -14,134 +14,129 @@ Próximo gatilho ordinário: cinco rodadas substantivas promovidas desde essa re
 
 Rodada vigente: **002B — Queue + Worker Foundation**.
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **BLOQUEADA EM AUDITORIA — CORREÇÃO 002B-01 AUTORIZADA**.
 
-Mandato:
+Mandato-base:
 
 `rodadas/gpt/RODADA_002B_QUEUE_WORKER_FOUNDATION.md`
 
-Branch esperada:
+Auditoria vigente:
+
+`rodadas/gpt/AUDITORIA_RODADA_002B_QUEUE_WORKER_FOUNDATION.md`
+
+Correção vigente:
+
+`rodadas/gpt/CORRECAO_RODADA_002B_01_CONTRATO_POISON_EDGE_GATE.md`
+
+Branch:
 
 `claude/rodada-002b-queue-worker-foundation`
 
-O estado incorporado continua 000–002A até auditoria/promoção da 002B.
+PR #9 deve permanecer draft.
+
+O estado incorporado continua 000–002A até reauditoria e promoção real da 002B.
 
 Fonte operacional: `estado.md`.
 
-## HOT — ler sempre
+## HOT — ler sempre na retomada 002B-01
 
 1. `estado.md`
 2. `.gpt/PROJECT_PROMPT.md`
 3. `docs/00-governanca/ACTIVE_DOCS.md`
 4. `rodadas/gpt/RODADA_002B_QUEUE_WORKER_FOUNDATION.md`
+5. `rodadas/gpt/AUDITORIA_RODADA_002B_QUEUE_WORKER_FOUNDATION.md`
+6. `rodadas/gpt/CORRECAO_RODADA_002B_01_CONTRATO_POISON_EDGE_GATE.md`
 
 ## Resumo histórico preferencial
 
 `docs/00-governanca/HISTORY_SUMMARY.md`
 
-O resumo incorpora Rodadas 000–002A. Mandatos, relatórios e auditorias promovidos anteriores são HISTORY / EVIDENCE: abrir somente se surgir dependência concreta.
+O resumo incorpora somente estado promovido 000–002A. Não reler relatórios antigos completos por ritual.
 
-## READ SET da 002B
+## READ SET específico da Correção 002B-01
 
-Além dos HOT, ler somente:
+Além dos HOT, ler somente o necessário para os três bloqueios:
 
-- `docs/00-governanca/HISTORY_SUMMARY.md`;
-- `docs/00-governanca/IMPLEMENTATION_ROADMAP.md` — Fase 2;
-- `docs/03-canonical/TECHNICAL_SPEC.md` — §§3.11, 19–25, 27 e 30;
-- `docs/03-canonical/DATA_MODEL.md` — §§13 e 16–18;
-- `docs/03-canonical/API_CONTRACTS.md` — §§1 e 11–13;
-- `docs/03-canonical/SECURITY_MODEL.md` — §§3–6, 13, 15, 20 e 23–25;
-- migration 002A e `src/lib/operations/contracts.ts`;
-- documentação Supabase vigente de Queues/PGMQ e Edge Function auth/secrets.
+- `src/lib/operations/contracts.ts`;
+- `src/lib/operations/job-message.ts` + testes;
+- `supabase/migrations/20260823180000_create_queue_and_worker_foundation.sql`;
+- `supabase/functions/integration-worker/index.ts`;
+- `scripts/queue-worker-002b.mjs`;
+- `scripts/sql/queue-worker-002b-catalog.sql`;
+- `supabase/config.toml`;
+- documentação Supabase vigente de Edge Function `auth: 'secret'`, secret keys, `deno check` e pinning de dependências.
 
-Não reler relatórios antigos completos nem `docs/02-research/` por ritual.
+Abrir canônicos adicionais apenas se surgir dependência concreta. O contrato técnico da 002B continua sendo o mandato-base + correção.
 
 ## Gate de produto
 
-A 002B é infraestrutura interna e não altera produto/UX. Portanto não exige releitura de Growth Intelligence enquanto permanecer dentro do mandato.
+A 002B-01 permanece infraestrutura interna e não altera produto/UX. Portanto não exige nova leitura de Growth Intelligence enquanto não houver proposta de produto.
 
-Se surgir qualquer proposta de mudança de produto/experiência, parar antes de executá-la e aplicar a leitura integral de `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`.
+Se surgir proposta que afete experiência, onboarding, conteúdo, Meta, anúncios, leads, mensuração ou IA, parar e aplicar o gate integral de `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` antes de planejar/implementar.
 
 Princípio permanente: **a complexidade pertence ao sistema, não ao usuário**.
 
-## Escopo ativo 002B
+## O que já foi auditado e não deve ser redesenhado
 
-A rodada cria somente:
+Preservar:
 
-- Supabase Queues / extensão `pgmq`;
-- fila durável server-only `integration_jobs`;
-- wrappers mínimos e estreitos para operar somente essa fila;
-- contrato validado de job pequeno e referencial;
-- helpers mínimos para claim/conclusão segura de `operations`;
-- Edge Function server-side `integration-worker`;
-- job interno `SYSTEM_HEALTHCHECK` para provar a infraestrutura;
-- redelivery por visibility timeout;
-- deduplicação/idempotência pela `operation` já persistida;
-- poison message arquivada após limite;
-- uma migration, levando 6 → 7 se executada com sucesso;
-- provas remotas + testes + CI.
+- Supabase Queues / `pgmq` como provider;
+- fila física única `integration_jobs`;
+- fila durável/logged;
+- `pgmq_public` fora da Data API;
+- ausência de cron nesta rodada;
+- ausência de `public.integration_jobs`;
+- cinco wrappers de fila com nome hardcoded, sem SQL dinâmico, `SECURITY DEFINER`, `search_path=''` e EXECUTE somente `service_role`;
+- helpers de `operations` como `SECURITY INVOKER`;
+- claim por UPDATE condicional;
+- identidade `operation_id + organization_id + correlation_id`;
+- stale 900 > visibility 60;
+- ordem `concluir operation → remover mensagem`;
+- lote pequeno em série;
+- `withSupabase({ auth: 'secret' })`;
+- nenhuma credencial humana nova.
 
-## Decisões técnicas da rodada
+## Bloqueios ativos a corrigir
 
-- provider: Supabase Queues/PGMQ, sem fornecedor externo novo;
-- uma fila física pode atender futuros tipos lógicos de job;
-- fila não será exposta via `pgmq_public` ao browser;
-- `public.integration_jobs` não será criada agora porque PGMQ + `operations` já cobrem persistência/estado necessários;
-- wrappers `SECURITY DEFINER` são exceção autorizada apenas na fronteira estreita da fila: queue hardcoded, `search_path=''`, sem SQL dinâmico, EXECUTE somente `service_role`;
-- nenhuma credencial humana nova deve ser necessária;
-- não criar cron ainda.
+1. Poison interno não pode usar `UNKNOWN_UPSTREAM`; usar `last_error_class = null` e tratar erro/retorno do `fail_operation` antes de arquivar.
+2. Validador SQL precisa impor tipos JSON estritos e equivalentes ao TypeScript; migration corretiva nova leva 7 → 8, sem reescrever migration aplicada.
+3. Edge Function precisa de dependência exata pinada, `deno check`, redeploy e provas de auth com `apikey`.
 
-## Fora da 002B
+## Fora da Correção 002B-01
 
 Não executar:
 
-- cron/scheduler automático;
+- 002C;
+- cron/scheduler;
+- nova fila;
 - `public.integration_jobs`;
-- webhook inbox/endpoint;
+- webhook;
 - Meta/Instagram/OAuth;
 - conteúdo/publicação;
 - Ads/aprovações;
 - IA;
 - notificações;
 - UI;
-- provider pago/terceiro.
+- nova taxonomia de erro;
+- `migration repair`;
+- reescrita de migration já aplicada;
+- novo provider/segredo humano.
 
 ## Gate humano
 
 **Nenhum gate humano esperado.**
 
-Claude deve executar a 002B autonomamente. Não pedir ao fundador para abrir Supabase, habilitar Queue manualmente, copiar secret, digitar SQL ou transportar mensagens.
-
-Se surgir necessidade de novo segredo humano ou exposição do queue ao browser, parar para GPT.
-
-## Baseline promovido a preservar
-
-- 6 migrations antes da 002B;
-- `pgmq` disponível e não instalado no baseline;
-- Auth/recovery real;
-- organizations + memberships + business_profiles;
-- `operations` + `audit_events` promovidos;
-- grants mínimos + RLS + isolamento tenant;
-- 5 tabelas `public`, todas com RLS;
-- zero fixtures residuais;
-- `public` sem objetos owned por `supabase_admin`;
-- defaults endurecidos + `ensure_rls`;
-- Security Advisor sem ERROR, com WARN conhecido e INFOs aceitos;
-- Gmail SMTP de desenvolvimento intocado.
+Se `deno check` não puder ser executado por mecanismo reproduzível já disponível, Claude deve investigar primeiro o caminho oficial do runtime/CLI e, se realmente exigir intervenção nova do fundador, parar para GPT em vez de improvisar instalação ou pedir segredo.
 
 ## Próxima ação autorizada
 
-Claude Code pode executar **somente a 002B** via `/proxima`.
+Claude Code pode executar **somente a Correção 002B-01** via `/proxima`, na branch existente.
 
 Fluxo esperado:
 
-`AUTORIZADA → EXECUÇÃO CLAUDE → PR/RELATÓRIO → 002B EXECUTADA — AGUARDANDO AUDITORIA GPT`
+`002B BLOQUEADA → CORREÇÃO 002B-01 → PR #9 draft / relatório atualizado → AGUARDANDO REAUDITORIA GPT`
 
-Não há autorização para 002C após o handoff.
-
-## Regra reforçada após incidente 002A
-
-Se uma migration 002B já aplicada remotamente revelar falha semântica que exija `DROP`, `migration repair` ou reescrita de histórico para corrigi-la, Claude deve **parar e retornar ao GPT**. Não repetir autonomamente o procedimento usado durante a tentativa não promovida da 002A.
+Nenhuma 002C está autorizada.
 
 ## Canônicos ativos por área
 
