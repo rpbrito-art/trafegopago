@@ -1,5 +1,7 @@
 import "server-only";
 
+import { z } from "zod";
+
 import type { RawEnv } from "./public";
 
 /**
@@ -49,9 +51,47 @@ export function assertNoLeakedPrivilegedEnv(raw: RawEnv): void {
 /**
  * Variáveis server-only conhecidas nesta fase.
  *
- * A Rodada 000 não consome nenhuma delas — a fundação ainda não fala com
- * Supabase privilegiado nem com a Meta. Elas existem aqui para fixar a
- * convenção de nomes e alimentar `.env.example`. O schema efetivo será
- * introduzido na rodada que realmente precisar de cada valor.
+ * Fixa a convenção de nomes e alimenta `.env.example`. Cada valor ganha schema
+ * efetivo na rodada que realmente passa a consumi-lo.
  */
 export const SERVER_ONLY_ENV_NAMES = ["SUPABASE_SECRET_KEY"] as const;
+
+/**
+ * Variáveis de ambiente SERVER-ONLY consumidas pela aplicação.
+ *
+ * Nada aqui pode ganhar prefixo `NEXT_PUBLIC_` — ver `SECURITY_MODEL.md` §6.
+ * A Rodada 001E é a primeira a consumir de fato a secret key, no caminho
+ * privilegiado de `src/lib/supabase/privileged.ts`.
+ */
+export const serverEnvSchema = z.object({
+  SUPABASE_SECRET_KEY: z.string().min(1),
+});
+
+export type ServerEnv = z.infer<typeof serverEnvSchema>;
+
+export function parseServerEnv(raw: RawEnv): ServerEnv {
+  // Um segredo público é falha de configuração, não detalhe: a leitura falha
+  // antes de qualquer uso, e não só para as chaves deste schema.
+  assertNoLeakedPrivilegedEnv(raw);
+
+  const result = serverEnvSchema.safeParse({
+    SUPABASE_SECRET_KEY: raw.SUPABASE_SECRET_KEY,
+  });
+
+  if (!result.success) {
+    // Só os NOMES das variáveis inválidas entram na mensagem. O valor de uma
+    // credencial nunca pode atravessar log, stack trace ou resposta de erro
+    // (`SECURITY_MODEL.md` §15).
+    throw new Error(
+      `Variáveis de ambiente server-only inválidas: ${result.error.issues
+        .map((issue) => issue.path.join(".") || "(root)")
+        .join(", ")}`,
+    );
+  }
+
+  return result.data;
+}
+
+export function readServerEnv(): ServerEnv {
+  return parseServerEnv(process.env as RawEnv);
+}
