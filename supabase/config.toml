@@ -249,6 +249,13 @@ otp_expiry = 3600
 subject = "Confirme seu e-mail — Tráfego Pago"
 content_path = "./supabase/templates/confirmation.html"
 
+# Template do e-mail de recuperação de senha: mesmo endpoint SSR, com
+# `type=recovery`. O destino final é imposto pela aplicação, então o link não
+# carrega `next`.
+[auth.email.template.recovery]
+subject = "Redefinir sua senha — Tráfego Pago"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

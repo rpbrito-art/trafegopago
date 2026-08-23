@@ -48,12 +48,49 @@ export const signInSchema = z.object({
     .max(MAX_PASSWORD_LENGTH, "Credenciais inválidas."),
 });
 
+/**
+ * Pedido de recuperação: só o e-mail.
+ *
+ * Nenhum outro campo entra aqui. O formulário é público e a resposta é neutra
+ * — quanto menos entrada, menos superfície para transformar a tela em sonda de
+ * existência de conta.
+ */
+export const passwordResetRequestSchema = z.object({ email });
+
+/**
+ * Definição da nova senha.
+ *
+ * Mesma regra de força do cadastro, mais confirmação. A comparação vive no
+ * schema (e não na UI) porque é validação server-side que decide; o cliente
+ * pode ser contornado.
+ */
+export const newPasswordSchema = z
+  .object({
+  password: z
+    .string()
+    .min(
+      MIN_PASSWORD_LENGTH,
+      `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+    )
+    .max(MAX_PASSWORD_LENGTH, "A senha é longa demais."),
+    passwordConfirmation: z.string().min(1, "Repita a nova senha."),
+  })
+  .refine((value) => value.password === value.passwordConfirmation, {
+    path: ["passwordConfirmation"],
+    message: "As senhas não coincidem.",
+  });
+
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type SignInInput = z.infer<typeof signInSchema>;
+export type PasswordResetRequestInput = z.infer<
+  typeof passwordResetRequestSchema
+>;
+export type NewPasswordInput = z.infer<typeof newPasswordSchema>;
 
 export type FieldErrors = {
   email?: string;
   password?: string;
+  passwordConfirmation?: string;
 };
 
 /**
@@ -69,6 +106,12 @@ export function toFieldErrors(error: z.ZodError): FieldErrors {
     }
     if (field === "password" && !fieldErrors.password) {
       fieldErrors.password = issue.message;
+    }
+    if (
+      field === "passwordConfirmation" &&
+      !fieldErrors.passwordConfirmation
+    ) {
+      fieldErrors.passwordConfirmation = issue.message;
     }
   }
 

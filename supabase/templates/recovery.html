@@ -1,0 +1,32 @@
+<!--
+  Template do e-mail de recuperação de senha.
+
+  Mesma escolha do template de confirmação: o link aponta para o endpoint SSR
+  `/auth/confirm` carregando `token_hash`, e não para `{{ .ConfirmationURL }}`.
+  O fluxo padrão devolve a sessão ao browser (fragmento ou code PKCE), o que
+  não serve quando quem precisa gravar o cookie é o servidor.
+
+  O link **não** carrega `next`. O destino de uma confirmação de recovery é
+  imposto pela aplicação (`RECOVERY_DESTINATION`): deixar o e-mail escolher para
+  onde a sessão recém-criada é entregue transformaria o token em atalho para
+  outras rotas.
+-->
+<h2>Redefinir sua senha</h2>
+
+<p>Recebemos um pedido para criar uma nova senha da sua conta no Tráfego Pago.</p>
+
+<p>
+  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">
+    Criar nova senha
+  </a>
+</p>
+
+<p>
+  Se o botão não funcionar, copie e cole este endereço no navegador:<br />
+  {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery
+</p>
+
+<p>
+  O link vale por tempo limitado e só pode ser usado uma vez. Se você não pediu
+  a troca, ignore esta mensagem: sua senha atual continua valendo.
+</p>

@@ -19,6 +19,8 @@ describe("isProtectedPath", () => {
     "/entrar",
     "/cadastro",
     "/cadastro/confirme-seu-email",
+    "/recuperar-senha",
+    "/redefinir-senha",
     "/auth/confirm",
     "/auth/erro",
   ])("deixa %s público", (pathname) => {
@@ -38,6 +40,18 @@ describe("isAuthEntryPath", () => {
 
   it("não trata a área protegida como entrada de auth", () => {
     expect(isAuthEntryPath(ROUTES.account)).toBe(false);
+  });
+
+  it("não intercepta a tela de nova senha", () => {
+    // Quem chega em `/redefinir-senha` vem de `/auth/confirm` já com sessão.
+    // Tratá-la como entrada de auth mandaria essa sessão para `/conta` e
+    // mataria o recovery; o guard dessa rota é `amr=recovery`, não o Proxy.
+    expect(isAuthEntryPath(ROUTES.resetPassword)).toBe(false);
+    expect(isProtectedPath(ROUTES.resetPassword)).toBe(false);
+  });
+
+  it("trata o pedido de recuperação como entrada de auth", () => {
+    expect(isAuthEntryPath(ROUTES.forgotPassword)).toBe(true);
   });
 
   it("não intercepta o endpoint de confirmação", () => {

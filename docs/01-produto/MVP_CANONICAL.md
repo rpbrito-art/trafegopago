@@ -2,41 +2,54 @@
 
 Status: canônico para a primeira construção do produto.
 
+Harmonizado na Rodada 001F com `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`.
+Em modelo de crescimento, jornadas, orgânico/pago, conteúdo/criativo,
+personas/públicos e simplicidade guiada, **o Growth Intelligence prevalece**
+sobre qualquer formulação deste documento. A harmonização foi proporcional: as
+seções de execução detalhada (§§5–18) continuam válidas como capacidades e
+serão revisitadas na fase substantiva de cada uma.
+
 ## 1. Definição
 
-Tráfego Pago é uma plataforma SaaS de otimização contínua de aquisição por tráfego pago assistida por IA. O primeiro produto é restrito ao ecossistema Instagram + Meta Ads e a empresas que usam campanhas para gerar leads.
+Tráfego Pago é uma plataforma SaaS de inteligência de crescimento assistida por IA. O primeiro produto é restrito ao ecossistema Instagram + Meta e a pequenas empresas que querem entender e melhorar a resposta do mercado ao que publicam e oferecem.
 
-O produto deve transformar atividade de marketing em um ciclo fechado de aprendizagem:
+O ciclo canônico é:
 
-`conteúdo → desempenho orgânico → seleção → experimento pago → resultado → escala → lead → qualificação → venda/perda → pesquisa → insight → nova estratégia`
+`contexto do negócio → objetivo → jornada desejada → público/personas → conteúdo/criativo → distribuição orgânica, paga ou ambas → evento mensurável → resultado → aprendizado → próxima recomendação`
 
-A publicação e o gerenciamento de anúncios são meios. O valor está em decidir melhor o que testar, medir o resultado real até o desfecho comercial e aprender continuamente.
+Mídia paga é uma **capacidade** desse ciclo, não pré-condição de valor: o produto deve entregar inteligência útil em modo puramente orgânico e ampliar para investimento quando isso servir ao objetivo do negócio.
+
+A publicação e o gerenciamento de anúncios são meios. O valor está em decidir melhor o que testar, medir o resultado real até onde a observabilidade permitir e aprender continuamente.
 
 ## 2. Usuário-alvo inicial
 
 Pequenas empresas que:
 
 - operam Instagram profissional;
-- investem ou pretendem investir em Meta Ads;
-- vendem serviços/produtos por geração de leads;
+- podem ou não investir em Meta Ads — investimento é opcional;
+- buscam um resultado mensurável, que nem sempre é lead ou venda direta;
 - não dispõem de equipe analítica sofisticada;
-- precisam de orientação objetiva sobre conteúdo, campanha e conversão.
+- precisam de orientação objetiva sobre conteúdo, distribuição e resultado.
 
 Casos adequados incluem clínicas, estética, academias, escolas, imobiliárias, serviços profissionais e negócios locais. E-commerce complexo não é foco inicial.
+
+Estas empresas não devem precisar dominar Ads Manager, hierarquia campanha/conjunto/anúncio ou jargão de plataforma para usar o produto: vale a **Lei da Simplicidade Guiada** (`GROWTH_INTELLIGENCE_CANONICAL.md` §2).
 
 ## 3. Promessa do MVP
 
 O usuário conecta sua estrutura Meta e o sistema deve ajudá-lo a:
 
 1. entender o desempenho dos conteúdos já publicados;
-2. identificar quais conteúdos merecem teste pago;
-3. criar testes/campanhas após aprovação financeira;
+2. identificar o que merece uma próxima ação — continuar organicamente, adaptar, virar criativo ou receber investimento;
+3. criar testes/campanhas após aprovação financeira, **quando houver investimento**;
 4. acompanhar performance e qualidade dos resultados;
-5. escolher o vencedor com critérios determinísticos e interpretação por IA;
+5. comparar alternativas com critérios determinísticos e interpretação por IA, sem forçar experimento onde há apenas uma oportunidade;
 6. escalar somente com nova aprovação do proprietário;
-7. acompanhar o lead até ganho/perda;
-8. descobrir por que pessoas converteram ou não;
+7. acompanhar até o desfecho o resultado configurado pelo negócio — lead, cadastro, agendamento, visita ou outro evento;
+8. descobrir por que pessoas converteram ou não, até onde a mensuração alcançar;
 9. transformar esses dados em recomendações estratégicas.
+
+O número de candidatos a uma ação **não é fixo por contrato**: pode ser zero quando os dados não sustentam recomendação.
 
 ## 4. Onboarding
 
@@ -50,9 +63,13 @@ O usuário deve poder:
 - recuperar acesso;
 - gerenciar dados básicos e sessões.
 
-### 4.2 Organização
+### 4.2 Organização e contexto do negócio
 
-Após autenticar, cria uma organização/workspace e informa:
+Após autenticar, o usuário cria uma organização/workspace e começa a construir o contexto do negócio.
+
+O contexto é **progressivo**, não um formulário total obrigatório: um essencial inicial curto, depois enriquecimento conforme o uso e os dados observados, sempre com correção pelo usuário (`GROWTH_INTELLIGENCE_CANONICAL.md` §3.1).
+
+Campos que podem compor esse contexto ao longo do tempo:
 
 - nome da empresa;
 - segmento;
@@ -60,12 +77,15 @@ Após autenticar, cria uma organização/workspace e informa:
 - produto/serviço principal;
 - proposta/oferta;
 - ticket médio;
-- público-alvo;
+- público que a empresa acredita atender;
 - principais diferenciais;
 - principais objeções conhecidas;
-- objetivo de aquisição;
-- meta comercial opcional;
-- limites financeiros padrão.
+- objetivo atual;
+- jornada desejada e evento que significa sucesso;
+- meta comercial ou operacional, opcional;
+- limites financeiros padrão, quando houver investimento.
+
+`business_profiles` é a **primeira camada** desse contexto, não sua forma final: ofertas, localizações, jornadas, objetivos e segmentos podem se separar em entidades próprias nas fases correspondentes.
 
 O sistema deve permitir múltiplos membros no mesmo negócio, mesmo que a primeira UI exponha apenas papéis básicos.
 
@@ -79,6 +99,12 @@ O usuário conecta, por fluxo oficial de autorização:
 - conta de anúncios.
 
 A interface deve mostrar status da integração, permissões ausentes, última sincronização e erros acionáveis.
+
+### 4.4 Objetivo e jornada
+
+Antes de recomendar conteúdo ou distribuição, o sistema pergunta em linguagem simples o que o negócio quer que aconteça depois que alguém vê seu conteúdo, e qual ação significa sucesso.
+
+A jornada **não é fixa**: WhatsApp, site, agendamento, cadastro, aplicativo, loja física, seguir o perfil e outras ações mensuráveis são desfechos válidos. O sistema separa resultado desejado de resultado observável e nunca apresenta como conversão confirmada aquilo que não consegue medir.
 
 ## 5. Área Hoje / Visão geral
 
@@ -381,8 +407,12 @@ A UI deve ser simples e orientada a decisão.
 
 ## 21. Critério de MVP comercializável
 
-O MVP só é considerado comercialmente demonstrável quando o happy path abaixo funciona com segurança e auditabilidade:
+O MVP só é considerado comercialmente demonstrável quando o caminho abaixo funciona com segurança e auditabilidade:
 
-`criar conta → criar organização → conectar Meta → importar/publicar conteúdo → sincronizar métricas → recomendar teste → aprovar gasto → criar teste/campanha → sincronizar resultado → recomendar vencedor → aprovar escala → executar → receber lead → qualificar → marcar ganho/perda → coletar feedback → gerar insight`
+`criar conta e recuperar acesso → criar organização e contexto do negócio → definir objetivo e jornada → conectar Meta → importar/publicar conteúdo → sincronizar métricas → gerar recomendação → agir organicamente ou aprovar gasto → medir o evento de sucesso configurado → aprender quem respondeu → nova recomendação`
+
+Esse caminho **ramifica por tipo de negócio e objetivo**. O ramo pago — aprovar gasto, criar teste/campanha, escolher vencedor, aprovar escala — é obrigatório para negócios que investem e não pode ser exigido de quem opera só em orgânico. O ramo de Lead Ads, micro-CRM e desfecho comercial vale para jornadas que terminam em lead; jornadas de cadastro, agendamento ou visita têm o próprio evento de sucesso.
+
+Um negócio cuja observabilidade não alcança o desfecho final deve receber a leitura honesta do que é medível, e não uma conversão presumida.
 
 Cada transição crítica deve sobreviver a retry, erro parcial e reconciliação.

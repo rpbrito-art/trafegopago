@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   ACCOUNT_ENUMERATION_CODES,
+  describePasswordUpdateError,
   describeSignInError,
   describeSignUpError,
   GENERIC_ERROR,
   GENERIC_SIGN_IN_ERROR,
   isRateLimited,
+  PASSWORD_RESET_REQUESTED,
+  RECOVERY_SESSION_REQUIRED,
 } from "./errors";
 
 describe("describeSignInError", () => {
@@ -78,6 +81,13 @@ describe("mensagens seguras", () => {
     describeSignUpError({ code: "weak_password" }),
     describeSignUpError({ code: "email_address_invalid" }),
     describeSignUpError({ code: "signup_disabled" }),
+    PASSWORD_RESET_REQUESTED,
+    RECOVERY_SESSION_REQUIRED,
+    describePasswordUpdateError({ code: "weak_password" }),
+    describePasswordUpdateError({ code: "same_password" }),
+    describePasswordUpdateError({ code: "reauthentication_needed" }),
+    describePasswordUpdateError({ status: 429 }),
+    describePasswordUpdateError({ code: "unexpected_failure" }),
   ];
 
   it("nenhuma mensagem ecoa código interno do provider", () => {
@@ -98,6 +108,47 @@ describe("isRateLimited", () => {
   it("não marca erro comum como limite", () => {
     expect(isRateLimited({ code: "invalid_credentials", status: 400 })).toBe(
       false,
+    );
+  });
+});
+
+describe("mensagens de recuperação", () => {
+  it("o aviso do pedido não confirma nem nega a existência da conta", () => {
+    expect(PASSWORD_RESET_REQUESTED).toMatch(/Se houver uma conta/);
+    expect(PASSWORD_RESET_REQUESTED).not.toMatch(/enviamos para|encontrad/i);
+  });
+
+  it("o aviso de link inválido não distingue expirado de já usado", () => {
+    expect(RECOVERY_SESSION_REQUIRED).not.toMatch(/expirad|já usad|inexistent/i);
+    expect(RECOVERY_SESSION_REQUIRED).toMatch(/Peça um novo/);
+  });
+});
+
+describe("describePasswordUpdateError", () => {
+  it("orienta sobre senha fraca e senha repetida", () => {
+    expect(describePasswordUpdateError({ code: "weak_password" })).toMatch(
+      /mais forte/i,
+    );
+    expect(describePasswordUpdateError({ code: "same_password" })).toMatch(
+      /diferente/i,
+    );
+  });
+
+  it("trata reautenticação exigida como link inválido", () => {
+    expect(
+      describePasswordUpdateError({ code: "reauthentication_needed" }),
+    ).toBe(RECOVERY_SESSION_REQUIRED);
+  });
+
+  it("cai na mensagem genérica para falha não mapeada", () => {
+    expect(describePasswordUpdateError({ code: "unexpected_failure" })).toBe(
+      GENERIC_ERROR,
+    );
+  });
+
+  it("avisa sobre limite de tentativas", () => {
+    expect(describePasswordUpdateError({ status: 429 })).toMatch(
+      /Muitas tentativas/,
     );
   });
 });

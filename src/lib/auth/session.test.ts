@@ -31,7 +31,9 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-const { getVerifiedUser, requireUser } = await import("./session");
+const { getRecoveryUser, getVerifiedUser, requireUser } = await import(
+  "./session"
+);
 
 beforeEach(() => {
   claimsResult = { data: null, error: null };
@@ -138,5 +140,75 @@ describe("requireUser", () => {
     await expect(requireUser()).rejects.toThrow(
       new RegExp(`NEXT_REDIRECT:${ROUTES.signIn}`),
     );
+  });
+});
+
+describe("getRecoveryUser", () => {
+  const SUB = "22222222-2222-2222-2222-222222222222";
+
+  it.each(["recovery", "otp"])(
+    "devolve identidade quando amr traz o método %s",
+    async (metodo) => {
+      claimsResult = {
+        data: {
+          claims: {
+            sub: SUB,
+            email: "pessoa@exemplo.com",
+            amr: [{ method: metodo, timestamp: 1 }],
+          },
+        },
+        error: null,
+      };
+
+      expect(await getRecoveryUser()).toEqual({
+        id: SUB,
+        email: "pessoa@exemplo.com",
+      });
+    },
+  );
+
+  it("recusa sessão comum de login, ainda que perfeitamente válida", async () => {
+    claimsResult = {
+      data: {
+        claims: {
+          sub: SUB,
+          email: "pessoa@exemplo.com",
+          amr: [{ method: "password", timestamp: 1 }],
+        },
+      },
+      error: null,
+    };
+
+    expect(await getRecoveryUser()).toBeNull();
+    // A mesma sessão continua valendo como login: o que muda é só o direito de
+    // trocar a senha sem informar a atual.
+    expect(await getVerifiedUser()).not.toBeNull();
+  });
+
+  it("recusa sessão sem claim amr", async () => {
+    claimsResult = { data: { claims: { sub: SUB } }, error: null };
+
+    expect(await getRecoveryUser()).toBeNull();
+  });
+
+  it("recusa quando não há sessão", async () => {
+    claimsResult = { data: null, error: null };
+
+    expect(await getRecoveryUser()).toBeNull();
+  });
+
+  it("recusa quando a verificação do JWT falha", async () => {
+    claimsResult = {
+      data: { claims: { sub: SUB, amr: ["otp"] } },
+      error: { message: "assinatura inválida" },
+    };
+
+    expect(await getRecoveryUser()).toBeNull();
+  });
+
+  it("recusa claims sem sub, mesmo com amr que autorizaria", async () => {
+    claimsResult = { data: { claims: { amr: ["otp"] } }, error: null };
+
+    expect(await getRecoveryUser()).toBeNull();
   });
 });

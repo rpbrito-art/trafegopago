@@ -1,6 +1,6 @@
 # ESTADO — Tráfego Pago
 
-Atualizado: 2026-08-23
+Atualizado: 2026-08-23 (execução da 001F)
 
 Este é o **estado operacional canônico da execução corrente**. Para histórico promovido, usar `docs/00-governanca/HISTORY_SUMMARY.md`; não reler relatórios antigos por padrão.
 
@@ -58,21 +58,41 @@ Migration incorporada: `20260823111051_create_business_profiles_and_bootstrap.sq
 
 **RODADA 001F — RECOVERY DE ACESSO + FECHAMENTO DA FASE 1**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **EXECUTADA PARCIALMENTE — BLOQUEADA NO CRITÉRIO DE PARADA §11.2 — AGUARDANDO DECISÃO E AUDITORIA GPT**.
+
+**NÃO é candidata a fechamento da Fase 1.**
 
 Mandato vigente:
 
 `rodadas/gpt/RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 
-Branch esperada:
+Branch entregue:
 
 `claude/rodada-001f-recovery-fechamento-fase1`
 
-Relatório esperado:
+Relatório entregue:
 
 `rodadas/claude/RELATORIO_RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 
-`/proxima` está autorizado a executar **somente a Rodada 001F**.
+Gates locais: lint, typecheck, `vitest run` (19 arquivos / 319 testes) e build — todos verdes. Sem migration, sem DDL, sem mudança de schema/RLS/grants. Migration history permanece em 5, última `20260823111051`. Advisor só com o WARN conhecido.
+
+### Bloqueio
+
+O mandato §4.4 exige sessão cujo JWT `amr` contenha o método `recovery`. **O projeto hospedado não emite esse valor.** Medido em GoTrue `v2.195.0`, no JWT e em `auth.mfa_amr_claims`:
+
+- login por senha → `password`;
+- `verifyOtp(type=recovery)` → `otp`;
+- `verifyOtp(type=signup)` → `otp`.
+
+Sessão comum de login fica bloqueada com segurança, mas sessão de recuperação não se distingue de outra sessão nascida de OTP por e-mail. Isso é o critério de parada §11.2.
+
+O guard entregue (`grantsPasswordReset`) exige método de OTP por e-mail e recusa `amr` contendo `password` — a regra mais estrita que o contrato real suporta. A divergência está documentada em código, coberta por teste e **não** foi apresentada como cumprimento do mandato.
+
+### Pendências que dependem de outro agente
+
+1. **GPT:** decidir o critério de `amr` — ratificar o predicado entregue, ou determinar mecanismo próprio (custom access token hook, cookie marcador assinado no ramo de recovery, ou outro). Qualquer um deles é contrato estrutural novo, fora do mandato do executor.
+2. **Fundador:** atualizar o template Recovery no Dashboard com o conteúdo de `supabase/templates/recovery.html`. Não verificável nem aplicável pelo executor: a CLI guarda o token no keyring e `supabase config push` empurraria todo o config local sobre o projeto hospedado.
+3. **Fundador, depois de 1 e 2:** rodar a prova final com e-mail real — `RECOVERY_TEST_EMAIL=<caixa de teste> npm run smoke:recovery`.
 
 Nenhuma Fase 2 ou rodada posterior está autorizada.
 
@@ -135,11 +155,14 @@ A harmonização da rodada não pode reintroduzir paid-first, funil rígido, for
 
 ## 9. Próxima ação autorizada
 
-Claude Code deve executar a Rodada 001F conforme o mandato e parar em:
+A execução parou no critério §11.2 do mandato. A próxima ação **não é do Claude Code**:
 
-`001F EXECUTADA — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO AUDITORIA GPT`
+1. GPT decide o critério de sessão de recovery (ver §4 do relatório);
+2. fundador aplica o template Recovery hospedado;
+3. fundador roda a prova final com e-mail real;
+4. GPT audita.
 
-Se a configuração do template Recovery hosted exigir ação humana, deve concluir primeiro tudo que for não destrutivo e parar em um único gate com instruções exatas.
+Claude Code só volta a executar depois de mandato ou correção formal em `rodadas/gpt/`.
 
 Não iniciar Fase 2.
 

@@ -2,15 +2,25 @@
 
 import { redirect } from "next/navigation";
 
-import { describeSignInError, describeSignUpError } from "@/lib/auth/errors";
-import { sanitizeRedirect } from "@/lib/auth/redirect";
-import { ROUTES } from "@/lib/auth/routes";
 import {
+  describePasswordUpdateError,
+  describeSignInError,
+  describeSignUpError,
+  GENERIC_ERROR,
+  isRateLimited,
+  RECOVERY_SESSION_REQUIRED,
+} from "@/lib/auth/errors";
+import { sanitizeRedirect } from "@/lib/auth/redirect";
+import { PASSWORD_RESET_DONE_PARAM, ROUTES } from "@/lib/auth/routes";
+import {
+  newPasswordSchema,
+  passwordResetRequestSchema,
   signInSchema,
   signUpSchema,
   toFieldErrors,
   type FieldErrors,
 } from "@/lib/auth/schemas";
+import { getRecoveryUser } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type AuthFormState = {
@@ -115,6 +125,117 @@ export async function signOutAction(): Promise<void> {
   await supabase.auth.signOut();
 
   redirect(ROUTES.home);
+}
+
+export type PasswordResetRequestState = {
+  errors?: FieldErrors;
+  /** Erro acionável (indisponibilidade, rate limit). Nunca enumera contas. */
+  message?: string;
+  /** Pedido aceito: a UI deve mostrar a mensagem neutra. */
+  requested?: boolean;
+  email?: string;
+};
+
+export type NewPasswordState = {
+  errors?: FieldErrors;
+  message?: string;
+};
+
+/**
+ * Pedido de recuperação de senha.
+ *
+ * A resposta é a mesma para e-mail cadastrado e não cadastrado — inclusive
+ * quando o provider devolve erro. As duas exceções são situações que não
+ * dependem do e-mail existir: excesso de tentativas e indisponibilidade do
+ * provider. Qualquer outro erro vira a mensagem neutra, porque tratá-lo de
+ * forma distinta é exatamente o que permitiria sondar a base.
+ *
+ * Usa o cliente Supabase comum, com a chave publicável. A secret key não
+ * participa deste fluxo (`SECURITY_MODEL.md` §6).
+ */
+export async function requestPasswordResetAction(
+  _prevState: PasswordResetRequestState | undefined,
+  formData: FormData,
+): Promise<PasswordResetRequestState> {
+  const parsed = passwordResetRequestSchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!parsed.success) {
+    return {
+      errors: toFieldErrors(parsed.error),
+      email: asString(formData.get("email")),
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    parsed.data.email,
+  );
+
+  if (error) {
+    if (isRateLimited(error)) {
+      return {
+        message: "Muitas tentativas em pouco tempo. Aguarde alguns minutos.",
+        email: parsed.data.email,
+      };
+    }
+
+    if (typeof error.status === "number" && error.status >= 500) {
+      return { message: GENERIC_ERROR, email: parsed.data.email };
+    }
+  }
+
+  // Sem eco do e-mail: a tela de confirmação é acessível por navegação direta,
+  // e repetir o endereço nela daria a um terceiro uma forma de confirmar o que
+  // foi digitado.
+  return { requested: true };
+}
+
+/**
+ * Definição da nova senha.
+ *
+ * Três barreiras, nesta ordem: schema (força e confirmação), sessão de
+ * recovery (`amr`) e o próprio provider. A troca é feita com
+ * `updateUser({ password })` no contexto do próprio usuário — nenhuma
+ * chamada admin e nenhuma secret key participam do caminho funcional.
+ *
+ * Em caso de sucesso a sessão de recovery é encerrada de propósito: ela existe
+ * para trocar a senha, não para virar login. O usuário volta ao `/entrar` e
+ * prova a nova senha.
+ */
+export async function resetPasswordAction(
+  _prevState: NewPasswordState | undefined,
+  formData: FormData,
+): Promise<NewPasswordState> {
+  const parsed = newPasswordSchema.safeParse({
+    password: formData.get("password"),
+    passwordConfirmation: formData.get("passwordConfirmation"),
+  });
+
+  if (!parsed.success) {
+    // Nenhum campo é devolvido: senha digitada nunca volta para o formulário.
+    return { errors: toFieldErrors(parsed.error) };
+  }
+
+  const recoveryUser = await getRecoveryUser();
+
+  if (!recoveryUser) {
+    return { message: RECOVERY_SESSION_REQUIRED };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
+
+  if (error) {
+    return { message: describePasswordUpdateError(error) };
+  }
+
+  await supabase.auth.signOut();
+
+  redirect(`${ROUTES.signIn}?${PASSWORD_RESET_DONE_PARAM}=1`);
 }
 
 function asString(value: FormDataEntryValue | null): string | undefined {
