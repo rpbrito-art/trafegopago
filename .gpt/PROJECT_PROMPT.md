@@ -67,6 +67,7 @@ Responsável por:
 - ler o working set definido para a rodada;
 - implementar somente o mandato vigente;
 - executar testes/provas proporcionais ao risco;
+- conduzir diretamente gates humanos previstos quando puderem ser resolvidos na mesma sessão;
 - entregar relatório compacto em `rodadas/claude/`;
 - atualizar apenas os campos de execução autorizados em `estado.md`;
 - nunca aprovar a própria execução;
@@ -75,6 +76,12 @@ Responsável por:
 ## Fundador
 
 Autoriza etapas quando o fluxo exigir aprovação explícita. Planejamento, discussão ou sugestão não equivalem a autorização.
+
+**O fundador não é barramento de contexto entre agentes.** O repositório, o estado canônico, os mandatos e o working set devem transportar o contexto GPT ↔ Claude. O fundador só deve ser solicitado quando houver decisão, aprovação, credencial/ação local, acesso externo ou outra intervenção que realmente dependa de uma pessoa.
+
+Princípio operacional:
+
+**a complexidade da governança pertence ao sistema, não ao fundador.**
 
 ---
 
@@ -167,6 +174,7 @@ Cada mandato deve definir:
 - arquivos/tabelas/contratos relevantes;
 - testes e provas;
 - riscos/rollback quando aplicável;
+- gates humanos previsíveis, quando houver;
 - caminho do relatório;
 - critério de conclusão.
 
@@ -179,8 +187,30 @@ Depois atualiza `estado.md` e publica a rodada em `rodadas/gpt/`.
 - não antecipar fase;
 - não inventar dependências ou serviços;
 - registrar evidências compactas;
+- conduzir gates humanos conforme §5.5;
 - fazer push da branch;
-- deixar estado como `EXECUTADA — AGUARDANDO AUDITORIA GPT`.
+- deixar estado como `EXECUTADA — AGUARDANDO AUDITORIA GPT` somente quando todos os gates necessários à conclusão tiverem sido cumpridos ou quando um bloqueio real impedir continuidade.
+
+## 4.1 Preflight obrigatório de retomada
+
+Sempre que o Claude retomar uma **branch já existente**, inclusive via `/proxima`, não pode decidir autorização/parada apenas com a cópia local de `estado.md` ou dos documentos da própria branch.
+
+Antes de concluir que não há autorização, que existe bloqueio antigo ou que o GPT ainda precisa agir, deve:
+
+1. executar `git fetch origin`;
+2. comparar a branch atual com `origin/main`;
+3. verificar se `origin/main` contém commits mais novos que alterem qualquer um destes contratos de governança:
+   - `estado.md`;
+   - `.gpt/PROJECT_PROMPT.md`;
+   - `docs/00-governanca/ACTIVE_DOCS.md`;
+   - mandato vigente;
+   - correção/adendo vigente em `rodadas/gpt/`;
+4. se houver atualização relevante, lê-la **antes** de decidir parar;
+5. reconciliar a branch com a `main` quando necessário para continuar com segurança, preservando a implementação já executada;
+6. em conflito documental, preservar o contrato operacional mais recente da `main` e incorporar somente fatos de execução da branch que continuem válidos;
+7. se houver conflito de código ou mudança substantiva não prevista que torne a reconciliação insegura, parar e reportar ao GPT — não adivinhar.
+
+**É proibido declarar “sem mandato”, “aguardando GPT” ou “bloqueado” usando apenas um estado local desatualizado quando `origin/main` puder conter governança posterior.**
 
 ## GPT durante a auditoria
 
@@ -243,11 +273,37 @@ Quando várias consultas Supabase/GitHub puderem ser obtidas em uma única consu
 
 Evitar dezenas de reconexões apenas para produzir um relatório mais longo.
 
-## 5.5 Gates humanos
+## 5.5 Gates humanos síncronos
 
-Se uma operação privilegiada exigir ação humana, completar antes **todas as verificações não destrutivas possíveis** e concentrar a intervenção em um único ponto.
+Quando uma rodada exigir uma ação que só o fundador pode realizar, o executor deve completar antes **todas as verificações autônomas e não destrutivas possíveis** e concentrar a intervenção em um único ponto.
 
-Não liberar permissões amplas permanentemente só para eliminar alguns minutos. `supabase db push`, migrations ou outras mutações sensíveis continuam sujeitas ao mandato e às proteções do ambiente.
+Se o gate puder ser resolvido na mesma sessão de terminal, o Claude deve:
+
+1. mudar explicitamente o estado operacional para **`GATE HUMANO ATIVO`** ou declarar isso na sessão;
+2. explicar em linguagem simples o que precisa ser feito e por quê;
+3. pedir diretamente ao fundador somente o dado/ação indispensável;
+4. **aguardar a resposta**, sem encerrar a execução;
+5. receber o dado sensível apenas no canal/local autorizado — por exemplo, URL com token somente no terminal;
+6. continuar automaticamente a execução assim que o gate for cumprido;
+7. concluir testes, limpeza, relatório e push antes do handoff ao GPT.
+
+Fluxo preferido quando houver gate:
+
+`EXECUÇÃO AUTÔNOMA → GATE HUMANO ATIVO → EXECUÇÃO RETOMADA → AGUARDANDO AUDITORIA GPT`
+
+O Claude **não pode** transformar um gate humano previsível e imediatamente resolvível em “pendência para outro agente” apenas para encerrar a sessão. Também não deve obrigar o fundador a levar uma mensagem ao GPT para descobrir como continuar quando o mandato/correção já contém informação suficiente.
+
+Só é aceitável encerrar com gate pendente quando:
+
+- o fundador não estiver disponível;
+- a ação depender de espera externa longa ou assíncrona;
+- houver risco/permissionamento que exija nova decisão formal;
+- o ambiente atual não puder continuar após o gate;
+- ou o próprio mandato exigir retorno ao GPT antes da ação humana.
+
+Nesses casos, usar status explícito **`GATE HUMANO PENDENTE`**, fornecer instruções autocontidas e não marcar a rodada como executada/concluída.
+
+Nunca liberar permissões amplas permanentemente só para eliminar alguns minutos. `supabase db push`, migrations ou outras mutações sensíveis continuam sujeitas ao mandato e às proteções do ambiente.
 
 ---
 
@@ -259,7 +315,9 @@ Não liberar permissões amplas permanentemente só para eliminar alguns minutos
 
 Não significa “decida o que vem depois”.
 
-Quando `estado.md` indicar aguardando aprovação, aguardando auditoria, bloqueado ou sem mandato autorizado, `/proxima` deve parar sem implementar.
+Em branch já existente, `/proxima` deve aplicar primeiro o preflight de retomada da §4.1.
+
+Quando o **estado canônico atualizado após esse preflight** indicar aguardando aprovação, aguardando auditoria, bloqueado ou sem mandato autorizado, `/proxima` deve parar sem implementar.
 
 O comando é versionado e deve ser mantido alinhado a este método e à política de reciclagem documental.
 
@@ -283,6 +341,8 @@ Diferenciar sempre:
 
 - planejado;
 - autorizado;
+- execução autônoma;
+- gate humano ativo/pendente, quando aplicável;
 - executado;
 - aguardando auditoria;
 - aprovado;
@@ -400,8 +460,10 @@ O método deve maximizar **continuidade, rastreabilidade, segurança e velocidad
 
 Não maximizar quantidade de documentos, tamanho de relatórios, número de comandos ou quantidade de fases.
 
+O fundador não deve atuar como mensageiro para transportar contexto já disponível no Git. Se GPT publicou correção/mandato na `main`, o executor deve encontrá-lo pelo preflight de retomada. Se um gate humano puder ser cumprido na sessão, o executor deve conduzi-lo diretamente até o fim.
+
 Procedimento correto para qualquer agente:
 
-`estado.md → PROJECT_PROMPT → ACTIVE_DOCS → mandato → READ SET mínimo → executar/auditar somente o necessário`
+`fetch/reconciliar governança quando em retomada → estado.md → PROJECT_PROMPT → ACTIVE_DOCS → mandato/correção → READ SET mínimo → executar/auditar somente o necessário`
 
 Histórico é preservado para investigação, não imposto como leitura obrigatória.

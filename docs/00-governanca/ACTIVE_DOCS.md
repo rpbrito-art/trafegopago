@@ -1,32 +1,31 @@
 # ACTIVE DOCS — TRÁFEGO PAGO
 
 Atualizado: 2026-08-23
-Última reciclagem: após promoção da Rodada 001E, incorporando Growth Intelligence ao working set futuro.
-Próximo gatilho ordinário: fechamento da Fase 1, se a 001F for aprovada e promovida; fazer a reciclagem junto do fechamento, sem housekeeping isolado.
+Última reciclagem: durante auditoria da Rodada 001F, sem abrir nova rodada.
+Próximo gatilho ordinário: fechamento da Fase 1, se a 001F for corrigida, re-auditada e promovida.
 
 ## Estado corrente
 
 Rodada vigente: **001F — Recovery de Acesso + Fechamento da Fase 1**.
 
-Status: **CORREÇÃO 001F-01 AUTORIZADA — GATE HUMANO DO TEMPLATE CONFIRMADO — RETOMADA PELO CLAUDE CODE AUTORIZADA**.
+Status: **AUDITORIA GPT REALIZADA — PROMOÇÃO BLOQUEADA — CORREÇÃO 001F-02 AUTORIZADA**.
 
 Mandato original:
 
 `rodadas/gpt/RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 
-Correção vigente:
+Correções vigentes, em ordem:
 
-`rodadas/gpt/CORRECAO_001F_01_AMR_RECOVERY_PROVIDER_REAL.md`
+1. `rodadas/gpt/CORRECAO_001F_01_AMR_RECOVERY_PROVIDER_REAL.md`
+2. `rodadas/gpt/CORRECAO_001F_02_ANTI_ENUMERACAO_AMR_FAIL_CLOSED.md`
 
 Branch:
 
 `claude/rodada-001f-recovery-fechamento-fase1`
 
-PR #7 está aberta como **draft de auditoria; não promover**.
+PR #7 continua **draft; não promover**.
 
-O estado incorporado continua 000–001E.
-
-Nenhuma Fase 2 ou rodada posterior está autorizada.
+O estado incorporado continua 000–001E. Nenhuma Fase 2 ou rodada posterior está autorizada.
 
 A fonte operacional é `estado.md`.
 
@@ -37,109 +36,111 @@ A fonte operacional é `estado.md`.
 3. `docs/00-governanca/ACTIVE_DOCS.md`
 4. `rodadas/gpt/RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 5. `rodadas/gpt/CORRECAO_001F_01_AMR_RECOVERY_PROVIDER_REAL.md`
+6. `rodadas/gpt/CORRECAO_001F_02_ANTI_ENUMERACAO_AMR_FAIL_CLOSED.md`
+
+## REGRA PERMANENTE — retomadas e gates humanos
+
+Aplicar obrigatoriamente:
+
+- `.gpt/PROJECT_PROMPT.md` §4.1 — preflight de retomada: `git fetch origin`, comparar com `origin/main`, ler e reconciliar governança mais nova antes de editar;
+- `.gpt/PROJECT_PROMPT.md` §5.5 — gate humano resolvível deve ser conduzido na mesma sessão pelo executor;
+- `docs/00-governanca/DOCUMENTATION_LIFECYCLE.md` §§4–5 — continuidade documental e estados de gate.
+
+Princípio: **o fundador não é barramento de contexto entre GPT e Claude**.
 
 ## GATE OBRIGATÓRIO — planejamento e auditoria de produto
 
-Antes de formular, refinar, dividir, autorizar ou auditar qualquer rodada que afete produto/experiência, GPT e executor conforme o mandato devem ler **integralmente**:
+Antes de formular, refinar, dividir, autorizar ou auditar qualquer rodada que afete produto/experiência, GPT e executor devem ler **integralmente**:
 
 `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
 
-Isso é obrigatório e não pode ser substituído por referência curta, resumo de chat ou trecho do `MVP_CANONICAL.md`.
-
-Na 001F isso é diretamente aplicável porque a rodada toca recovery/UX de conta e harmonização de onboarding.
+Na 001F isso é obrigatório porque a rodada toca recovery/UX de conta e harmonização de produto.
 
 Regras permanentes:
 
-- todo mandato relevante lista o Growth Intelligence explicitamente no READ SET;
-- Claude deve lê-lo antes de implementar o escopo relevante;
-- auditoria GPT verifica aderência; contradição material é bloqueante salvo decisão explícita do fundador;
-- até harmonização completa, Growth Intelligence prevalece em modelo de crescimento, jornadas, orgânico/pago, conteúdo/criativo, personas/públicos, inteligência de mercado e simplicidade guiada;
-- essa prevalência não substitui contratos técnicos de segurança, tenancy ou autorização financeira.
+- Growth Intelligence prevalece em modelo de crescimento, jornadas, orgânico/pago, conteúdo/criativo, personas/públicos, inteligência de mercado e simplicidade guiada;
+- essa prevalência não substitui contratos técnicos de segurança, tenancy ou autorização financeira;
+- contradição material é bloqueante salvo decisão explícita do fundador.
 
-## READ SET específico da retomada 001F-01
+## READ SET específico da retomada 001F-02
 
-Ler:
+Ler somente o necessário:
 
-- `estado.md`;
-- `.gpt/PROJECT_PROMPT.md`;
-- este `ACTIVE_DOCS.md`;
-- mandato original 001F;
-- Correção 001F-01 integralmente;
+- os seis itens HOT acima;
 - `docs/00-governanca/HISTORY_SUMMARY.md` apenas como resumo promovido;
 - `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` integralmente;
-- arquivos Auth/recovery alterados pela branch;
-- documentação oficial Supabase vigente para AMR, recovery, `updateUser`, `signOut`/scopes, sessões e templates.
+- `src/app/actions/auth.ts` e testes relacionados;
+- `src/lib/auth/recovery.ts`, `src/lib/auth/session.ts` e testes relacionados;
+- relatório 001F atual para atualizar apenas o delta;
+- documentação/código oficial Supabase necessário para o ponto concreto de anti-enumeração ou AMR.
 
 Não reler relatórios completos das Rodadas 000–001E salvo dependência concreta.
 
-## Decisão técnica da Correção 001F-01
+## Fatos já provados — NÃO repetir
 
-O Supabase hospedado atual mede:
+A auditoria já confirmou:
 
-- password login → `amr=password`;
-- `verifyOtp(type=recovery)` → `amr=otp`;
-- signup OTP → `amr=otp`.
+- E2E real de recovery com e-mail: **40/40**;
+- template hosted efetivo SSR com `type=recovery`;
+- troca de senha real, senha antiga recusada, senha nova aceita;
+- link de uso único;
+- logout global com refresh anterior recusado;
+- fixture removida e `auth.users` de volta a 1 conta real;
+- Gmail SMTP funcional como SMTP provisório de desenvolvimento;
+- 5 migrations, nenhuma nova migration/DDL;
+- Security Advisor apenas com o WARN conhecido;
+- baseline RLS/grants preservado.
 
-Portanto o requisito literal antigo `amr=recovery` foi corrigido. O guard deve exigir claims verificadas + `sub`/`email` válidos + `otp|recovery` recente (máx. 15 min) + ausência total de `password`.
+**A Correção 001F-02 não autoriza repetir o E2E de e-mail real.** Os dois bloqueios novos são locais/de lógica e devem ser provados por testes + CI, evitando novo custo e novo gate humano.
 
-Essa decisão evita introduzir hook, tabela, cookie assinado, secret novo ou admin API apenas para distinguir tipos que o provider atual colapsa em `otp`.
+## Bloqueios da 001F-02
 
-Se futuramente magic link, phone OTP, invite, social login ou outro método forem habilitados, reabrir o guard antes da promoção dessa capacidade.
+### Anti-enumeração
 
-## Sessões após reset
+O pedido de recovery hoje diferencia publicamente rate limit/erro do provider. No Supabase Auth atual, e-mail inexistente retorna 200 antes do controle de frequência; conta existente pode receber 429. A diferença permite inferir existência de conta.
 
-Após `updateUser({ password })`:
+Correção: após e-mail sintaticamente válido, resposta pública idêntica para sucesso, inexistente, 429, 4xx e 5xx do provider.
 
-- usar `signOut({ scope: "global" })` explicitamente;
-- verificar erro;
-- provar que o refresh token de sessão anterior foi revogado;
-- access token já emitido pode permanecer válido até `exp`, conforme Supabase, e isso deve ser registrado como propriedade conhecida;
-- se refresh anterior continuar válido após logout global bem-sucedido, parar para GPT.
+### AMR fail-closed
 
-## Gate humano do template Recovery
+O parser atual descarta entradas malformadas e pode preservar uma entrada `otp` recente autorizadora. A 001F-01 exige AMR bem formado.
 
-**Cumprido pelo fundador em 2026-08-23; verificação técnica ainda pendente no E2E real.**
-
-O founder informou ter atualizado no Supabase hospedado o template **Reset Password / Recovery** usando o arquivo versionado:
-
-`supabase/templates/recovery.html`
-
-O link esperado é:
-
-`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`
-
-Sem `next`.
-
-Essa confirmação manual libera a retomada do Claude, mas o hosted só será considerado comprovado quando `npm run smoke:recovery` receber um e-mail real e validar o link efetivo.
-
-Se o e-mail vier diferente, parar e reportar. Não usar `supabase config push` nem link administrativo para mascarar divergência.
+Correção: qualquer entrada estruturalmente inválida torna o claim `amr` inteiro não autorizável. `password` continua negando; `otp|recovery` só autoriza com timestamp válido e recente.
 
 ## Próxima ação autorizada
 
-Claude pode retomar **a mesma branch** e executar somente a Correção 001F-01.
+Claude Code deve retomar **a mesma branch** e executar somente a 001F-02.
 
-Na retomada deve:
+Deve:
 
 - reconciliar a branch com a `main` atual;
-- ajustar o predicado temporal de recovery;
-- tornar o logout global explícito e verificar erro;
-- atualizar testes/smoke/comentários;
-- executar o E2E final com e-mail real;
-- provar o template hosted efetivo, senha antiga/nova, one-time link e revogação do refresh anterior;
-- manter zero migration/DDL;
-- preservar a harmonização MVP/roadmap;
-- rodar gates e CI;
-- atualizar relatório e `estado.md`.
+- corrigir os dois bloqueios acima;
+- corrigir a frase stale do `estado.md` da branch sobre E2E ainda pendente;
+- atualizar relatório e corpo do PR se necessário;
+- rodar lint, typecheck, testes, build e CI;
+- confirmar read-only que migrations continuam em 5 e não surgiu fixture residual.
 
-Qualquer URL real contendo `token_hash` deve ser inserida apenas no terminal local quando o smoke solicitar; nunca em relatório, Git ou chat.
+Não deve:
+
+- repetir e-mail/recovery E2E;
+- mexer em SMTP, Gmail ou Supabase Dashboard;
+- criar migration/DDL;
+- pedir ação manual ao fundador;
+- tocar Meta, Ads, IA ou Fase 2.
+
+Handoff esperado:
+
+`001F EXECUTADA COM CORREÇÕES 001F-01 E 001F-02 — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO REAUDITORIA GPT`
+
+Depois, GPT reaudita o delta e decide promoção/fechamento da Fase 1.
 
 ## Resumo histórico preferencial
 
-- `docs/00-governanca/HISTORY_SUMMARY.md`
+`docs/00-governanca/HISTORY_SUMMARY.md`
 
 O resumo incorpora Rodadas 000–001E.
 
-## Canônicos ativos por área
+## Canônicos ativos
 
 ### Governança
 
@@ -150,7 +151,7 @@ O resumo incorpora Rodadas 000–001E.
 ### Produto
 
 - `docs/01-produto/MVP_CANONICAL.md`
-- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` — leitura integral obrigatória nas rodadas relevantes de produto.
+- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
 
 ### Arquitetura
 
@@ -160,23 +161,6 @@ O resumo incorpora Rodadas 000–001E.
 - `docs/03-canonical/SECURITY_MODEL.md`
 - `docs/03-canonical/AI_ARCHITECTURE.md`
 
-## Estado técnico promovido relevante
-
-- Auth real e sessão SSR;
-- organizations + organization_members;
-- grants mínimos e RLS tenant-scoped;
-- isolamento real 2 usuários × 2 organizações;
-- defaults de `postgres` endurecidos;
-- `business_profiles` tenant-scoped;
-- bootstrap inicial atômico por RPC INVOKER apenas server-side/service_role;
-- proteção de dupla submissão;
-- `/conta` com estados explícitos de tenancy;
-- segredo Supabase privilegiado somente server-side.
-
-Auditoria promovida mais recente:
-
-`rodadas/gpt/AUDITORIA_RODADA_001E_BUSINESS_BOOTSTRAP.md`
-
 ## Corte da Rodada 001F permanece
 
 Dentro:
@@ -184,10 +168,10 @@ Dentro:
 - pedido de recuperação por e-mail sem enumeração;
 - template Recovery versionado + hosted efetivo;
 - confirmação SSR `type=recovery`;
-- nova senha sob o predicado corrigido da 001F-01;
+- nova senha sob predicado corrigido;
 - prova real de senha antiga/nova, link one-time e sessões;
 - UX mínima para erro técnico de `/conta`;
-- harmonização proporcional de `MVP_CANONICAL.md` e roadmap para fechamento da Fase 1/Growth Intelligence.
+- harmonização proporcional de MVP/roadmap.
 
 Fora:
 
@@ -204,13 +188,7 @@ A 001F **não cria migration/schema**.
 
 ## Condição de fechamento da Fase 1
 
-Claude não pode declarar a fase encerrada.
-
-Se a 001F corrigida entregar todos os gates, deve parar em:
-
-`001F EXECUTADA COM CORREÇÃO 001F-01 — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO AUDITORIA GPT`
-
-Somente GPT, após auditoria independente e promoção, poderá declarar Fase 1 encerrada.
+Somente GPT, após reauditoria independente e promoção, pode declarar Fase 1 encerrada.
 
 ## Histórico / evidência — NÃO ler por padrão
 
@@ -220,5 +198,3 @@ Somente GPT, após auditoria independente e promoção, poderá declarar Fase 1 
 - `docs/02-research/`;
 - PRs/logs históricos;
 - `.gpt/CURRENT_STATE.md`.
-
-Abrir somente quando `HISTORY_SUMMARY.md`, canônicos e mandato vigente não resolverem uma dependência concreta.

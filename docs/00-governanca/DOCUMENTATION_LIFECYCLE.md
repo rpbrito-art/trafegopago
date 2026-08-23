@@ -1,7 +1,7 @@
 # CICLO DE VIDA E RECICLAGEM DOCUMENTAL — TRÁFEGO PAGO
 
 Status: canônico
-Atualizado: 2026-08-22
+Atualizado: 2026-08-23
 
 ## 1. Objetivo
 
@@ -92,7 +92,55 @@ Exceções permanentes: `estado.md`, `.gpt/PROJECT_PROMPT.md`, `ACTIVE_DOCS.md` 
 
 ---
 
-## 4. ACTIVE_DOCS.md
+## 4. Retomadas de branch e atualização de governança
+
+Uma branch de execução pode conter uma cópia antiga dos documentos HOT enquanto a `main` recebe auditoria, correção, autorização ou atualização de governança.
+
+Por isso, **retomar uma branch não é equivalente a continuar de onde o arquivo local parou**.
+
+Antes de decidir autorização/parada em qualquer retomada, o executor deve:
+
+1. executar `git fetch origin`;
+2. comparar a branch atual com `origin/main`;
+3. verificar se a `main` alterou `estado.md`, `PROJECT_PROMPT.md`, `ACTIVE_DOCS.md`, mandato ou correção vigente;
+4. ler a versão mais recente desses contratos antes de decidir;
+5. reconciliar a branch com a governança atual quando necessário, preservando implementação válida;
+6. parar somente se a reconciliação criar conflito substantivo que exija decisão.
+
+Não é aceitável devolver ao fundador um bloqueio baseado apenas em `estado.md` antigo da própria branch quando a `main` pode conter contrato posterior.
+
+O objetivo é impedir que o fundador precise transportar manualmente entre GPT e Claude uma correção que já foi publicada no repositório.
+
+---
+
+## 5. Gates humanos como estado operacional, não handoff automático
+
+Quando um mandato prevê ação humana, o executor deve terminar primeiro tudo que puder fazer sozinho e então, se a ação puder ser resolvida na mesma sessão, entrar em estado explícito:
+
+`GATE HUMANO ATIVO`
+
+Nesse estado o executor:
+
+- explica a ação em linguagem simples;
+- pede diretamente apenas o dado/ação indispensável;
+- aguarda o fundador;
+- mantém segredo/token no canal local apropriado;
+- retoma automaticamente a execução após a resposta;
+- só produz handoff final depois de concluir as provas restantes.
+
+O gate **não** deve virar relatório “pendente para o fundador” se o próprio executor poderia simplesmente pedir a intervenção e continuar naquela sessão.
+
+Fluxo preferido:
+
+`EXECUÇÃO AUTÔNOMA → GATE HUMANO ATIVO → EXECUÇÃO RETOMADA → AGUARDANDO AUDITORIA GPT`
+
+`GATE HUMANO PENDENTE` só é apropriado quando o fundador não está disponível, há espera externa longa, nova decisão formal é necessária, o ambiente não consegue continuar ou o mandato exige retorno ao GPT.
+
+O fundador não deve precisar funcionar como mensageiro entre agentes para transportar contexto já disponível no Git.
+
+---
+
+## 6. ACTIVE_DOCS.md
 
 `docs/00-governanca/ACTIVE_DOCS.md` é o índice compacto do working set atual.
 
@@ -110,7 +158,7 @@ O arquivo deve ser mantido curto. Ele é um índice, não uma segunda especifica
 
 ---
 
-## 5. HISTORY_SUMMARY.md
+## 7. HISTORY_SUMMARY.md
 
 `docs/00-governanca/HISTORY_SUMMARY.md` comprime o passado já promovido.
 
@@ -128,7 +176,7 @@ O objetivo é permitir reconstruir meses de desenvolvimento em poucos minutos e 
 
 ---
 
-## 6. Gatilhos de reciclagem
+## 8. Gatilhos de reciclagem
 
 A reciclagem documental deve acontecer **dentro da próxima rodada substantiva**, sem criar uma rodada exclusiva, quando qualquer um destes ocorrer:
 
@@ -143,7 +191,7 @@ Se houver ambiguidade operacional ou risco de executar contrato obsoleto, a reci
 
 ---
 
-## 7. Procedimento de reciclagem
+## 9. Procedimento de reciclagem
 
 Quando um gatilho ocorrer:
 
@@ -160,7 +208,7 @@ Não reescrever histórico de Git e não apagar evidência necessária para audi
 
 ---
 
-## 8. Regra de tamanho e duplicação
+## 10. Regra de tamanho e duplicação
 
 Documentos canônicos devem conter contrato atual, não diário de bordo.
 
@@ -172,19 +220,23 @@ Se um relatório antigo tiver 800 linhas, isso não obriga um novo agente a lê-
 
 ---
 
-## 9. Responsabilidades
+## 11. Responsabilidades
 
 ### GPT
 
 - manter `ACTIVE_DOCS.md` e `HISTORY_SUMMARY.md` coerentes após promoções relevantes;
 - detectar gatilhos de reciclagem;
 - definir READ SET mínimo nos mandatos;
+- definir gates humanos previsíveis e a condição de retomada quando aplicável;
+- publicar correções/autorização em documentos HOT ou referenciados por eles;
 - não exigir do Claude relatórios que dupliquem sua própria auditoria independente.
 
 ### Claude Code
 
 - respeitar o READ SET;
+- em retomadas, buscar e reconciliar governança recente da `main` antes de decidir parar;
 - não varrer `rodadas/`, `docs/02-research/` ou arquivos arquivados sem necessidade concreta;
+- conduzir gates humanos diretamente quando puderem ser resolvidos na sessão;
 - registrar evidências de forma compacta;
 - sinalizar se encontrou contrato ativo duplicado ou claramente obsoleto.
 
@@ -192,10 +244,14 @@ Se um relatório antigo tiver 800 linhas, isso não obriga um novo agente a lê-
 
 Não precisa transportar contexto manualmente entre agentes. O repositório e o working set documental devem cumprir essa função.
 
+Também não deve precisar encerrar um agente, consultar o outro e voltar apenas para descobrir como cumprir um gate humano já previsto. Quando a intervenção puder ser concluída na sessão, o executor deve conduzi-la até o fim.
+
 ---
 
-## 10. Resultado esperado
+## 12. Resultado esperado
 
 O custo de bootstrap deve permanecer aproximadamente constante mesmo que o repositório acumule anos de histórico.
 
 A quantidade de documentos armazenados pode crescer; a quantidade de documentos **obrigatórios para entender a próxima ação** não deve crescer na mesma proporção.
+
+O número de idas e voltas manuais do fundador entre GPT e Claude também deve permanecer mínimo: contexto pelo Git, decisões humanas apenas onde são realmente humanas.
