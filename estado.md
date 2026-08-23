@@ -1,6 +1,6 @@
 # ESTADO — Tráfego Pago
 
-Atualizado: 2026-08-23 (execução da 001F)
+Atualizado: 2026-08-23
 
 Este é o **estado operacional canônico da execução corrente**. Para histórico promovido, usar `docs/00-governanca/HISTORY_SUMMARY.md`; não reler relatórios antigos por padrão.
 
@@ -58,115 +58,127 @@ Migration incorporada: `20260823111051_create_business_profiles_and_bootstrap.sq
 
 **RODADA 001F — RECOVERY DE ACESSO + FECHAMENTO DA FASE 1**
 
-Status: **EXECUTADA PARCIALMENTE — BLOQUEADA NO CRITÉRIO DE PARADA §11.2 — AGUARDANDO DECISÃO E AUDITORIA GPT**.
+Status: **CORREÇÃO 001F-01 AUTORIZADA — GATE HUMANO DO TEMPLATE CONFIRMADO — RETOMADA PELO CLAUDE CODE AUTORIZADA**.
 
-**NÃO é candidata a fechamento da Fase 1.**
-
-Mandato vigente:
+Mandato original:
 
 `rodadas/gpt/RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 
-Branch entregue:
+Correção vigente e prevalente sobre o ponto divergente do mandato:
+
+`rodadas/gpt/CORRECAO_001F_01_AMR_RECOVERY_PROVIDER_REAL.md`
+
+Branch entregue/em correção:
 
 `claude/rodada-001f-recovery-fechamento-fase1`
 
-Relatório entregue:
+PR de auditoria: **#7 — draft, não promover**.
 
-`rodadas/claude/RELATORIO_RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
+Head entregue antes da correção:
 
-Gates locais: lint, typecheck, `vitest run` (19 arquivos / 319 testes) e build — todos verdes. Sem migration, sem DDL, sem mudança de schema/RLS/grants. Migration history permanece em 5, última `20260823111051`. Advisor só com o WARN conhecido.
+`4d9e4276609f9d3bb9484ede2bf313e6ac38a0c8`
 
-### Bloqueio
+O fundador confirmou em 2026-08-23 que atualizou manualmente no Supabase hospedado o template **Reset Password / Recovery** com o conteúdo versionado. Isso libera a retomada, mas **não equivale a verificação técnica do template**: a conformidade remota só será aceita quando o smoke final receber e usar um e-mail real do Auth hospedado e comprovar o link esperado.
 
-O mandato §4.4 exige sessão cujo JWT `amr` contenha o método `recovery`. **O projeto hospedado não emite esse valor.** Medido em GoTrue `v2.195.0`, no JWT e em `auth.mfa_amr_claims`:
+O estado promovido continua **000–001E**. A 001F não foi aprovada nem incorporada.
+
+Nenhuma Fase 2 ou rodada posterior está autorizada.
+
+## 5. Bloqueio descoberto e decisão GPT
+
+O mandato original exigia sessão com `amr.method = recovery`.
+
+A execução mediu no Supabase hospedado atual:
 
 - login por senha → `password`;
 - `verifyOtp(type=recovery)` → `otp`;
 - `verifyOtp(type=signup)` → `otp`.
 
-Sessão comum de login fica bloqueada com segurança, mas sessão de recuperação não se distingue de outra sessão nascida de OTP por e-mail. Isso é o critério de parada §11.2.
+A documentação externa atual é inconsistente nesse detalhe. A correção 001F-01 substitui o requisito literal por um predicado compatível com o provider real, sem introduzir hook, tabela, cookie assinado, secret novo ou admin API.
 
-O guard entregue (`grantsPasswordReset`) exige método de OTP por e-mail e recusa `amr` contendo `password` — a regra mais estrita que o contrato real suporta. A divergência está documentada em código, coberta por teste e **não** foi apresentada como cumprimento do mandato.
+Novo contrato resumido:
 
-### Pendências que dependem de outro agente
+- claims verificadas por `getClaims()`;
+- `sub` e `email` válidos;
+- AMR com `recovery` **ou** `otp`;
+- nenhuma entrada `password`;
+- AMR autorizador recente: máximo **15 minutos**, com até 60 s de clock skew futuro;
+- sessão password comum continua recusada;
+- se métodos Auth adicionais forem habilitados no futuro, o guard deve ser reaberto antes da promoção dessa capacidade.
 
-1. **GPT:** decidir o critério de `amr` — ratificar o predicado entregue, ou determinar mecanismo próprio (custom access token hook, cookie marcador assinado no ramo de recovery, ou outro). Qualquer um deles é contrato estrutural novo, fora do mandato do executor.
-2. **Fundador:** atualizar o template Recovery no Dashboard com o conteúdo de `supabase/templates/recovery.html`. Não verificável nem aplicável pelo executor: a CLI guarda o token no keyring e `supabase config push` empurraria todo o config local sobre o projeto hospedado.
-3. **Fundador, depois de 1 e 2:** rodar a prova final com e-mail real — `RECOVERY_TEST_EMAIL=<caixa de teste> npm run smoke:recovery`.
+## 6. Sessões após redefinição
 
-Nenhuma Fase 2 ou rodada posterior está autorizada.
+A correção também exige:
 
-## 5. Objetivo autorizado da 001F
+- `signOut({ scope: "global" })` explícito após `updateUser({ password })`;
+- tratar o retorno do logout, sem ignorar erro;
+- provar que o refresh token de sessão anterior deixa de funcionar;
+- aceitar como propriedade conhecida do Supabase que access tokens já emitidos podem continuar válidos até `exp`;
+- se logout global retornar sucesso e refresh anterior ainda funcionar, parar e retornar ao GPT.
 
-Fechar a lacuna funcional objetiva restante da Fase 1 com recovery real por e-mail/senha e deixar a fase candidata a encerramento após auditoria GPT.
+Nenhuma admin API/secret key é autorizada para esse logout funcional.
 
-Fluxo alvo:
+## 7. Gate humano do template Recovery hosted
 
-`entrar → esqueci minha senha → e-mail real → confirmação SSR recovery → nova senha → login com nova senha`
+**Cumprido pelo fundador em 2026-08-23; verificação técnica ainda pendente no E2E final.**
 
-A rodada deve:
+O template hospedado foi informado como atualizado no Supabase em **Reset Password / Recovery** usando o conteúdo versionado em:
 
-- implementar pedido de recuperação sem enumeração de contas;
-- versionar template de recovery e alinhar configuração local;
-- validar o template hosted efetivo por e-mail real;
-- ampliar `/auth/confirm` somente para `recovery`, preservando signup/email e open-redirect protection;
-- forçar recovery para a rota de nova senha, sem `next` arbitrário;
-- exigir sessão cujo JWT `amr` contenha método `recovery` para permitir redefinição;
-- usar `updateUser({ password })` no contexto do próprio usuário, sem admin/secret key;
-- provar senha antiga rejeitada, nova senha válida, não reutilização do link e comportamento real de sessões;
-- melhorar apenas a mensagem de erro técnico de `/conta` registrada como dívida da 001E;
-- preservar schema/RLS/grants sem migrations;
-- harmonizar proporcionalmente `MVP_CANONICAL.md` e `IMPLEMENTATION_ROADMAP.md` com Growth Intelligence no que afeta fechamento da Fase 1 e interpretação das próximas fases.
+`supabase/templates/recovery.html`
 
-## 6. Fora de escopo da 001F
+Link esperado no e-mail real:
 
-- convites e gestão de membros;
-- alteração de role/status/ownership;
-- multi-org switcher;
-- edição ampla/exclusão de negócio;
-- Meta/Instagram;
-- Operations/Audit/Queues da Fase 2;
-- Ads/campanhas;
-- IA/personas;
-- MFA/passkeys/social login;
-- plano Supabase pago;
-- SMTP/domínio de produção.
+`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`
 
-Gestão avançada de membros **não bloqueia** o fechamento da Fase 1; a fundação multiusuário, papéis, tenancy e isolamento já existem e foram provados.
+Sem `next`.
 
-## 7. Baseline e riscos conhecidos
+Claude deve verificar isso empiricamente no smoke final. Se o e-mail real não vier nesse formato, parar e reportar; não usar `supabase config push` nem contornar com link administrativo.
+
+Nenhum segredo SMTP deve ser solicitado ou exposto.
+
+## 8. Próxima execução autorizada
+
+Claude Code deve retomar **a mesma branch** e executar somente a Correção 001F-01:
+
+- sincronizar/reconciliar a branch com a `main` atual sem perder a implementação já entregue;
+- ajustar o guard de recovery para o predicado temporal autorizado;
+- tornar o logout global explícito e testado;
+- atualizar testes/smoke/comentários necessários;
+- executar o smoke final com e-mail real;
+- verificar no e-mail real que o template hosted efetivo corresponde ao link versionado;
+- manter zero migration/DDL;
+- preservar a harmonização MVP/roadmap já entregue;
+- rodar gates e CI;
+- atualizar relatório e `estado.md`.
+
+Durante o smoke, qualquer URL real de recovery contendo `token_hash` deve ser fornecida somente ao processo local/terminal e nunca registrada em relatório, Git ou chat.
+
+Conclusão esperada, se tudo passar:
+
+`001F EXECUTADA COM CORREÇÃO 001F-01 — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO AUDITORIA GPT`
+
+Claude não aprova, não promove e não inicia Fase 2.
+
+## 9. Baseline e riscos conhecidos
 
 1. `auth_leaked_password_protection` permanece desabilitado: hardening obrigatório antes de clientes reais/produção e recurso Pro+ conforme documentação vigente.
 2. Brevo Free permanece SMTP provisório de desenvolvimento.
-3. Template Recovery do projeto hosted pode exigir um único gate humano no Dashboard; não pedir nem expor segredo SMTP.
-4. Default ACL residual de `supabase_admin` continua aceito somente enquanto `public` tiver zero objetos owned por essa role.
-5. Funções futuras exigem GRANT EXECUTE explícito.
-6. `SUPABASE_SECRET_KEY` nunca pode entrar no fluxo funcional de recovery, `NEXT_PUBLIC_*`, browser, logs ou respostas.
-7. A rota de redefinição não pode aceitar mera sessão autenticada comum como prova de recovery.
-8. A Fase 1 só pode ser declarada encerrada pela auditoria GPT após recovery real aprovado; Claude não promove nem fecha fase.
+3. Default ACL residual de `supabase_admin` continua aceito somente enquanto `public` tiver zero objetos owned por essa role.
+4. Funções futuras exigem GRANT EXECUTE explícito.
+5. `SUPABASE_SECRET_KEY` nunca pode entrar no fluxo funcional de recovery, `NEXT_PUBLIC_*`, browser, logs ou respostas.
+6. Access tokens revogados no servidor podem permanecer criptograficamente válidos até `exp`; ações futuras de alta sensibilidade podem exigir validação de sessão mais forte conforme risco.
+7. Gestão avançada de membros, edição ampla, multi-org e exclusão permanecem posteriores e não bloqueiam o fechamento da Fase 1.
+8. A Fase 1 só pode ser declarada encerrada pela auditoria GPT após recovery real aprovado e promoção da 001F.
 
-## 8. Gate obrigatório de produto
+## 10. Gate obrigatório de produto
 
-A 001F toca UX/onboarding e documentação de produto. Claude deve ler **integralmente**:
+A 001F toca UX/onboarding e documentação de produto. Claude e GPT devem ler integralmente:
 
 `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
 
-A harmonização da rodada não pode reintroduzir paid-first, funil rígido, formulário total obrigatório nem complexidade desnecessária ao usuário.
+A harmonização entregue não pode reintroduzir paid-first, funil rígido, formulário total obrigatório nem complexidade desnecessária ao usuário.
 
-## 9. Próxima ação autorizada
-
-A execução parou no critério §11.2 do mandato. A próxima ação **não é do Claude Code**:
-
-1. GPT decide o critério de sessão de recovery (ver §4 do relatório);
-2. fundador aplica o template Recovery hospedado;
-3. fundador roda a prova final com e-mail real;
-4. GPT audita.
-
-Claude Code só volta a executar depois de mandato ou correção formal em `rodadas/gpt/`.
-
-Não iniciar Fase 2.
-
-## 10. Continuidade
+## 11. Continuidade
 
 Branch/relatório/commit não significam incorporação. O estado efetivamente promovido continua 000–001E até auditoria e promoção formal da 001F.
 
