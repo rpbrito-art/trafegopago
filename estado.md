@@ -36,73 +36,78 @@ Detalhes históricos: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 ## 3. Estado corrente
 
-**RODADA 001D — DEFAULT PRIVILEGES + GRANTS + RLS + ISOLAMENTO**
+**RODADA 001E — BOOTSTRAP DE NEGÓCIO**
 
-Status: **APROVADA E PROMOVIDA**.
+Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
 
-PR: #5
-Merge: `178c2aa0e4ada91ae2bae73d2ff97c21f27c0222`
-Head técnico Claude: `055b411db15355515d7cb5cb35a3fd724058f589`
-Head final auditado/CI: `ca1fe3b54890834ba16b9126ccee7c6c4ed4ef77`
-CI final: run `32635190849` — success
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`
+Mandato:
 
-Migrations da 001D:
-- `20260823003128_harden_default_privileges_grants_and_rls_policies.sql`;
-- `20260823103521_revoke_global_default_execute_on_functions.sql`.
+`rodadas/gpt/RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-Não há mandato executável pendente.
+Branch esperada:
 
-`/proxima` deve **parar aguardando nova autorização explícita**.
+`claude/rodada-001e-business-bootstrap`
 
-## 4. Provas consolidadas da 001D
+Relatório esperado:
 
-- migration history local/remota fechada em 4 migrations;
-- RLS ativo em `organizations` e `organization_members`;
-- `authenticated` com SELECT e sem INSERT/UPDATE/DELETE;
-- `anon` sem SELECT;
-- `service_role` com grants atuais explícitos;
-- duas policies SELECT: própria membership e organização ACTIVE com membership própria ACTIVE;
-- nenhuma policy de escrita;
-- nenhuma nova `SECURITY DEFINER`;
-- prova real Auth/JWT/Data API: 21/21;
-- cross-tenant negado/vazio;
-- membership/org INACTIVE retiram acesso;
-- `owner` não ganha bypass de escrita;
-- fixtures removidas: organizations=0, memberships=0 e apenas 1 usuário real no Auth;
-- default global de funções de `postgres` = `{postgres=X/postgres}`;
-- 50 funções owned por `postgres` atuais com ACL explícita;
-- `rls_auto_enable()` preserva ACL segura da 001A;
-- `ensure_rls` ativo;
-- `supabase_admin` possui zero objetos owned em `public`;
-- Advisor final apenas com WARN conhecido de leaked password protection;
-- CI final verde.
+`rodadas/claude/RELATORIO_RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-## 5. Pendências e riscos conhecidos
+`/proxima` está autorizado a executar **somente a Rodada 001E**.
+
+Nenhuma etapa posterior está autorizada.
+
+## 4. Objetivo autorizado da 001E
+
+Construir o primeiro fluxo real de domínio após autenticação:
+
+`conta autenticada → organização inicial → membership owner → business_profile → resumo em /conta`
+
+A rodada deve:
+
+- criar `public.business_profiles` conforme o modelo canônico mínimo;
+- manter `anon` sem acesso;
+- conceder a `authenticated` somente SELECT no profile, protegido por membership ACTIVE + organização ACTIVE;
+- preservar escrita direta do browser fechada em `organizations`, `organization_members` e `business_profiles`;
+- introduzir cliente Supabase privilegiado exclusivamente server-side usando `SUPABASE_SECRET_KEY`;
+- usar função `SECURITY INVOKER` chamável somente por `service_role` para criar organização + owner membership + profile atomicamente;
+- provar que `anon`/`authenticated` não conseguem invocar a RPC;
+- impedir dupla submissão concorrente de criar dois tenants para o onboarding inicial;
+- transformar `/conta` em onboarding/resumo mínimo, sem redesign amplo;
+- preservar todos os invariantes e hardenings promovidos na 001D.
+
+## 5. Fora de escopo da 001E
+
+- recuperação/reset de senha;
+- convite/gestão de membros;
+- alteração de role/status/ownership;
+- edição ampla de organização/profile;
+- múltiplas organizações / tenant switcher;
+- delete account/organization;
+- limites financeiros;
+- Meta/Instagram;
+- Operations/Audit/Queues da Fase 2;
+- IA.
+
+## 6. Baseline e riscos conhecidos
 
 1. `auth_leaked_password_protection` permanece desabilitado: hardening obrigatório antes de clientes reais/produção.
-2. Brevo Free permanece SMTP provisório de desenvolvimento; SMTP/domínio de produção ainda não definido.
-3. Default ACL residual de `supabase_admin` permanece risco de plataforma aceito enquanto `public` tiver zero objetos owned por essa role. Se surgir objeto owned por `supabase_admin`, reabrir decisão GPT.
-4. Funções futuras que precisem ser chamadas por Data API/server roles devem receber `GRANT EXECUTE` explícito em migration.
-5. Policies de escrita/gestão de Organizations/Membership ainda não foram desenhadas.
-6. `business_profiles` ainda não foi criado.
-7. Rate limiting próprio permanece futuro conforme `SECURITY_MODEL.md`.
+2. Brevo Free permanece SMTP provisório de desenvolvimento.
+3. Default ACL residual de `supabase_admin` continua aceito somente enquanto `public` tiver zero objetos owned por essa role.
+4. Funções futuras que precisem de execução exigem GRANT EXECUTE explícito.
+5. A secret key Supabase nunca pode ir para `NEXT_PUBLIC_*`, browser, logs, respostas ou relatório.
+6. `service_role` bypassa RLS; o caminho privilegiado desta rodada deve ser estreito, server-only e receber identidade exclusivamente do `getClaims()` verificado.
+7. A Fase 1 ainda não será considerada encerrada após esta autorização; recovery e demais itens pendentes serão avaliados depois da auditoria da 001E.
 
-## 6. Próxima direção planejável, ainda não autorizada
+## 7. Próxima ação autorizada
 
-A Fundação Supabase/Auth/Tenancy já possui autenticação, schema mínimo, grants e isolamento de leitura.
+Claude Code deve executar a Rodada 001E conforme o mandato e parar em:
 
-A próxima etapa substantiva deve ser **planejada** a partir do roadmap e do estado real, considerando principalmente:
-- `business_profiles` / perfil mínimo do negócio;
-- fluxo mínimo de conta → organização → negócio;
-- mecanismo autorizado para criação/gestão de organization/membership sem abrir escrita insegura no browser.
+`RODADA 001E — EXECUTADA — AGUARDANDO AUDITORIA GPT`
 
-A numeração e o recorte exato da próxima rodada devem ser definidos pelo GPT antes da execução.
+Não iniciar 001F.
 
-Nenhuma próxima rodada está autorizada neste momento.
-
-## 7. Continuidade
+## 8. Continuidade
 
 Descompasso temporário de numeração/documentação é normal e não exige housekeeping isolado.
 
-Branch/relatório/commit só entram no produto após auditoria e promoção. A Rodada 001D está incorporada; qualquer trabalho posterior depende de novo mandato explícito.
+Branch/relatório/commit não significam incorporação. O estado promovido continua 000–001D até auditoria e promoção formal da 001E.

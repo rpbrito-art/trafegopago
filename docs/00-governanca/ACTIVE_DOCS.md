@@ -6,11 +6,19 @@ Próximo gatilho ordinário: conforme `DOCUMENTATION_LIFECYCLE.md`, sem criar ho
 
 ## Estado corrente
 
-Rodada 001D — **APROVADA E PROMOVIDA**.
+Rodada vigente: **001E — Bootstrap de Negócio**.
 
-Não há mandato executável pendente.
+Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
 
-`/proxima` deve parar aguardando nova autorização explícita do fundador.
+Mandato vigente:
+
+`rodadas/gpt/RODADA_001E_BUSINESS_BOOTSTRAP.md`
+
+Branch esperada:
+
+`claude/rodada-001e-business-bootstrap`
+
+`/proxima` está autorizado a executar **somente a Rodada 001E**.
 
 A fonte operacional é `estado.md`.
 
@@ -19,14 +27,28 @@ A fonte operacional é `estado.md`.
 1. `estado.md`
 2. `.gpt/PROJECT_PROMPT.md`
 3. `docs/00-governanca/ACTIVE_DOCS.md`
+4. `rodadas/gpt/RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-Quando uma nova rodada for autorizada, adicionar aqui o mandato vigente e seu READ SET mínimo.
+## READ SET específico da 001E
+
+Conforme mandato:
+
+- `docs/00-governanca/HISTORY_SUMMARY.md`;
+- `docs/00-governanca/IMPLEMENTATION_ROADMAP.md` — Fase 1;
+- `docs/01-produto/MVP_CANONICAL.md` — §§4 e 20;
+- `docs/03-canonical/DATA_MODEL.md` — §§1, 2, 16, 17;
+- `docs/03-canonical/SECURITY_MODEL.md` — §§3–6, 12, 15, 18, 20;
+- migrations 001C/001D;
+- arquivos auth/Supabase/env/`/conta` listados no mandato;
+- documentação oficial Supabase vigente para RLS, grants, service role/secret key, funções e Data API.
+
+Não reler relatórios completos das Rodadas 000–001D salvo dependência concreta.
 
 ## Resumo histórico preferencial
 
 - `docs/00-governanca/HISTORY_SUMMARY.md`
 
-O resumo já incorpora as Rodadas 000, 001A, 001B, 001C e 001D. Abrir relatórios/auditorias antigos somente quando houver dependência concreta.
+O resumo incorpora 000–001D.
 
 ## Canônicos ativos por área
 
@@ -48,15 +70,27 @@ O resumo já incorpora as Rodadas 000, 001A, 001B, 001C e 001D. Abrir relatório
 - `docs/03-canonical/SECURITY_MODEL.md`
 - `docs/03-canonical/AI_ARCHITECTURE.md`
 
-## Próxima direção planejável — não autorizada
+## Corte da Rodada 001E
 
-A próxima rodada substantiva deve ser definida a partir do roadmap e do estado promovido após 001D, considerando:
+Dentro:
 
-- `business_profiles` / perfil mínimo do negócio;
-- fluxo mínimo conta → organização → negócio;
-- criação/gestão segura de organization/membership sem abrir escrita direta insegura no browser.
+- `business_profiles`;
+- leitura tenant-scoped;
+- caminho server-only privilegiado para bootstrap atômico;
+- organização + membership owner + profile;
+- `/conta` com zero/uma/múltiplas memberships tratadas explicitamente.
 
-Não assumir automaticamente numeração ou escopo de 001E antes de planejamento GPT e autorização explícita.
+Fora:
+
+- recovery de senha;
+- gestão/convites de membros;
+- edição ampla;
+- multi-org switcher;
+- delete;
+- Meta/IA;
+- Fase 2.
+
+Nenhuma etapa posterior está autorizada.
 
 ## Histórico / evidência — NÃO ler por padrão
 
@@ -67,4 +101,4 @@ Não assumir automaticamente numeração ou escopo de 001E antes de planejamento
 - PRs e logs históricos;
 - `.gpt/CURRENT_STATE.md`.
 
-Abrir somente quando `HISTORY_SUMMARY.md` e os canônicos vigentes não resolverem a dependência.
+Abrir somente quando o mandato/canônicos atuais não resolverem uma dependência concreta.
