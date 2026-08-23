@@ -14,10 +14,11 @@
  *
  * O que fica provado, em uma passagem:
  *
- *   pedido pela UI pública (sem enumeração) -> e-mail real -> confirmação SSR
- *   -> sessão de OTP por e-mail (ver a divergência de `amr` em
- *   `src/lib/auth/recovery.ts`) -> nova senha -> senha antiga morre, nova vale
- *   -> link não se reutiliza -> efeito real sobre a sessão anterior
+ *   pedido pela UI pública (sem enumeração) -> e-mail real -> template hosted
+ *   efetivo -> confirmação SSR -> sessão de OTP por e-mail recente (ver o
+ *   predicado em `src/lib/auth/recovery.ts`) -> nova senha -> senha antiga
+ *   morre, nova vale -> link não se reutiliza -> logout global revoga o
+ *   refresh token da sessão que já existia
  *
  * As submissões de formulário usam o caminho de progressive enhancement do
  * Next (POST multipart com os campos ocultos da própria página). É a mesma
@@ -252,13 +253,38 @@ function clienteDoJar(jar) {
   });
 }
 
-function metodosAmr(claims) {
+function entradasAmr(claims) {
   const amr = claims?.amr;
   if (!Array.isArray(amr)) return [];
 
   return amr
-    .map((entrada) => (typeof entrada === "string" ? entrada : entrada?.method))
-    .filter((metodo) => typeof metodo === "string");
+    .map((entrada) =>
+      typeof entrada === "string"
+        ? { method: entrada, timestamp: null }
+        : { method: entrada?.method, timestamp: entrada?.timestamp ?? null },
+    )
+    .filter((entrada) => typeof entrada.method === "string");
+}
+
+function metodosAmr(claims) {
+  return entradasAmr(claims).map((entrada) => entrada.method);
+}
+
+/**
+ * Idade, em segundos, da entrada de `amr` que autoriza a troca de senha.
+ *
+ * `null` quando não há entrada de OTP por e-mail com instante utilizável — que
+ * é exatamente o caso em que o guard nega.
+ */
+function idadeDoAutorizador(claims) {
+  const agora = Date.now();
+
+  const idades = entradasAmr(claims)
+    .filter((entrada) => ["recovery", "otp"].includes(entrada.method))
+    .filter((entrada) => typeof entrada.timestamp === "number")
+    .map((entrada) => (agora - entrada.timestamp * 1000) / 1000);
+
+  return idades.length ? Math.min(...idades) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -521,6 +547,33 @@ try {
       `${metodosRecovery.includes("recovery") ? "sim" : "NÃO (provider emite otp)"}`,
   );
 
+  // O predicado da Correção 001F-01 §3.6 depende do instante gravado em `amr`.
+  // Se o provider parar de emitir timestamp — ou passar a emiti-lo em outra
+  // unidade —, o guard nega e é aqui que isso aparece, em vez de virar uma
+  // tela de "link inválido" sem explicação.
+  const idadeAmrSegundos = idadeDoAutorizador(claimsRecovery.data?.claims);
+
+  prova(
+    "amr da sessão de recovery declara instante utilizável",
+    idadeAmrSegundos !== null,
+    idadeAmrSegundos === null
+      ? "nenhuma entrada recovery/otp com timestamp numérico"
+      : `idade=${idadeAmrSegundos.toFixed(1)}s`,
+  );
+  prova(
+    "método autorizador é recente o bastante para a janela de 15 min",
+    idadeAmrSegundos !== null &&
+      idadeAmrSegundos < 15 * 60 &&
+      idadeAmrSegundos > -60,
+    `idade=${idadeAmrSegundos === null ? "n/d" : `${idadeAmrSegundos.toFixed(1)}s`}`,
+  );
+
+  const claimsEmail = claimsRecovery.data?.claims?.email;
+  prova(
+    "claims de recovery trazem e-mail utilizável",
+    typeof claimsEmail === "string" && claimsEmail.length > 0,
+  );
+
   const telaNovaSenha = await pedir("/redefinir-senha", { jar: jarRecovery });
   const htmlNovaSenha = await telaNovaSenha.text();
 
@@ -626,8 +679,9 @@ try {
   );
 
   // -- 12. Efeito sobre a sessão que já existia -------------------------------
-  // Comportamento observado, não presumido: o mandato 001F §4.5 exige medir o
-  // que o Supabase faz com sessões anteriores, em vez de repetir a documentação.
+  // A Correção 001F-01 §5 exige que o logout global tenha efeito verificável:
+  // o refresh token da sessão de login anterior tem de deixar de ser aceito.
+  // Medido no endpoint do Auth, não deduzido da documentação.
   const refreshDepois = await fetch(
     `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
     {
@@ -640,20 +694,26 @@ try {
   const sessaoAnteriorRevogada = refreshDepois.status >= 400;
   const contaSessaoAntiga = await pedir("/conta", { jar: jarLogin });
 
-  nota(
-    `refresh token da sessão anterior após a troca: HTTP ${refreshDepois.status} ` +
-      `(${sessaoAnteriorRevogada ? "revogado" : "ainda aceito"})`,
+  prova(
+    "refresh token da sessão anterior é recusado após o logout global",
+    sessaoAnteriorRevogada,
+    `HTTP ${refreshDepois.status}`,
   );
   nota(
     `área protegida com os cookies da sessão anterior: HTTP ${contaSessaoAntiga.status} ` +
       `-> ${destino(contaSessaoAntiga) ?? "sem redirect"}`,
   );
-
-  prova(
-    "efeito sobre sessões anteriores foi observado empiricamente",
-    Number.isInteger(refreshDepois.status),
-    `revogada=${sessaoAnteriorRevogada}`,
+  nota(
+    "access token já emitido pode seguir válido até `exp`: é propriedade " +
+      "conhecida do Supabase (Correção 001F-01 §5.3), não falha desta rodada.",
   );
+
+  if (!sessaoAnteriorRevogada) {
+    nota(
+      "PARADA §5.4 da correção: logout global sem efeito sobre o refresh " +
+        "anterior. Não contornar — retornar ao GPT.",
+    );
+  }
 } finally {
   if (userId) {
     const { error } = await admin.auth.admin.deleteUser(userId);

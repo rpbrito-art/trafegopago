@@ -1,6 +1,6 @@
 # ESTADO — Tráfego Pago
 
-Atualizado: 2026-08-23
+Atualizado: 2026-08-23 (execução da Correção 001F-01)
 
 Este é o **estado operacional canônico da execução corrente**. Para histórico promovido, usar `docs/00-governanca/HISTORY_SUMMARY.md`; não reler relatórios antigos por padrão.
 
@@ -58,7 +58,9 @@ Migration incorporada: `20260823111051_create_business_profiles_and_bootstrap.sq
 
 **RODADA 001F — RECOVERY DE ACESSO + FECHAMENTO DA FASE 1**
 
-Status: **CORREÇÃO 001F-01 AUTORIZADA — GATE HUMANO DO TEMPLATE CONFIRMADO — RETOMADA PELO CLAUDE CODE AUTORIZADA**.
+Status: **CORREÇÃO 001F-01 EXECUTADA — E2E COM E-MAIL REAL PENDENTE DE GATE HUMANO — AGUARDANDO AUDITORIA GPT**.
+
+**Ainda NÃO é candidata a fechamento da Fase 1:** o critério §7 da correção exige o E2E com e-mail real, que o executor não tem como produzir.
 
 Mandato original:
 
@@ -77,6 +79,38 @@ PR de auditoria: **#7 — draft, não promover**.
 Head entregue antes da correção:
 
 `4d9e4276609f9d3bb9484ede2bf313e6ac38a0c8`
+
+Relatório atualizado:
+
+`rodadas/claude/RELATORIO_RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
+
+### Execução da correção (2026-08-23)
+
+Branch reconciliada com `origin/main` por merge — sem rebase, sem force, sem reescrita de histórico. Conflito só em `estado.md`, resolvido pela versão da `main`. Implementação da 001F preservada integralmente.
+
+Entregue:
+
+- predicado temporal da §3 em `src/lib/auth/recovery.ts` e `src/lib/auth/session.ts` — `otp`/`recovery` recente (≤ 15 min, skew ≤ 60 s), sem `password`, `sub` e `email` obrigatórios;
+- `signOut({ scope: "global" })` explícito em `resetPasswordAction`, com o retorno tratado e mensagem própria quando falha;
+- smoke ampliado com provas de recência do AMR e de revogação do refresh anterior.
+
+Medido contra o projeto hospedado, não presumido:
+
+- `amr` chega como `{method, timestamp}`, com **timestamp em segundos** (leitura como ms daria ~56 anos de idade);
+- relógio do Auth 0,6 s adiantado — o skew de 60 s existe por isso;
+- `signOut({scope:"global"})` sem erro e refresh token da sessão anterior recusado depois dele (**HTTP 400**). Critério de parada §5.4 **não** acionado.
+
+Gates locais: lint (0 warnings), typecheck, `vitest run` (19 arquivos / **349** testes) e build — todos verdes. Sem migration, sem DDL. Migration history permanece em 5, última `20260823111051`. Advisor só com o WARN conhecido.
+
+Divergência registrada: no ensaio isolado, `updateUser({ password })` já revogou o refresh anterior antes do `signOut` — ao contrário do que a correção §5 assume a partir da medição da 001F. Causa não afirmada; consumir um refresh token o rotaciona e contamina a medição seguinte. O E2E no fluxo real é a prova que vale.
+
+### Pendência única
+
+**Fundador:** com a aplicação de pé (`npm run dev`), rodar
+
+`RECOVERY_TEST_EMAIL=<caixa real de teste> npm run smoke:recovery`
+
+O E2E depende de abrir uma caixa de entrada real e colar a URL do link no processo — não há caminho para o executor fazer isso. Todas as verificações não destrutivas possíveis foram concluídas antes deste pedido. O smoke é também a única verificação técnica aceita do template hosted (§6 da correção); se o link não chegar no formato versionado, ele acusa e a correção manda parar.
 
 O fundador confirmou em 2026-08-23 que atualizou manualmente no Supabase hospedado o template **Reset Password / Recovery** com o conteúdo versionado. Isso libera a retomada, mas **não equivale a verificação técnica do template**: a conformidade remota só será aceita quando o smoke final receber e usar um e-mail real do Auth hospedado e comprovar o link esperado.
 

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   GENERIC_ERROR,
   GENERIC_SIGN_IN_ERROR,
+  PASSWORD_CHANGED_SESSIONS_KEPT,
   PASSWORD_RESET_REQUESTED,
   RECOVERY_SESSION_REQUIRED,
 } from "@/lib/auth/errors";
@@ -23,7 +24,8 @@ let recoveryUser: { id: string; email: string | null } | null = null;
 
 const signUp = vi.fn(async () => signUpResult);
 const signInWithPassword = vi.fn(async () => signInResult);
-const signOut = vi.fn(async () => ({ error: null }));
+let signOutResult: ErrorOnly = { error: null };
+const signOut = vi.fn(async () => signOutResult);
 const resetPasswordForEmail = vi.fn(async () => resetRequestResult);
 const updateUser = vi.fn(async () => updateUserResult);
 const getRecoveryUser = vi.fn(async () => recoveryUser);
@@ -91,6 +93,7 @@ beforeEach(() => {
   signInResult = { data: { session: null }, error: null };
   resetRequestResult = { error: null };
   updateUserResult = { error: null };
+  signOutResult = { error: null };
   recoveryUser = { id: "u-1", email: "pessoa@exemplo.com" };
   signUp.mockClear();
   signInWithPassword.mockClear();
@@ -340,7 +343,7 @@ describe("resetPasswordAction", () => {
     expect(updateUser).not.toHaveBeenCalled();
   });
 
-  it("troca a senha, encerra a sessão e volta ao login com aviso", async () => {
+  it("troca a senha, encerra TODAS as sessões e volta ao login com aviso", async () => {
     const destino = await capturarRedirect(() =>
       resetPasswordAction(
         undefined,
@@ -349,9 +352,40 @@ describe("resetPasswordAction", () => {
     );
 
     expect(updateUser).toHaveBeenCalledWith({ password: NOVA });
+    // O escopo é explícito de propósito: quem recupera a conta pode estar
+    // expulsando quem tinha acesso indevido, e herdar o default do SDK deixaria
+    // isso na mão da versão da dependência.
+    expect(signOut).toHaveBeenCalledWith({ scope: "global" });
     expect(signOut).toHaveBeenCalledOnce();
     expect(destino).toBe(`${ROUTES.signIn}?${PASSWORD_RESET_DONE_PARAM}=1`);
     expect(destino).not.toContain(NOVA);
+  });
+
+  it("avisa que outras sessões seguem abertas quando o logout global falha", async () => {
+    signOutResult = { error: { status: 500 } };
+
+    const state = await resetPasswordAction(
+      undefined,
+      form({ password: NOVA, passwordConfirmation: NOVA }),
+    );
+
+    // A senha já mudou: repetir o erro do formulário sugeriria que nada
+    // aconteceu, e calar sobre as sessões esconderia consequência real.
+    expect(state.message).toBe(PASSWORD_CHANGED_SESSIONS_KEPT);
+    expect(state.errors).toBeUndefined();
+    expect(updateUser).toHaveBeenCalledOnce();
+  });
+
+  it("não deixa a falha do logout vazar detalhe técnico", async () => {
+    signOutResult = { error: { code: "session_not_found", status: 404 } };
+
+    const state = await resetPasswordAction(
+      undefined,
+      form({ password: NOVA, passwordConfirmation: NOVA }),
+    );
+
+    expect(state.message).not.toContain("session_not_found");
+    expect(JSON.stringify(state)).not.toContain(NOVA);
   });
 
   it("traduz falha do provider sem vazar o código bruto", async () => {

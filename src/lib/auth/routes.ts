@@ -56,8 +56,8 @@ export const PROTECTED_PREFIXES: readonly string[] = [ROUTES.account];
  *
  * `resetPassword` fica **fora** desta lista de propósito: quem chega lá vem de
  * `/auth/confirm` já com sessão, e mandá-lo para `/conta` mataria justamente o
- * fluxo de recovery. A restrição dessa rota é outra — exige `amr=recovery`, o
- * que é verificado dentro da própria página.
+ * fluxo de recovery. A restrição dessa rota é outra — exige sessão de
+ * recuperação, o que é verificado dentro da própria página.
  */
 export const AUTH_ENTRY_PATHS: readonly string[] = [
   ROUTES.signIn,

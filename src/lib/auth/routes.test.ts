@@ -45,7 +45,8 @@ describe("isAuthEntryPath", () => {
   it("não intercepta a tela de nova senha", () => {
     // Quem chega em `/redefinir-senha` vem de `/auth/confirm` já com sessão.
     // Tratá-la como entrada de auth mandaria essa sessão para `/conta` e
-    // mataria o recovery; o guard dessa rota é `amr=recovery`, não o Proxy.
+    // mataria o recovery; o guard dessa rota é a sessão de recuperação, não
+    // o Proxy.
     expect(isAuthEntryPath(ROUTES.resetPassword)).toBe(false);
     expect(isProtectedPath(ROUTES.resetPassword)).toBe(false);
   });

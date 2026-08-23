@@ -19,10 +19,11 @@ export const dynamic = "force-dynamic";
  * Definição da nova senha.
  *
  * O guard é `getRecoveryUser()`, não `requireUser()`. A diferença é o ponto
- * inteiro desta tela: estar autenticado não basta, a sessão precisa ter vindo
- * de um link de recuperação (`amr=recovery`). Sem isso o formulário nem chega
- * ao browser — e o Server Action repete a verificação, porque esconder o
- * formulário não é autorização.
+ * inteiro desta tela: estar autenticado não basta, a sessão precisa provar
+ * posse recente do e-mail e não ter passado por senha — o predicado está em
+ * `lib/auth/recovery.ts`. Sem isso o formulário nem chega ao browser — e o
+ * Server Action repete a verificação, porque esconder o formulário não é
+ * autorização.
  */
 export default async function RedefinirSenhaPage() {
   const recoveryUser = await getRecoveryUser();

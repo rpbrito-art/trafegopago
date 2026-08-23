@@ -4,15 +4,16 @@
  * Uma sessão criada por link de recuperação e uma sessão criada por login
  * comum são, do ponto de vista de "há usuário autenticado", indistinguíveis.
  * A diferença está em `amr` (Authentication Methods References), que o
- * Supabase Auth preenche com o método que originou a sessão.
+ * Supabase Auth preenche com o método que originou a sessão e o instante em
+ * que ele foi usado.
  *
  * Por que isso importa: a tela de nova senha troca a senha sem pedir a senha
  * atual. Se ela se contentasse com "há sessão", qualquer sessão comum — a de
  * um dispositivo esquecido aberto, por exemplo — viraria caminho para tomar a
  * conta. O direito de trocar a senha tem de vir do token que chegou por
- * e-mail.
+ * e-mail, e tem de ser recente.
  *
- * ## Divergência observada no provider (001F)
+ * ## O contrato real do provider (Correção 001F-01)
  *
  * A documentação do Supabase lista `recovery` entre os métodos possíveis de
  * `amr`. **O projeto hospedado não emite esse valor.** Medido em 2026-08-23
@@ -25,28 +26,41 @@
  * | `verifyOtp({ type: 'recovery' })` | `otp`             |
  * | `verifyOtp({ type: 'signup' })`   | `otp`             |
  *
- * Consequências, que são fato e não escolha deste módulo:
+ * A Correção 001F-01 §2 decidiu não introduzir hook, tabela, cookie assinado
+ * ou admin API só para separar `recovery` de outros OTPs nesta fase, e
+ * substituiu o requisito literal por um predicado que o provider consegue
+ * sustentar: **posse recente do e-mail, provada por OTP, sem senha no
+ * histórico da sessão**.
  *
- * 1. sessão de login por senha é distinguida com segurança — é o ataque que o
- *    mandato nomeia, e ele fica bloqueado;
- * 2. sessão de recuperação **não** é distinguível de outra sessão nascida de
- *    OTP por e-mail (hoje, a confirmação de cadastro) com o contrato vigente.
+ * O que a recência acrescenta: sem ela, uma sessão nascida da confirmação de
+ * cadastro autorizaria a troca de senha indefinidamente, porque `otp` fica no
+ * `amr` enquanto a sessão for renovada. Com ela, a janela de autorização é a
+ * do link que acabou de ser usado.
  *
- * O predicado abaixo implementa a regra mais estrita que o contrato real
- * suporta: exige método de OTP por e-mail **e** recusa a presença de
- * `password`. Ele aceita `recovery` para o dia em que o provider passar a
- * emiti-lo, sem depender disso para funcionar.
+ * ## Residual conscientemente aceito
  *
- * Isso é mais fraco do que o mandato 001F §4.4 pede ao nomear `recovery`, e
- * está registrado como divergência aberta para decisão do GPT — não como
- * equivalência assumida.
+ * Uma sessão recém-nascida de outro OTP por e-mail — hoje, só a confirmação de
+ * cadastro — satisfaz o predicado. Não há escalada material: essa sessão já
+ * prova posse recente da caixa postal do próprio usuário, que é exatamente o
+ * fator que o recovery usa. Se magic link, phone OTP, invite, social login ou
+ * outro método forem habilitados, **este guard tem de ser reaberto antes**
+ * (Correção 001F-01 §3.1) — `otp` deixaria de significar só posse do e-mail.
+ *
+ * ## Falha fechada
+ *
+ * `amr` sem timestamp utilizável não autoriza. Se o provider passar a emitir
+ * o formato RFC-8176 (lista de strings, sem instante), o fluxo nega em vez de
+ * abrir — e o smoke de recovery acusa na hora.
  */
 
-/** Método documentado pelo Supabase para sessão nascida de recuperação. */
+/** Método que a documentação do Supabase promete para sessão de recuperação. */
 export const RECOVERY_AMR_METHOD = "recovery";
 
+/** Método que o provider realmente emite para OTP por e-mail. */
+export const OTP_AMR_METHOD = "otp";
+
 /**
- * Métodos que indicam sessão nascida de um OTP por e-mail.
+ * Métodos que provam posse do e-mail.
  *
  * `otp` é o que o provider emite hoje para recovery; `recovery` é o que a
  * documentação promete. Aceitar os dois evita que o fluxo quebre em silêncio
@@ -54,7 +68,7 @@ export const RECOVERY_AMR_METHOD = "recovery";
  */
 export const EMAIL_OTP_AMR_METHODS: readonly string[] = [
   RECOVERY_AMR_METHOD,
-  "otp",
+  OTP_AMR_METHOD,
 ];
 
 /**
@@ -65,63 +79,131 @@ export const EMAIL_OTP_AMR_METHODS: readonly string[] = [
  */
 export const PASSWORD_AMR_METHOD = "password";
 
-/**
- * Entrada de `amr` no formato detalhado do Supabase.
- *
- * A claim aceita dois formatos: `string[]` (RFC-8176) e objetos com
- * `{ method, timestamp }`. Os dois são tratados porque o formato efetivo
- * depende da versão do Auth, e isso não deve virar dependência silenciosa de
- * infraestrutura.
- */
-type AmrEntry = { method?: unknown };
+/** Idade máxima do método autorizador (Correção 001F-01 §3.6). */
+export const MAX_RECOVERY_AMR_AGE_MS = 15 * 60 * 1000;
 
-function methodOf(entry: unknown): string | null {
-  if (typeof entry === "string") return entry;
+/**
+ * Tolerância para relógio do Auth adiantado em relação ao da aplicação.
+ *
+ * Sem isso, alguns segundos de deriva entre os dois servidores transformariam
+ * um link recém-usado em "timestamp no futuro" e negariam a troca.
+ */
+export const MAX_RECOVERY_AMR_SKEW_MS = 60 * 1000;
+
+/**
+ * Entrada de `amr` já normalizada.
+ *
+ * `timestampMs` é `null` quando a entrada não declara instante utilizável — o
+ * caso do formato RFC-8176 e o de valores corrompidos.
+ */
+export type AmrEntry = {
+  method: string;
+  timestampMs: number | null;
+};
+
+/**
+ * Converte o `timestamp` do Supabase (epoch em **segundos**) para milissegundos.
+ *
+ * Valor não numérico, não finito ou não positivo devolve `null`: vira "não
+ * prova recência", nunca uma data absurda tratada como válida.
+ */
+function toTimestampMs(timestamp: unknown): number | null {
+  if (typeof timestamp !== "number") return null;
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
+
+  return timestamp * 1000;
+}
+
+function toEntry(entry: unknown): AmrEntry | null {
+  // Formato RFC-8176: método sem instante. Continua sendo lido, para que
+  // `password` seja detectado, mas nunca autoriza por falta de timestamp.
+  if (typeof entry === "string") return { method: entry, timestampMs: null };
 
   if (typeof entry === "object" && entry !== null) {
-    const { method } = entry as AmrEntry;
-    if (typeof method === "string") return method;
+    const { method, timestamp } = entry as {
+      method?: unknown;
+      timestamp?: unknown;
+    };
+
+    if (typeof method !== "string") return null;
+
+    return { method, timestampMs: toTimestampMs(timestamp) };
   }
 
   return null;
 }
 
 /**
- * Lista os métodos declarados em `amr`, em qualquer um dos dois formatos.
+ * Lista as entradas de `amr` em qualquer um dos dois formatos aceitos.
  *
  * Valor ausente ou malformado devolve lista vazia — nunca lança. Uma claim
  * corrompida deve resultar em "não autoriza", não em erro 500 numa rota
  * pública.
  */
-export function readAmrMethods(amr: unknown): string[] {
+export function readAmrEntries(amr: unknown): AmrEntry[] {
   if (!Array.isArray(amr)) return [];
 
-  return amr
-    .map(methodOf)
-    .filter((method): method is string => method !== null);
+  return amr.map(toEntry).filter((entry): entry is AmrEntry => entry !== null);
+}
+
+/** Só os métodos declarados, para diagnóstico e para as recusas. */
+export function readAmrMethods(amr: unknown): string[] {
+  return readAmrEntries(amr).map((entry) => entry.method);
 }
 
 /**
  * A sessão declara literalmente o método `recovery`?
  *
- * Hoje sempre `false` no projeto hospedado. Existe para que a diferença entre
- * "o provider promete" e "o provider entrega" continue mensurável em teste, em
- * vez de virar folclore.
+ * Hoje sempre `false` no projeto hospedado. Deixou de ser critério de
+ * autorização na Correção 001F-01 §3 e permanece como diagnóstico: mantém
+ * mensurável, em teste e no smoke, a diferença entre o que o provider promete
+ * e o que ele entrega.
  */
 export function hasRecoveryMethod(amr: unknown): boolean {
   return readAmrMethods(amr).includes(RECOVERY_AMR_METHOD);
 }
 
 /**
+ * A entrada foi usada dentro da janela que autoriza a troca?
+ *
+ * Aceita até `MAX_RECOVERY_AMR_SKEW_MS` de adiantamento — deriva de relógio
+ * entre o Auth e a aplicação — e no máximo `MAX_RECOVERY_AMR_AGE_MS` de idade.
+ */
+export function isAuthorizingEntryFresh(
+  entry: AmrEntry,
+  nowMs: number,
+): boolean {
+  if (entry.timestampMs === null) return false;
+
+  const idadeMs = nowMs - entry.timestampMs;
+
+  return (
+    idadeMs <= MAX_RECOVERY_AMR_AGE_MS && idadeMs >= -MAX_RECOVERY_AMR_SKEW_MS
+  );
+}
+
+/**
  * A sessão pode redefinir a senha sem informar a senha atual?
  *
- * Verdadeiro apenas para sessão nascida de OTP por e-mail e sem `password` no
- * histórico de métodos.
+ * Verdadeiro apenas quando `amr` é bem formado, **nenhuma** entrada declara
+ * `password` e existe uma entrada de OTP por e-mail usada há no máximo 15
+ * minutos. `nowMs` é injetável para que a janela seja testável sem esperar o
+ * relógio.
  */
-export function grantsPasswordReset(amr: unknown): boolean {
-  const methods = readAmrMethods(amr);
+export function grantsPasswordReset(
+  amr: unknown,
+  nowMs: number = Date.now(),
+): boolean {
+  const entries = readAmrEntries(amr);
 
-  if (methods.includes(PASSWORD_AMR_METHOD)) return false;
+  if (entries.length === 0) return false;
+  if (entries.some((entry) => entry.method === PASSWORD_AMR_METHOD)) {
+    return false;
+  }
 
-  return methods.some((method) => EMAIL_OTP_AMR_METHODS.includes(method));
+  return entries.some(
+    (entry) =>
+      EMAIL_OTP_AMR_METHODS.includes(entry.method) &&
+      isAuthorizingEntryFresh(entry, nowMs),
+  );
 }

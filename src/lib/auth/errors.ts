@@ -91,6 +91,19 @@ export const RECOVERY_SESSION_REQUIRED =
   "Este link de recuperação não é mais válido. Peça um novo para redefinir sua senha.";
 
 /**
+ * Mensagem para quando a senha mudou mas o logout global falhou.
+ *
+ * A troca já aconteceu — repetir o formulário seria mentira. O que resta é uma
+ * consequência real que o usuário precisa saber: sessões abertas em outros
+ * aparelhos podem continuar valendo. Esconder isso para deixar a tela mais
+ * limpa violaria a regra de nunca esconder risco
+ * (`GROWTH_INTELLIGENCE_CANONICAL.md` §2.2), e a frase termina no que ele pode
+ * fazer a respeito (§2.1).
+ */
+export const PASSWORD_CHANGED_SESSIONS_KEPT =
+  "Sua senha foi alterada, mas não conseguimos encerrar as sessões abertas em outros aparelhos. Entre com a nova senha e saia dos outros dispositivos.";
+
+/**
  * Mensagem para falha ao gravar a nova senha.
  *
  * Diferente do login, aqui o usuário já provou a posse do e-mail: dizer que a

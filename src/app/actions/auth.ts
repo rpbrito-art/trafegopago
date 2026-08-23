@@ -8,6 +8,7 @@ import {
   describeSignUpError,
   GENERIC_ERROR,
   isRateLimited,
+  PASSWORD_CHANGED_SESSIONS_KEPT,
   RECOVERY_SESSION_REQUIRED,
 } from "@/lib/auth/errors";
 import { sanitizeRedirect } from "@/lib/auth/redirect";
@@ -196,13 +197,20 @@ export async function requestPasswordResetAction(
  * Definição da nova senha.
  *
  * Três barreiras, nesta ordem: schema (força e confirmação), sessão de
- * recovery (`amr`) e o próprio provider. A troca é feita com
+ * recovery (`getRecoveryUser`) e o próprio provider. A troca é feita com
  * `updateUser({ password })` no contexto do próprio usuário — nenhuma
  * chamada admin e nenhuma secret key participam do caminho funcional.
  *
- * Em caso de sucesso a sessão de recovery é encerrada de propósito: ela existe
- * para trocar a senha, não para virar login. O usuário volta ao `/entrar` e
- * prova a nova senha.
+ * Depois da troca vem `signOut({ scope: "global" })`, explícito. Duas razões
+ * para não deixar o escopo implícito: quem acabou de recuperar a conta pode
+ * estar justamente expulsando quem tinha acesso indevido, e o default do SDK é
+ * detalhe de versão — algo que uma decisão de segurança não deve herdar sem
+ * dizer. Isso encerra também a própria sessão de recovery, que existe para
+ * trocar a senha e não para virar login.
+ *
+ * Se o logout falhar, a senha já mudou: o usuário é informado de que as outras
+ * sessões podem seguir abertas, em vez de receber um erro que sugeriria que
+ * nada aconteceu.
  */
 export async function resetPasswordAction(
   _prevState: NewPasswordState | undefined,
@@ -233,7 +241,13 @@ export async function resetPasswordAction(
     return { message: describePasswordUpdateError(error) };
   }
 
-  await supabase.auth.signOut();
+  const { error: signOutError } = await supabase.auth.signOut({
+    scope: "global",
+  });
+
+  if (signOutError) {
+    return { message: PASSWORD_CHANGED_SESSIONS_KEPT };
+  }
 
   redirect(`${ROUTES.signIn}?${PASSWORD_RESET_DONE_PARAM}=1`);
 }

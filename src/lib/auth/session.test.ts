@@ -145,39 +145,31 @@ describe("requireUser", () => {
 
 describe("getRecoveryUser", () => {
   const SUB = "22222222-2222-2222-2222-222222222222";
+  const EMAIL = "pessoa@exemplo.com";
+
+  /** `amr` como o Supabase entrega: método + instante em segundos. */
+  function amr(method: string, idadeMs = 0) {
+    return [{ method, timestamp: Math.floor((Date.now() - idadeMs) / 1000) }];
+  }
+
+  function claimsDe(amrValue: unknown, extra: Record<string, unknown> = {}) {
+    return {
+      data: { claims: { sub: SUB, email: EMAIL, amr: amrValue, ...extra } },
+      error: null,
+    };
+  }
 
   it.each(["recovery", "otp"])(
-    "devolve identidade quando amr traz o método %s",
+    "devolve identidade quando amr traz o método %s usado agora",
     async (metodo) => {
-      claimsResult = {
-        data: {
-          claims: {
-            sub: SUB,
-            email: "pessoa@exemplo.com",
-            amr: [{ method: metodo, timestamp: 1 }],
-          },
-        },
-        error: null,
-      };
+      claimsResult = claimsDe(amr(metodo));
 
-      expect(await getRecoveryUser()).toEqual({
-        id: SUB,
-        email: "pessoa@exemplo.com",
-      });
+      expect(await getRecoveryUser()).toEqual({ id: SUB, email: EMAIL });
     },
   );
 
   it("recusa sessão comum de login, ainda que perfeitamente válida", async () => {
-    claimsResult = {
-      data: {
-        claims: {
-          sub: SUB,
-          email: "pessoa@exemplo.com",
-          amr: [{ method: "password", timestamp: 1 }],
-        },
-      },
-      error: null,
-    };
+    claimsResult = claimsDe(amr("password"));
 
     expect(await getRecoveryUser()).toBeNull();
     // A mesma sessão continua valendo como login: o que muda é só o direito de
@@ -185,8 +177,18 @@ describe("getRecoveryUser", () => {
     expect(await getVerifiedUser()).not.toBeNull();
   });
 
+  it("recusa sessão de OTP que já saiu da janela de 15 minutos", async () => {
+    claimsResult = claimsDe(amr("otp", 16 * 60 * 1000));
+
+    expect(await getRecoveryUser()).toBeNull();
+    expect(await getVerifiedUser()).not.toBeNull();
+  });
+
   it("recusa sessão sem claim amr", async () => {
-    claimsResult = { data: { claims: { sub: SUB } }, error: null };
+    claimsResult = {
+      data: { claims: { sub: SUB, email: EMAIL } },
+      error: null,
+    };
 
     expect(await getRecoveryUser()).toBeNull();
   });
@@ -199,7 +201,7 @@ describe("getRecoveryUser", () => {
 
   it("recusa quando a verificação do JWT falha", async () => {
     claimsResult = {
-      data: { claims: { sub: SUB, amr: ["otp"] } },
+      data: { claims: { sub: SUB, email: EMAIL, amr: amr("otp") } },
       error: { message: "assinatura inválida" },
     };
 
@@ -207,8 +209,34 @@ describe("getRecoveryUser", () => {
   });
 
   it("recusa claims sem sub, mesmo com amr que autorizaria", async () => {
-    claimsResult = { data: { claims: { amr: ["otp"] } }, error: null };
+    claimsResult = {
+      data: { claims: { email: EMAIL, amr: amr("otp") } },
+      error: null,
+    };
 
     expect(await getRecoveryUser()).toBeNull();
+  });
+
+  it.each([undefined, null, "", 42])(
+    "recusa claim email %j: trocar senha exige saber de qual endereço veio",
+    async (email) => {
+      claimsResult = {
+        data: { claims: { sub: SUB, email, amr: amr("otp") } },
+        error: null,
+      };
+
+      expect(await getRecoveryUser()).toBeNull();
+    },
+  );
+
+  it("não expõe nada além de id e e-mail", async () => {
+    claimsResult = claimsDe(amr("otp"), {
+      user_metadata: { role: "admin" },
+      app_metadata: { plano: "enterprise" },
+    });
+
+    const user = await getRecoveryUser();
+
+    expect(Object.keys(user ?? {}).sort()).toEqual(["email", "id"]);
   });
 });

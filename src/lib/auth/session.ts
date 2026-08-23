@@ -34,22 +34,42 @@ export async function getVerifiedUser(): Promise<VerifiedUser | null> {
 }
 
 /**
- * Retorna o usuário **somente** quando a sessão nasceu de um OTP por e-mail e
- * não de login por senha.
+ * Identidade de uma sessão de recuperação.
+ *
+ * Diferente de `VerifiedUser` num ponto: o e-mail é obrigatório. Trocar a
+ * senha de uma sessão que não sabe dizer de qual endereço veio não é uma
+ * operação que este produto queira permitir (Correção 001F-01 §3.3).
+ */
+export type RecoveryUser = {
+  id: string;
+  email: string;
+};
+
+/**
+ * Retorna o usuário **somente** quando a sessão prova posse recente do e-mail
+ * e não passou por login com senha.
  *
  * Sessão comum de login devolve `null` aqui, mesmo sendo perfeitamente válida:
  * o direito de trocar a senha sem informar a senha atual vem do token que
- * chegou por e-mail, não de estar logado.
+ * chegou por e-mail, não de estar logado. Sessão nascida de OTP mas antiga
+ * também devolve `null` — a janela é a do link recém-usado.
  *
- * O critério exato — e por que ele não consegue exigir literalmente
- * `amr=recovery` no provider vigente — está documentado em `recovery.ts`.
+ * As seis condições da Correção 001F-01 §3 se dividem aqui: claims verificadas
+ * por `getClaims()`, `sub` utilizável e `email` não vazio ficam neste módulo;
+ * o predicado sobre `amr` — métodos aceitos, ausência de `password` e recência
+ * — está em `recovery.ts`, junto da medição que o motivou.
  */
-export async function getRecoveryUser(): Promise<VerifiedUser | null> {
+export async function getRecoveryUser(): Promise<RecoveryUser | null> {
   const claims = await readVerifiedClaims();
 
-  if (!claims || !grantsPasswordReset(claims.amr)) return null;
+  if (!claims) return null;
 
-  return toVerifiedUser(claims);
+  const { sub, email } = claims;
+  if (typeof email !== "string" || email.length === 0) return null;
+
+  if (!grantsPasswordReset(claims.amr)) return null;
+
+  return { id: sub as string, email };
 }
 
 /**
