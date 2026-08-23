@@ -8,17 +8,36 @@ Próximo gatilho ordinário: após cinco novas rodadas substantivas promovidas o
 
 Rodada vigente: **001D — Default privileges + Grants + RLS + Isolamento**.
 
-Mandato:
+Mandato-base:
 `rodadas/gpt/RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`
 
-A fonte operacional é `estado.md`. Este arquivo apenas define o working set documental.
+Correção vigente:
+`rodadas/gpt/CORRECAO_001D_01_DEFAULT_PRIVILEGES_SCOPE.md`
+
+A correção substitui apenas as decisões de §4 relacionadas ao bloqueio de `supabase_admin` e à política de default privileges de `service_role`. O restante do mandato-base continua vigente.
+
+A fonte operacional é `estado.md`.
 
 ## HOT — ler sempre
 
 1. `estado.md`
 2. `.gpt/PROJECT_PROMPT.md`
 3. `docs/00-governanca/ACTIVE_DOCS.md`
-4. mandato vigente indicado por `estado.md`
+4. `rodadas/gpt/CORRECAO_001D_01_DEFAULT_PRIVILEGES_SCOPE.md`
+5. `rodadas/gpt/RODADA_001D_RLS_TENANCY_ISOLAMENTO.md` apenas nas seções não substituídas pela correção
+
+## READ SET específico da retomada 001D
+
+Obrigatórios adicionais:
+
+- relatório de bloqueio atual `rodadas/claude/RELATORIO_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md` — somente para não repetir a investigação já concluída;
+- `docs/03-canonical/DATA_MODEL.md` — seções 1, 2, 16 e 17;
+- `docs/03-canonical/SECURITY_MODEL.md` — seções 4, 5, 6, 12, 15, 18, 20 e 24;
+- migrations `20260822212544_*` e `20260822234354_*`;
+- `supabase/config.toml` e migration history atual;
+- documentação oficial vigente do Supabase para grants/Data API, RLS, `auth.uid()`, policies e default privileges.
+
+Não repetir a exploração de `ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin`: a decisão GPT já está tomada.
 
 ## Canônicos ativos por área
 
@@ -40,17 +59,6 @@ A fonte operacional é `estado.md`. Este arquivo apenas define o working set doc
 - `docs/03-canonical/SECURITY_MODEL.md`
 - `docs/03-canonical/AI_ARCHITECTURE.md`
 
-## READ SET específico da 001D
-
-Obrigatórios adicionais:
-
-- `docs/03-canonical/DATA_MODEL.md` — seções 1, 2, 16 e 17;
-- `docs/03-canonical/SECURITY_MODEL.md` — seções 4, 5, 6, 12, 15, 18, 20 e 24;
-- leitura dirigida de `docs/03-canonical/TECHNICAL_SPEC.md` para Organizations, multi-tenancy e segurança;
-- migrations `20260822212544_*` e `20260822234354_*`;
-- `supabase/config.toml` e migration history atual;
-- documentação oficial vigente do Supabase para grants/Data API, RLS, `auth.uid()`, policies e default privileges.
-
 ## Resumo histórico preferencial
 
 - `docs/00-governanca/HISTORY_SUMMARY.md`
@@ -66,4 +74,4 @@ Use este resumo antes de abrir rodadas/relatórios antigos.
 - `.gpt/CURRENT_STATE.md`;
 - documentos Meta e `AI_ARCHITECTURE.md` durante a 001D.
 
-Abrir somente quando o mandato exigir ou quando o resumo/canônico não resolver uma dúvida concreta.
+Abrir somente quando a correção/mandato exigir ou quando o resumo/canônico não resolver uma dúvida concreta.
