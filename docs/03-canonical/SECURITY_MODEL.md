@@ -173,6 +173,34 @@ Redaction obrigatória para:
 
 Logs técnicos devem usar IDs internos/correlation ids quando possível.
 
+### 15.1 Matriz de secrets por runtime
+
+Cada runtime recebe a credencial de menor poder que resolve seu trabalho. A
+regra que atravessa toda a matriz: **credencial privilegiada nunca cruza a
+fronteira do browser**, em nenhuma forma — bundle, `NEXT_PUBLIC_*`, resposta de
+API ou log.
+
+| runtime | credencial permitida | proibido |
+| --- | --- | --- |
+| Browser | publishable/anon key e dados autorizados por sessão/RLS | qualquer secret key, service role, token de provider |
+| Next.js server (Server Components, Server Actions, rotas) | secret key lida somente server-side, via `server-only` | expor a chave em bundle, `NEXT_PUBLIC_*`, log ou resposta |
+| Scripts de prova server-side | secret key a partir de `.env.local`, nunca versionada | imprimir chave, URL com token ou PII em log/relatório |
+| Edge Functions / workers | secrets injetados pelo runtime do próprio Supabase (`SUPABASE_*`), autorizados pelo wrapper oficial | criar segredo humano novo, aceitar chamada anônima, logar payload bruto |
+| Provider externo (Meta, quando existir) | token guardado server-side, referenciado por id | token em browser, em log, em `audit_events.metadata_json` ou em payload de fila |
+
+Regras que valem para todas as linhas:
+
+- **Supabase Vault apenas quando o próprio Postgres precisar consumir o
+  segredo.** Guardar no Vault um token que só a aplicação usa acrescenta uma
+  superfície de acesso sem remover nenhuma.
+- **Segredos distintos por ambiente** antes de qualquer uso com dados reais;
+  desenvolvimento e produção não compartilham credencial.
+- **Rotação/revogação** diante de exposição suspeita, de substituição de
+  provedor ou do fim do propósito que criou a credencial.
+- **Redaction** conforme §15 em qualquer log, prova ou relatório.
+- **Pinning/lockfile** em dependências que executam com privilégio — Edge
+  Functions incluídas —, para que a versão auditada seja a versão executada.
+
 ## 16. Storage
 
 - buckets privados por padrão para materiais não públicos;

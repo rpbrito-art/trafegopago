@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   verify:
-    name: install / lint / typecheck / test / build
+    name: install / lint / typecheck / functions / test / build
     runs-on: ubuntu-latest
 
     steps:
@@ -33,6 +33,13 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      # Edge Functions rodam em Deno, fora do tsconfig da aplicação: usam
+      # specifier `npm:` e import com extensão `.ts`. Sem este passo o único
+      # gate delas seria o bundle do deploy — que já deixou passar um erro de
+      # tipo que o `deno check` pegou na Correção 002B-01.
+      - name: Typecheck Edge Functions
+        run: npm run typecheck:functions
 
       - name: Test
         run: npm test

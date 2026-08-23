@@ -64,7 +64,9 @@ Classificação: **APROVADA COM RESSALVA NÃO BLOQUEANTE E PROMOVIDA**.
 
 **002C — WEBHOOK INBOX + OBSERVABILIDADE BASE**
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Status: **002C EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+
+Claude não aprova, não promove e não encerra a Fase 2.
 
 Mandato executável:
 
@@ -74,9 +76,32 @@ Branch esperada:
 
 `claude/rodada-002c-webhook-inbox-observabilidade`
 
-Relatório esperado:
+Relatório entregue:
 
 `rodadas/claude/RELATORIO_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
+
+### Execução (2026-08-23)
+
+Branch criada de `origin/main`. Baseline conferido antes de mutar e idêntico ao §4: 8 migrations, `pgmq` 1.5.1 com fila vazia, `pg_cron` ausente, 5 tabelas `public` todas com RLS, sem fixtures, zero objetos owned por `supabase_admin`. O Performance Advisor pré-migration confirmou o INFO de FK sem índice, condição exigida pelo mandato §5.4.
+
+Entregue:
+
+- migration única `20260823190756_create_webhook_events_inbox.sql` — histórico **8 → 9**, local == remoto;
+- `public.webhook_events`: inbox durável server-only, RLS habilitado, **zero policies**, `anon`/`authenticated` sem privilégio, `service_role` com SELECT/INSERT/UPDATE e **sem DELETE**;
+- dedupe único `(provider, dedupe_hash)`, com `dedupe_hash` restrito a 64 hex minúsculos; índices por status/recebimento e por organização/recebimento;
+- `audit_events_actor_user_id_idx`, eliminando a dívida de performance herdada da 002A;
+- `npm run typecheck:functions` como passo próprio da CI, fechando a ressalva da 002B;
+- `SECURITY_MODEL.md` §15.1 — matriz de secrets por runtime, no canônico existente;
+- `scripts/sql/observability-base.sql` — agregados read-only, sem payload/PII;
+- `scripts/sql/webhook-inbox-002c-proof.sql` — prova transacional do delta.
+
+Provas: **40/40, sem falhas**, em transação revertida com zero resíduo. Conforme a regra de eficiência §7, as 82 provas da 002B **não** foram repetidas: fila e worker não foram alterados e aparecem apenas como verificação catalogal (9 migrations, 6 tabelas todas com RLS, `pgmq` presente, `pgmq_public`=0, `pg_cron`=0, **6 funções SECURITY DEFINER — nenhuma nova**).
+
+Gates: `typecheck:functions` local, `git diff --check`, lint e migration history. Suíte completa, typecheck da aplicação e build rodam uma única vez na CI final.
+
+**Advisors:** Security sem novo ERROR/WARN — surgiu o terceiro INFO `rls_enabled_no_policy`, agora em `webhook_events`, previsto pelo §5.3. Performance: o INFO `unindexed_foreign_keys` **desapareceu**; surgiram dois INFO de `unused_index` em índices recém-criados sobre tabelas vazias, que por definição ainda não foram usados — não é regressão.
+
+Nenhuma configuração remota alterada, nenhuma função `SECURITY DEFINER` nova, nenhum segredo novo, nenhum gate humano solicitado, nenhum endpoint de webhook criado.
 
 A autorização do fundador em 2026-08-23 cobre **somente a 002C**. Nenhuma rodada posterior está autorizada.
 
@@ -155,20 +180,8 @@ Não autorizado:
 
 ## 11. Próxima ação autorizada
 
-Claude Code deve executar **somente a Rodada 002C**.
+A Rodada 002C está **executada**. Cumprido pelo executor: preflight contra `origin/main`, branch nova, READ SET mínimo, delta 002C, migration única aplicada e provada, provas proporcionais sem repetir a 002B, push único, PR draft e relatório.
 
-Ao receber `/proxima`, deve:
-
-1. fazer preflight contra `origin/main`;
-2. criar a branch `claude/rodada-002c-webhook-inbox-observabilidade`;
-3. ler o READ SET mínimo do mandato;
-4. executar somente o delta 002C;
-5. aplicar uma única migration se o baseline estiver correto;
-6. executar provas proporcionais;
-7. fazer um único push final quando possível;
-8. abrir PR draft e entregar relatório <= 120 linhas;
-9. parar em `002C EXECUTADA — AGUARDANDO AUDITORIA GPT`.
-
-`/proxima` está **liberado para a 002C**.
+**A próxima ação é do GPT: auditar a 002C e decidir aprovação, promoção e se a Fase 2 pode ser encerrada.**
 
 Claude não promove, não encerra a Fase 2 por conta própria e não inicia a próxima fase.
