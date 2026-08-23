@@ -68,12 +68,41 @@ describe("GET /auth/confirm", () => {
     expect(await confirmar("?token_hash=h&type=signup")).toBe(ROUTES.authError);
   });
 
+  it("troca token de recovery por sessão e força a tela de nova senha", async () => {
+    const destino = await confirmar("?token_hash=hash-recovery&type=recovery");
+
+    expect(verifyOtp).toHaveBeenCalledWith({
+      type: "recovery",
+      token_hash: "hash-recovery",
+    });
+    expect(destino).toBe(ROUTES.resetPassword);
+  });
+
+  it.each([ROUTES.home, ROUTES.account, "https://evil.com"])(
+    "em recovery, ignora next=%j e mantém a tela de nova senha",
+    async (next) => {
+      const destino = await confirmar(
+        `?token_hash=h&type=recovery&next=${encodeURIComponent(next)}`,
+      );
+
+      expect(destino).toBe(ROUTES.resetPassword);
+    },
+  );
+
+  it("recovery com token inválido cai na página de erro genérica", async () => {
+    verifyResult = { error: { code: "otp_expired" } };
+
+    expect(await confirmar("?token_hash=h&type=recovery")).toBe(
+      ROUTES.authError,
+    );
+  });
+
   it.each([
     "",
     "?type=signup",
     "?token_hash=h",
     "?token_hash=&type=signup",
-    "?token_hash=h&type=recovery",
+    "?token_hash=&type=recovery",
     "?token_hash=h&type=magiclink",
     "?token_hash=h&type=email_change",
     "?token_hash=h&type=invite",
@@ -101,12 +130,15 @@ describe("GET /auth/confirm", () => {
     ).toBe(ROUTES.home);
   });
 
-  it("nunca redireciona para uma URL que carregue o token", async () => {
-    const destino = await confirmar(
-      "?token_hash=segredo-do-email&type=signup&next=%2Fconta",
-    );
+  it.each(["signup", "recovery"])(
+    "nunca redireciona para uma URL que carregue o token (%s)",
+    async (type) => {
+      const destino = await confirmar(
+        `?token_hash=segredo-do-email&type=${type}&next=%2Fconta`,
+      );
 
-    expect(destino).not.toContain("segredo-do-email");
-    expect(destino).not.toContain("token_hash");
-  });
+      expect(destino).not.toContain("segredo-do-email");
+      expect(destino).not.toContain("token_hash");
+    },
+  );
 });

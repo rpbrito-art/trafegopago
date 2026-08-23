@@ -2,6 +2,18 @@
 
 Status: canônico como ordem de construção. Pode ser refinado por rodadas, mas não deve ser pulado sem decisão documentada.
 
+## Regra de interpretação
+
+As fases descrevem **dependências e capacidades**, não um funil obrigatório que todo cliente percorre na mesma ordem. Uma capacidade construída na Fase N não implica que todo negócio a use: mídia paga, Lead Ads e desfecho comercial são ramos, não etapas universais (`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`).
+
+Antes de iniciar cada fase que toque Meta, produto ou experiência, revalidar:
+
+1. aderência ao `GROWTH_INTELLIGENCE_CANONICAL.md`, lido integralmente;
+2. documentação externa vigente (Meta/Instagram/Supabase mudam com frequência);
+3. se a fase ainda faz sentido na ordem prevista, dado o que já foi aprendido.
+
+Reordenação ampla exige decisão documentada; ajuste de escopo dentro de uma fase, não.
+
 ## Fase 0 — Bootstrap técnico
 
 Objetivo: repositório executável e verificável, sem antecipar domínio.
@@ -27,12 +39,16 @@ Entregas:
 - `organizations`;
 - `organization_members`;
 - `business_profiles`;
-- auth e recuperação;
+- auth por e-mail/senha com confirmação e recuperação de acesso;
 - RLS;
 - fixtures de duas organizações;
 - provas de isolamento.
 
-Gate: usuário A não lê/escreve org B por browser/Data API; papel/tenancy provados.
+Gate: usuário A não lê/escreve org B por browser/Data API; papel/tenancy provados; recuperação de acesso funciona por e-mail real.
+
+Escopo do encerramento: gestão avançada de membros — convites, troca de papel, transferência de ownership, multi-org switcher — **não bloqueia** o fechamento desta fase. A fundação multiusuário, papéis, tenancy e isolamento já está provada; a UI dessas operações pertence a fases posteriores.
+
+Estado em 2026-08-23: Rodadas 000–001E promovidas. A recuperação de acesso é a última lacuna funcional objetiva da fase, tratada na Rodada 001F. O encerramento depende de auditoria GPT, não de declaração do executor.
 
 ## Fase 2 — Operations, Audit, Queues e Segurança Base
 

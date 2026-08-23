@@ -142,6 +142,24 @@ describe("BusinessSection", () => {
     );
   });
 
+  it("distingue falha técnica de conta sem negócio", () => {
+    const erro = textOf(BusinessSection({ state: { kind: "erro-tecnico" } }));
+    const vazio = textOf(
+      BusinessSection({ state: { kind: "sem-organizacao" } }),
+    );
+
+    expect(usaFormularioDeCriacao({ kind: "erro-tecnico" })).toBe(false);
+    expect(erro).toContain("Não foi possível carregar seu negócio");
+    expect(erro).not.toBe(vazio);
+  });
+
+  it("o aviso técnico é acionável e não sugere perda de dados", () => {
+    const texto = textOf(BusinessSection({ state: { kind: "erro-tecnico" } }));
+
+    expect(texto).toMatch(/Atualize a página/);
+    expect(texto).toMatch(/não foi\s+apagado/i);
+  });
+
   it("não recria o perfil silenciosamente quando ele falta", () => {
     const state: AccountBusinessState = {
       kind: "pronta",

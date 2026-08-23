@@ -8,7 +8,7 @@ import type {
 import { formatMinorAmount } from "@/lib/business/money";
 
 /**
- * Os quatro estados do mandato 001E §9, cada um com seu próprio ramo.
+ * Um ramo por estado de `AccountBusinessState`.
  *
  * Nenhum `else` genérico: oferecer o formulário de criação a quem já tem
  * membership — ainda que a organização esteja indisponível — criaria um
@@ -16,6 +16,28 @@ import { formatMinorAmount } from "@/lib/business/money";
  * ramo, e é o único em que `kind` vale `sem-organizacao`.
  */
 export function BusinessSection({ state }: { state: AccountBusinessState }) {
+  // Falha de leitura tem aviso próprio, e vem antes de qualquer outro ramo. A
+  // dívida corrigida aqui era justamente esta: sem estado explícito, uma falha
+  // técnica se parecia com conta vazia, e o usuário concluía que tinha perdido
+  // o negócio.
+  if (state.kind === "erro-tecnico") {
+    return (
+      <section
+        role="alert"
+        className="flex flex-col gap-1 rounded border border-red-300 bg-red-50 p-4"
+      >
+        <h2 className="text-sm font-semibold text-red-900">
+          Não foi possível carregar seu negócio
+        </h2>
+        <p className="text-sm text-red-900">
+          Houve uma falha técnica ao ler estas informações. Seu negócio não foi
+          apagado e nada precisa ser recriado. Atualize a página em alguns
+          instantes; se continuar assim, procure o suporte.
+        </p>
+      </section>
+    );
+  }
+
   if (state.kind === "sem-organizacao") {
     return (
       <section className="flex flex-col gap-4">

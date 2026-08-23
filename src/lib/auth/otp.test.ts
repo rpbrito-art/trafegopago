@@ -4,6 +4,7 @@ import {
   ALLOWED_EMAIL_OTP_TYPES,
   isAllowedEmailOtpType,
   parseConfirmRequest,
+  RECOVERY_DESTINATION,
 } from "./otp";
 import { DEFAULT_AUTHENTICATED_REDIRECT } from "./redirect";
 import { ROUTES } from "./routes";
@@ -18,7 +19,6 @@ describe("isAllowedEmailOtpType", () => {
   });
 
   it.each([
-    "recovery",
     "invite",
     "magiclink",
     "email_change",
@@ -26,6 +26,7 @@ describe("isAllowedEmailOtpType", () => {
     "phone_change",
     "",
     "SIGNUP",
+    "RECOVERY",
   ])("rejeita %j, que está fora do escopo desta rodada", (type) => {
     expect(isAllowedEmailOtpType(type)).toBe(false);
   });
@@ -78,8 +79,40 @@ describe("parseConfirmRequest", () => {
     });
 
     expect(
-      parseConfirmRequest(params({ token_hash: "h", type: "recovery" })),
+      parseConfirmRequest(params({ token_hash: "h", type: "magiclink" })),
     ).toEqual({ ok: false, reason: "invalid_type" });
+  });
+
+  it("aceita recovery e força o destino da nova senha", () => {
+    expect(
+      parseConfirmRequest(params({ token_hash: "h", type: "recovery" })),
+    ).toEqual({
+      ok: true,
+      tokenHash: "h",
+      type: "recovery",
+      next: RECOVERY_DESTINATION,
+    });
+
+    expect(RECOVERY_DESTINATION).toBe(ROUTES.resetPassword);
+  });
+
+  it.each([ROUTES.home, ROUTES.account, "https://evil.com", "/qualquer"])(
+    "ignora next=%j em recovery: o destino não é negociável",
+    (next) => {
+      const result = parseConfirmRequest(
+        params({ token_hash: "h", type: "recovery", next }),
+      );
+
+      expect(result.ok && result.next).toBe(RECOVERY_DESTINATION);
+    },
+  );
+
+  it("o destino de recovery fica fora da allowlist de ?next=", async () => {
+    // A tela de nova senha não pode ser alcançada por um `next` qualquer: quem
+    // chega lá tem de vir do próprio fluxo de recovery.
+    const { ALLOWED_REDIRECT_PATHS } = await import("./redirect");
+
+    expect(ALLOWED_REDIRECT_PATHS).not.toContain(RECOVERY_DESTINATION);
   });
 
   it("sanitiza next externo, caindo no destino padrão", () => {

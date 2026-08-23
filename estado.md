@@ -58,7 +58,9 @@ Migration incorporada: `20260823111051_create_business_profiles_and_bootstrap.sq
 
 **RODADA 001F — RECOVERY DE ACESSO + FECHAMENTO DA FASE 1**
 
-Status: **AUDITORIA GPT REALIZADA — PROMOÇÃO BLOQUEADA — CORREÇÃO 001F-02 AUTORIZADA**.
+Status: **001F EXECUTADA COM CORREÇÕES 001F-01 E 001F-02 — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO REAUDITORIA GPT**.
+
+Claude não aprova, não promove e não declara a Fase 1 encerrada.
 
 Mandato original:
 
@@ -78,6 +80,26 @@ PR #7: **draft, não promover**.
 Head entregue e auditado antes da 001F-02:
 
 `1fcb8c6fbeaee755a034d1ca195b6625e758fe5e`
+
+Relatório atualizado:
+
+`rodadas/claude/RELATORIO_RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
+
+### Execução da Correção 001F-02 (2026-08-23)
+
+Branch reconciliada com `origin/main` por merge — sem rebase, sem force, sem reescrita. Conflito só em `estado.md`, resolvido pela versão da `main`. Governança nova (`PROJECT_PROMPT`, `ACTIVE_DOCS`, `DOCUMENTATION_LIFECYCLE`) incorporada.
+
+**Bloqueio A — anti-enumeração:** `requestPasswordResetAction` deixou de ramificar a resposta em `429` e `5xx`. Passada a validação sintática, o retorno do provider é ignorado e a resposta é sempre `{ requested: true }`. Custo assumido e documentado em código: indisponibilidade real do Auth fica silenciosa para o usuário (001F-02 §2.2). Nenhum rate limiter, CAPTCHA, tabela ou fila introduzido.
+
+**Bloqueio B — AMR fail-closed:** `readAmrEntries()` passou a devolver `null` para o claim inteiro quando qualquer entrada é estruturalmente inválida, quando não é array ou quando é array vazio; `grantsPasswordReset` nega nesse caso. Entrada bem formada sem timestamp continua recusada pela exigência de recência, não pelo parser. Residual da 001F-01 §3.1 não ampliado; nenhum marcador/cookie/tabela/hook novo.
+
+**Contradição documental:** resolvida pela reconciliação — o `estado.md` da branch passou a ser o da `main`, sem a frase antiga sobre verificação de template pendente.
+
+Provas do delta: resposta idêntica em 8 desfechos do provider (sucesso, `user_not_found`, `email_not_confirmed`, `validation_failed`, `429` com e sem code, `500`, `503`), com o conjunto de respostas serializadas de cardinalidade **1**; AMR misto com entrada malformada nega em ambas as ordens; `password` ao lado de `otp` recente nega; método adicional bem formado autoriza; `otp` sem timestamp nega.
+
+Gates: lint (0 warnings), typecheck, `vitest run` (20 arquivos / **372** testes, eram 357) e build — verdes. Read-only no projeto: migrations continuam em **5** (última `20260823111051`), `auth.users` com 1 conta real e **zero** fixture residual.
+
+**E2E de e-mail real não repetido**, conforme 001F-02 §1 e §5. Nenhuma configuração remota alterada e nenhuma ação manual pedida ao fundador.
 
 O estado promovido continua **000–001E**. A 001F não foi aprovada nem incorporada.
 
@@ -132,29 +154,23 @@ Gmail SMTP é apenas desenvolvimento, não produção.
 
 **Após auditoria final e promoção da 001F**, o fundador deve revogar a App Password criada especificamente para este E2E. Não revogar antes da promoção final, para preservar a configuração até o fechamento.
 
-## 8. Próxima execução autorizada
+## 8. Próxima ação autorizada
 
-Claude Code deve retomar **a mesma branch** e executar somente:
+A Correção 001F-02 está **executada**. Cumprido pelo executor:
 
-`rodadas/gpt/CORRECAO_001F_02_ANTI_ENUMERACAO_AMR_FAIL_CLOSED.md`
+- branch reconciliada com a `main` atual;
+- canal de enumeração por rate limit/erro do provider fechado;
+- parser de AMR fail-closed para claim estruturalmente malformado;
+- contradição documental resolvida;
+- relatório atualizado;
+- lint, typecheck, testes, build e CI;
+- confirmação read-only de 5 migrations e ausência de fixture residual.
 
-A correção manda:
+E2E de e-mail real não repetido, Gmail/Supabase Dashboard não tocados, nenhuma ação manual solicitada ao fundador.
 
-- reconciliar a branch com a `main` atual;
-- fechar o canal de enumeração por rate limit/erro do provider;
-- tornar o parser de AMR fail-closed para claim estruturalmente malformado;
-- corrigir a contradição documental;
-- atualizar relatório/PR;
-- rodar lint, typecheck, testes, build e CI;
-- confirmar read-only que migrations continuam em 5 e sem fixture residual.
+**A próxima ação é do GPT: reauditar somente o delta corretivo e decidir promoção e fechamento da Fase 1.**
 
-**Não repetir o E2E de e-mail real, não mexer no Gmail/Supabase Dashboard e não pedir nova ação manual ao fundador.**
-
-Handoff esperado:
-
-`001F EXECUTADA COM CORREÇÕES 001F-01 E 001F-02 — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO REAUDITORIA GPT`
-
-Depois disso, GPT reaudita somente o delta corretivo + estado final necessário e decide promoção/fechamento da Fase 1.
+Claude não aprova, não promove, não declara fase encerrada e não inicia Fase 2.
 
 ## 9. Baseline e riscos conhecidos
 

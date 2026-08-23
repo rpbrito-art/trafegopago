@@ -2,15 +2,24 @@
 
 import { redirect } from "next/navigation";
 
-import { describeSignInError, describeSignUpError } from "@/lib/auth/errors";
-import { sanitizeRedirect } from "@/lib/auth/redirect";
-import { ROUTES } from "@/lib/auth/routes";
 import {
+  describePasswordUpdateError,
+  describeSignInError,
+  describeSignUpError,
+  PASSWORD_CHANGED_SESSIONS_KEPT,
+  RECOVERY_SESSION_REQUIRED,
+} from "@/lib/auth/errors";
+import { sanitizeRedirect } from "@/lib/auth/redirect";
+import { PASSWORD_RESET_DONE_PARAM, ROUTES } from "@/lib/auth/routes";
+import {
+  newPasswordSchema,
+  passwordResetRequestSchema,
   signInSchema,
   signUpSchema,
   toFieldErrors,
   type FieldErrors,
 } from "@/lib/auth/schemas";
+import { getRecoveryUser } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type AuthFormState = {
@@ -115,6 +124,129 @@ export async function signOutAction(): Promise<void> {
   await supabase.auth.signOut();
 
   redirect(ROUTES.home);
+}
+
+export type PasswordResetRequestState = {
+  errors?: FieldErrors;
+  /** Erro acionável (indisponibilidade, rate limit). Nunca enumera contas. */
+  message?: string;
+  /** Pedido aceito: a UI deve mostrar a mensagem neutra. */
+  requested?: boolean;
+  email?: string;
+};
+
+export type NewPasswordState = {
+  errors?: FieldErrors;
+  message?: string;
+};
+
+/**
+ * Pedido de recuperação de senha.
+ *
+ * Passada a validação sintática, a resposta pública é **sempre a mesma**:
+ * sucesso, e-mail inexistente, rate limit, 4xx ou 5xx do provider terminam
+ * todos em `requested: true`.
+ *
+ * Por que nem o rate limit pode ter mensagem própria: o `/recover` do Supabase
+ * Auth procura o usuário antes de enviar. E-mail inexistente volta `200` de
+ * imediato; e-mail existente entra no envio e passa pelo controle de
+ * frequência, que pode devolver `429`. Diferenciar essa resposta na UI daria
+ * um oráculo de existência de conta — bastaria repetir o pedido duas vezes
+ * para saber se o endereço está cadastrado. O texto da mensagem era neutro; o
+ * **comportamento** não era.
+ *
+ * O custo assumido: numa indisponibilidade real do Auth, quem pediu a
+ * recuperação vê a mesma confirmação e não recebe e-mail. É a troca
+ * deliberada da Correção 001F-02 §2.2 — nenhum rate limiter próprio, CAPTCHA
+ * ou fila entra nesta fase.
+ *
+ * Usa o cliente Supabase comum, com a chave publicável. A secret key não
+ * participa deste fluxo (`SECURITY_MODEL.md` §6).
+ */
+export async function requestPasswordResetAction(
+  _prevState: PasswordResetRequestState | undefined,
+  formData: FormData,
+): Promise<PasswordResetRequestState> {
+  const parsed = passwordResetRequestSchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!parsed.success) {
+    return {
+      errors: toFieldErrors(parsed.error),
+      email: asString(formData.get("email")),
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  // O retorno do provider é deliberadamente ignorado: qualquer ramificação
+  // aqui vira canal de enumeração. Ver o comentário acima.
+  await supabase.auth.resetPasswordForEmail(parsed.data.email);
+
+  // Sem eco do e-mail: a tela de confirmação é acessível por navegação direta,
+  // e repetir o endereço nela daria a um terceiro uma forma de confirmar o que
+  // foi digitado.
+  return { requested: true };
+}
+
+/**
+ * Definição da nova senha.
+ *
+ * Três barreiras, nesta ordem: schema (força e confirmação), sessão de
+ * recovery (`getRecoveryUser`) e o próprio provider. A troca é feita com
+ * `updateUser({ password })` no contexto do próprio usuário — nenhuma
+ * chamada admin e nenhuma secret key participam do caminho funcional.
+ *
+ * Depois da troca vem `signOut({ scope: "global" })`, explícito. Duas razões
+ * para não deixar o escopo implícito: quem acabou de recuperar a conta pode
+ * estar justamente expulsando quem tinha acesso indevido, e o default do SDK é
+ * detalhe de versão — algo que uma decisão de segurança não deve herdar sem
+ * dizer. Isso encerra também a própria sessão de recovery, que existe para
+ * trocar a senha e não para virar login.
+ *
+ * Se o logout falhar, a senha já mudou: o usuário é informado de que as outras
+ * sessões podem seguir abertas, em vez de receber um erro que sugeriria que
+ * nada aconteceu.
+ */
+export async function resetPasswordAction(
+  _prevState: NewPasswordState | undefined,
+  formData: FormData,
+): Promise<NewPasswordState> {
+  const parsed = newPasswordSchema.safeParse({
+    password: formData.get("password"),
+    passwordConfirmation: formData.get("passwordConfirmation"),
+  });
+
+  if (!parsed.success) {
+    // Nenhum campo é devolvido: senha digitada nunca volta para o formulário.
+    return { errors: toFieldErrors(parsed.error) };
+  }
+
+  const recoveryUser = await getRecoveryUser();
+
+  if (!recoveryUser) {
+    return { message: RECOVERY_SESSION_REQUIRED };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
+
+  if (error) {
+    return { message: describePasswordUpdateError(error) };
+  }
+
+  const { error: signOutError } = await supabase.auth.signOut({
+    scope: "global",
+  });
+
+  if (signOutError) {
+    return { message: PASSWORD_CHANGED_SESSIONS_KEPT };
+  }
+
+  redirect(`${ROUTES.signIn}?${PASSWORD_RESET_DONE_PARAM}=1`);
 }
 
 function asString(value: FormDataEntryValue | null): string | undefined {

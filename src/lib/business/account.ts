@@ -34,8 +34,9 @@ export type BusinessProfileSummary = {
 };
 
 /**
- * Estado da conta, com os quatro casos do mandato §9 explícitos.
+ * Estado da conta, com cada caso explícito.
  *
+ * Os quatro primeiros vieram do mandato 001E §9; `erro-tecnico` entra na 001F.
  * Um único tipo-união em vez de campos opcionais: força a UI a tratar cada
  * caso, e impede que "sem organização" e "organização inativa" caiam no mesmo
  * `else` — que é justamente onde um novo tenant seria criado por engano.
@@ -44,6 +45,7 @@ export type AccountBusinessState =
   | { kind: "sem-organizacao" }
   | { kind: "organizacao-indisponivel" }
   | { kind: "multiplas-organizacoes"; membershipCount: number }
+  | { kind: "erro-tecnico" }
   | {
       kind: "pronta";
       organization: OrganizationSummary;
@@ -61,7 +63,12 @@ export async function getAccountBusinessState(): Promise<AccountBusinessState> {
     .from("organization_members")
     .select("organization_id, role, status");
 
-  if (membershipsError) throw membershipsError;
+  // Falha técnica vira estado próprio, não exceção e não lista vazia. Antes,
+  // um erro de leitura subia como 500 e um erro nas leituras seguintes era
+  // silenciosamente lido como "não existe" — os dois casos apagavam a
+  // diferença entre "ainda não há negócio" e "não deu para saber". Dívida
+  // registrada na auditoria da 001E.
+  if (membershipsError) return { kind: "erro-tecnico" };
 
   const rows = memberships ?? [];
 
@@ -75,7 +82,7 @@ export async function getAccountBusinessState(): Promise<AccountBusinessState> {
   // Duas leituras independentes, ambas sob RLS. A organização só aparece se
   // estiver ACTIVE e a membership própria também — é a policy da 001D que
   // decide, não este código.
-  const [{ data: organization }, { data: profile }] = await Promise.all([
+  const [organizationResult, profileResult] = await Promise.all([
     supabase
       .from("organizations")
       .select("id, name, status, timezone, default_currency")
@@ -89,6 +96,16 @@ export async function getAccountBusinessState(): Promise<AccountBusinessState> {
       .eq("organization_id", membership.organization_id)
       .maybeSingle(),
   ]);
+
+  // `maybeSingle()` não trata ausência de linha como erro: o que chega aqui é
+  // falha de verdade (rede, permissão, indisponibilidade) e não pode ser
+  // confundida com "o negócio não existe".
+  if (organizationResult.error || profileResult.error) {
+    return { kind: "erro-tecnico" };
+  }
+
+  const organization = organizationResult.data;
+  const profile = profileResult.data;
 
   // Membership existe, organização não chega: desativada, removida ou fora do
   // alcance da policy. Estado explícito — nunca oferecer novo bootstrap aqui.
