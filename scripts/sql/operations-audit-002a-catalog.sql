@@ -59,9 +59,12 @@ where n.nspname = 'public' and c.relname in ('operations', 'audit_events')
 order by c.relname, con.contype, con.conname;
 -- esperado operations   : CHECKs de status, last_error_class, attempt_count >= 0,
 --                         not_blank/max_length de operation_type, idempotency_key,
---                         target_type, external_resource_id, last_error_summary,
---                         coerencia de updated_at/completed_at;
---                         FK organization_id -> organizations ON DELETE CASCADE
+--                         target_type, external_resource_id, last_error_summary;
+--                         FK organization_id -> organizations ON DELETE CASCADE.
+-- Não se espera CHECK temporal entre created_at/updated_at/completed_at na
+-- versão final da 002A: essa regra foi deliberadamente removida porque os
+-- timestamps podem vir de relógios distintos até existir worker/estratégia
+-- server-side específica.
 -- esperado audit_events : CHECKs de actor_type, metadata objeto + teto,
 --                         not_blank/max_length de event_type e subject_type;
 --                         FK organization_id -> organizations ON DELETE CASCADE;
@@ -92,6 +95,12 @@ where n.nspname = 'public' and r.rolname = 'supabase_admin';
 
 -- ---------------------------------------------------------------------------
 -- 7. Default privileges endurecidos da 001D permanecem.
+--
+-- O contrato promovido endureceu os defaults da role `postgres`, que é a
+-- owner efetiva dos objetos versionados deste projeto. O Supabase mantém
+-- defaults próprios residuais em `supabase_admin`; eles são baseline aceito
+-- somente enquanto o bloco 6 continuar provando zero objetos `public` owned
+-- por essa role.
 -- ---------------------------------------------------------------------------
 select
   pg_get_userbyid(d.defaclrole) as role,
@@ -100,8 +109,11 @@ select
   array_to_string(d.defaclacl, ' | ') as acl
 from pg_default_acl d
 left join pg_namespace n on n.oid = d.defaclnamespace
+where pg_get_userbyid(d.defaclrole) = 'postgres'
 order by role, schema, tipo;
--- esperado: nenhuma concessao default para anon/authenticated
+-- esperado para postgres: nenhuma concessão default a anon/authenticated;
+-- em public, tabela -> postgres=arwdDxtm; função -> postgres=X;
+-- global função -> postgres=X.
 
 -- ---------------------------------------------------------------------------
 -- 8. RLS habilitado em todas as tabelas de `public`.
