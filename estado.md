@@ -41,118 +41,134 @@ Classificação: **APROVADA COM RESSALVA NÃO BLOQUEANTE E PROMOVIDA**.
 - head final auditado: `37961911ce0b8d40cc63519e1820b80562548289`
 - merge: `c0af987ebe68cd0eafd80efef6a0e63e4c7d7042`
 - CI do head: `32659126388` — success
-- auditoria bloqueante original: `rodadas/gpt/AUDITORIA_RODADA_002B_QUEUE_WORKER_FOUNDATION.md`
-- correção: `rodadas/gpt/CORRECAO_RODADA_002B_01_CONTRATO_POISON_EDGE_GATE.md`
 - reauditoria final: `rodadas/gpt/REAUDITORIA_RODADA_002B_CORRECAO_01.md`
 
 ## 4. Baseline técnico após 002B
 
-Supabase remoto confirmado após a promoção:
-
 - migration history = **8**, última `20260823183513`;
 - `pgmq` 1.5.1 instalado;
-- fila durável `integration_jobs` criada;
-- fila ativa = 0 mensagens; arquivo = 0 mensagens após cleanup;
+- fila durável `integration_jobs` criada e limpa após as provas;
 - `pg_cron` não instalado;
-- `operations` e `audit_events` sem fixtures;
-- `auth.users` = 1 conta real;
+- Edge Function `integration-worker` ACTIVE versão 3;
+- `verify_jwt=false` + `withSupabase({ auth: 'secret' })`;
+- `@supabase/server` pinado em 1.4.1 + `deno.lock`;
 - 5 tabelas `public`;
+- `operations`/`audit_events` server-only e sem fixtures;
+- `auth.users` = 1 conta real;
 - zero objetos `public` owned por `supabase_admin`;
 - `pgmq_public` não exposto;
-- Edge Function `integration-worker` ACTIVE, versão 3;
-- `verify_jwt=false` + `withSupabase({ auth: 'secret' })`;
-- dependência `@supabase/server` pinada em 1.4.1 + `deno.lock`;
-- poison interno usa `last_error_class = null`, sem taxonomia externa falsa;
-- validador de job exige tipos JSON estritos;
-- 82/82 provas remotas do executor passaram;
-- 510 testes no head final + lint/typecheck/build verdes.
+- Security Advisor sem novo ERROR/WARN: WARN conhecido `auth_leaked_password_protection` + INFOs esperados de tabelas internas sem policy;
+- Performance Advisor com INFO herdado de `audit_events.actor_user_id` sem índice.
 
-Advisors:
+## 5. Rodada corrente autorizada
 
-- Security: WARN conhecido `auth_leaked_password_protection` + dois INFO `rls_enabled_no_policy` em `operations`/`audit_events`; nenhum ERROR/WARN novo;
-- Performance: INFO herdado `audit_events.actor_user_id` sem índice.
+**002C — WEBHOOK INBOX + OBSERVABILIDADE BASE**
 
-## 5. Ressalva aberta da 002B
+Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
 
-O comando reprodutível `npm run typecheck:functions` existe e executa `deno check`, mas **o workflow atual da CI ainda não chama esse comando**.
+Mandato executável:
 
-Isso não bloqueou a promoção da função atual, já validada/deployada/provada, mas deve ser corrigido **na próxima rodada substantiva antes de ampliar Edge Functions**.
+`rodadas/gpt/RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
 
-Não criar uma rodada isolada só para isso.
+Branch esperada:
 
-## 6. Próxima etapa planejada
+`claude/rodada-002c-webhook-inbox-observabilidade`
 
-**002C — Webhook Inbox + Observabilidade Base**
+Relatório esperado:
 
-Status: **PLANEJADA — NÃO AUTORIZADA**.
+`rodadas/claude/RELATORIO_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
 
-Plano:
+A autorização do fundador em 2026-08-23 cobre **somente a 002C**. Nenhuma rodada posterior está autorizada.
 
-`rodadas/gpt/PLANO_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`
+## 6. Escopo autorizado da 002C
 
-Objetivo proposto:
+A 002C deve:
 
-- criar `webhook_events` server-only com dedupe;
-- fechar a ressalva da CI da 002B;
-- formalizar estratégia de secrets/runtime;
-- estabelecer observabilidade mínima sem UI/provider externo;
-- avaliar encerramento da Fase 2 na própria auditoria da 002C.
+- criar `public.webhook_events` como inbox durável server-only;
+- usar dedupe único por `(provider, dedupe_hash)`;
+- habilitar RLS, zero policies de browser, `anon`/`authenticated` sem acesso;
+- dar ao `service_role` somente SELECT/INSERT/UPDATE, sem DELETE;
+- criar uma única migration, levando o histórico **8 → 9**;
+- adicionar `audit_events_actor_user_id_idx` se o Advisor confirmar a dívida atual;
+- adicionar `npm run typecheck:functions` como passo explícito da CI;
+- atualizar `SECURITY_MODEL.md` com estratégia curta de secrets/runtime;
+- criar observabilidade read-only por agregados, sem payload/PII;
+- fazer prova transacional apenas do delta;
+- deixar a Fase 2 candidata a encerramento pela auditoria GPT.
 
-Decisão planejada: **não criar cron agora**, porque ainda não existe job de negócio periódico. Cron retorna quando houver trabalho real que exija agendamento.
+Não criar função `SECURITY DEFINER` nova.
 
-## 7. Eficiência para a próxima rodada
+## 7. Regra obrigatória de eficiência
 
-A execução da Correção 002B-01 foi mais extensa do que o tamanho conceitual da correção justificava.
+A Correção 002B-01 ficou maior do que o delta justificava. Na 002C:
 
-Na 002C e em correções futuras, aplicar por padrão:
+- **não repetir as 82 provas da 002B**;
+- reutilizar a 002B promovida como baseline;
+- testes locais somente do que mudou;
+- nenhuma nova execução remota longa da fila/worker se eles não forem alterados;
+- suíte completa **uma única vez na CI final**;
+- preferir um único push final;
+- relatório Claude alvo **<= 120 linhas**;
+- uma falha pequena deve gerar prova/correção proporcional, não reinício ritual da rodada.
 
-- prova por **delta**;
-- reutilizar evidência já auditada como baseline;
-- não repetir E2E remoto longo de capacidade não alterada;
-- testes locais apenas novos/relevantes;
-- suíte completa em **uma única CI final**;
-- relatório Claude alvo <= 120 linhas na 002C;
-- não devolver ao Claude uma nova microcorreção quando o GPT puder classificar com segurança uma divergência não funcional como ressalva/debt.
+Rigor de segurança permanece; repetição sem ganho de evidência é que está proibida.
 
-Rigor de segurança e correção permanece; o que reduz é repetição sem ganho de evidência.
+## 8. Decisões explícitas da 002C
 
-## 8. Fora de escopo imediato
+### Sem cron agora
 
-Não autorizado agora:
+`pg_cron`/scheduler **não entra** nesta rodada. Ainda não existe job real de negócio periódico. Cron volta quando houver necessidade concreta, com frequência escolhida por custo/rate limit/frescor.
 
-- 002C executável;
-- cron/pg_cron;
+### Sem endpoint de webhook
+
+A 002C cria somente a inbox persistente. Challenge, assinatura, raw body, endpoint Meta e processamento entram em fase posterior adequada.
+
+### Ressalva CI da 002B
+
+O comando `npm run typecheck:functions` já existe e funciona, mas ainda não está no workflow. A 002C deve incorporá-lo à CI e provar o passo no job final.
+
+## 9. Fora de escopo imediato
+
+Não autorizado:
+
 - endpoint público de webhook;
-- Meta/Instagram/OAuth;
-- publicação/conteúdo;
-- Ads/aprovações;
+- Meta app/OAuth/Instagram connection;
+- assinatura/challenge Meta;
+- lead fetch/CRM;
+- cron/pg_cron;
+- nova fila física;
+- `public.integration_jobs`;
+- conteúdo/publicação;
+- Ads/aprovações financeiras;
 - IA;
 - UI;
 - notificações;
 - provider pago;
 - novo segredo humano.
 
-## 9. Riscos e dívidas abertas
+## 10. Riscos/dívidas abertas
 
-1. `typecheck:functions` ainda fora do workflow CI — fechar na próxima rodada substantiva.
-2. `audit_events.actor_user_id` sem índice próprio — INFO de performance; candidato a fechamento na 002C.
-3. `auth_leaked_password_protection` — hardening pré-produção.
-4. Gmail SMTP é desenvolvimento; SMTP/domínio de produção continuam futuros.
-5. App Password do Gmail permanece secreta/ativa enquanto necessária.
-6. Default ACL residual de `supabase_admin` continua aceito somente enquanto não houver objetos `public` owned por essa role.
+1. `auth_leaked_password_protection` — hardening pré-produção.
+2. Gmail SMTP/App Password — desenvolvimento; produção futura.
+3. default ACL residual de `supabase_admin` aceito somente enquanto inerte.
+4. `HISTORY_SUMMARY.md` ainda pode estar resumido até 002A; incorporar 002B junto do fechamento substantivo da 002C/Fase 2, sem housekeeping isolado.
 
-## 10. Próxima ação autorizada
+## 11. Próxima ação autorizada
 
-**Nenhuma implementação nova está autorizada.**
+Claude Code deve executar **somente a Rodada 002C**.
 
-O fundador deve avaliar o plano da 002C.
+Ao receber `/proxima`, deve:
 
-`/proxima` deve **parar**, porque não existe mandato executável 002C.
+1. fazer preflight contra `origin/main`;
+2. criar a branch `claude/rodada-002c-webhook-inbox-observabilidade`;
+3. ler o READ SET mínimo do mandato;
+4. executar somente o delta 002C;
+5. aplicar uma única migration se o baseline estiver correto;
+6. executar provas proporcionais;
+7. fazer um único push final quando possível;
+8. abrir PR draft e entregar relatório <= 120 linhas;
+9. parar em `002C EXECUTADA — AGUARDANDO AUDITORIA GPT`.
 
-Se o fundador autorizar explicitamente a 002C, o GPT deve transformar/refinar o plano em mandato, atualizar `ACTIVE_DOCS.md`/`estado.md` e só então liberar `/proxima`.
+`/proxima` está **liberado para a 002C**.
 
-## 11. Continuidade documental
-
-- `docs/00-governanca/HISTORY_SUMMARY.md` pode permanecer temporariamente até 002A e incorporar 002B junto da próxima etapa substantiva, sem criar housekeeping isolado;
-- `ACTIVE_DOCS.md` deve refletir 002B promovida e 002C apenas planejada;
-- nenhuma 002C está autorizada.
+Claude não promove, não encerra a Fase 2 por conta própria e não inicia a próxima fase.
