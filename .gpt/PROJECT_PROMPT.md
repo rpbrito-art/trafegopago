@@ -12,11 +12,33 @@ Este é o mandato permanente do projeto para GPT, Claude Code e novos chats. Nã
 
 Construir um SaaS inicialmente focado em **Instagram + Meta Ads + geração e aprendizagem sobre leads** para pequenas empresas.
 
-Ciclo central:
+O ciclo de produto não deve ser tratado como funil rígido. O modelo canônico de crescimento é:
 
-`conteúdo → sinais orgânicos → hipótese → teste pago → resultado → vencedor → escala → lead → qualificação → conversão/perda → feedback → insight → novo teste`
+`contexto do negócio → objetivo → jornada → público/personas → conteúdo/criativo → distribuição orgânica, paga ou ambas → resultado → aprendizado → nova ação`
 
-O produto deve transformar marketing em um ciclo contínuo de experimentação, aquisição e aprendizagem; não apenas publicar posts ou mostrar métricas.
+Mídia paga é uma capacidade importante, não obrigação de uso. O sistema deve conseguir entregar valor por inteligência orgânica e ampliar para mídia paga quando fizer sentido ao objetivo do negócio.
+
+O detalhamento vigente está em:
+
+`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
+
+## 1.1 Lei da simplicidade guiada
+
+**A complexidade pertence ao sistema, não ao usuário.**
+
+O produto deve ser operado como uma trilha guiada e não pode exigir que o usuário domine Ads Manager, hierarquia campanha/ad set/anúncio, APIs, targeting avançado ou jargão técnico para completar o fluxo principal.
+
+O sistema deve:
+
+- propor o próximo passo em linguagem simples;
+- explicar por que recomenda;
+- usar defaults seguros;
+- esconder complexidade avançada até ser necessária;
+- pedir somente decisões que realmente dependam do usuário;
+- absorver internamente complexidade técnica sempre que puder fazê-lo com segurança;
+- nunca esconder gasto, risco, incerteza ou limitação de mensuração em nome da simplicidade.
+
+Nenhuma rodada futura pode reintroduzir complexidade operacional desnecessária para o usuário sem decisão explícita de produto.
 
 ---
 
@@ -266,9 +288,9 @@ Nunca expor passwords, access tokens, service role/secret keys ou outros segredo
 
 ---
 
-# 10. INVARIANTES TÉCNICOS
+# 10. INVARIANTES TÉCNICOS E DE PRODUTO
 
-Contratos detalhados vivem em `docs/03-canonical/`. Invariantes que nenhuma rodada pode violar silenciosamente:
+Contratos detalhados vivem em `docs/03-canonical/` e `docs/01-produto/`. Invariantes que nenhuma rodada pode violar silenciosamente:
 
 - multi-tenancy por organização;
 - RLS e grants tratados como camadas distintas;
@@ -285,7 +307,14 @@ Contratos detalhados vivem em `docs/03-canonical/`. Invariantes que nenhuma roda
 - IA nunca executa gasto diretamente;
 - cálculos determinísticos fora de LLM;
 - AI Router multi-provedor, sem modelo hardcoded na feature;
-- custo de IA registrado por execução.
+- custo de IA registrado por execução;
+- a experiência padrão deve seguir a **lei da simplicidade guiada**;
+- mídia paga é opcional: o sistema deve entregar valor orgânico quando houver dados suficientes;
+- conteúdo orgânico, criativo publicitário e anúncio são conceitos distintos;
+- o número de oportunidades/candidatos não é fixo por contrato;
+- jornada, evento de sucesso e resultado mensurável variam por negócio;
+- personas são hipóteses apoiadas por evidência e não podem ser fabricadas como fatos;
+- complexidade técnica pode ser escondida, mas gasto, risco, incerteza e limitações não.
 
 Fluxo financeiro obrigatório:
 
