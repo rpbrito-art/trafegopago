@@ -58,7 +58,7 @@ Migration incorporada: `20260823111051_create_business_profiles_and_bootstrap.sq
 
 **RODADA 001F — RECOVERY DE ACESSO + FECHAMENTO DA FASE 1**
 
-Status: **CORREÇÃO 001F-01 AUTORIZADA — AGUARDANDO GATE HUMANO DO TEMPLATE E RETOMADA PELO CLAUDE CODE**.
+Status: **CORREÇÃO 001F-01 AUTORIZADA — GATE HUMANO DO TEMPLATE CONFIRMADO — RETOMADA PELO CLAUDE CODE AUTORIZADA**.
 
 Mandato original:
 
@@ -77,6 +77,8 @@ PR de auditoria: **#7 — draft, não promover**.
 Head entregue antes da correção:
 
 `4d9e4276609f9d3bb9484ede2bf313e6ac38a0c8`
+
+O fundador confirmou em 2026-08-23 que atualizou manualmente no Supabase hospedado o template **Reset Password / Recovery** com o conteúdo versionado. Isso libera a retomada, mas **não equivale a verificação técnica do template**: a conformidade remota só será aceita quando o smoke final receber e usar um e-mail real do Auth hospedado e comprovar o link esperado.
 
 O estado promovido continua **000–001E**. A 001F não foi aprovada nem incorporada.
 
@@ -116,34 +118,40 @@ A correção também exige:
 
 Nenhuma admin API/secret key é autorizada para esse logout funcional.
 
-## 7. Gate humano obrigatório — template Recovery hosted
+## 7. Gate humano do template Recovery hosted
 
-Antes do E2E final, o fundador deve configurar no Supabase hospedado o template **Reset Password / Recovery** usando exatamente o conteúdo versionado em:
+**Cumprido pelo fundador em 2026-08-23; verificação técnica ainda pendente no E2E final.**
+
+O template hospedado foi informado como atualizado no Supabase em **Reset Password / Recovery** usando o conteúdo versionado em:
 
 `supabase/templates/recovery.html`
 
-O link deve usar:
+Link esperado no e-mail real:
 
 `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`
 
 Sem `next`.
 
-Não usar `supabase config push`, pois isso poderia empurrar configurações locais inadequadas ao projeto hospedado.
+Claude deve verificar isso empiricamente no smoke final. Se o e-mail real não vier nesse formato, parar e reportar; não usar `supabase config push` nem contornar com link administrativo.
 
 Nenhum segredo SMTP deve ser solicitado ou exposto.
 
 ## 8. Próxima execução autorizada
 
-Depois de o fundador confirmar que o template Recovery hosted foi atualizado, Claude Code deve retomar **a mesma branch** e executar somente a Correção 001F-01:
+Claude Code deve retomar **a mesma branch** e executar somente a Correção 001F-01:
 
+- sincronizar/reconciliar a branch com a `main` atual sem perder a implementação já entregue;
 - ajustar o guard de recovery para o predicado temporal autorizado;
 - tornar o logout global explícito e testado;
 - atualizar testes/smoke/comentários necessários;
 - executar o smoke final com e-mail real;
+- verificar no e-mail real que o template hosted efetivo corresponde ao link versionado;
 - manter zero migration/DDL;
 - preservar a harmonização MVP/roadmap já entregue;
 - rodar gates e CI;
 - atualizar relatório e `estado.md`.
+
+Durante o smoke, qualquer URL real de recovery contendo `token_hash` deve ser fornecida somente ao processo local/terminal e nunca registrada em relatório, Git ou chat.
 
 Conclusão esperada, se tudo passar:
 
