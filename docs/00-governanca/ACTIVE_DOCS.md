@@ -1,24 +1,16 @@
 # ACTIVE DOCS — TRÁFEGO PAGO
 
 Atualizado: 2026-08-23
-Última reciclagem: após promoção da Rodada 001D.
+Última reciclagem: após promoção da Rodada 001E, incorporando Growth Intelligence ao working set futuro.
 Próximo gatilho ordinário: conforme `DOCUMENTATION_LIFECYCLE.md`, sem criar housekeeping isolado.
 
 ## Estado corrente
 
-Rodada vigente: **001E — Bootstrap de Negócio**.
+Rodada 001E — **APROVADA COM RESSALVAS NÃO BLOQUEANTES E PROMOVIDA**.
 
-Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
+Não há mandato executável pendente.
 
-Mandato vigente:
-
-`rodadas/gpt/RODADA_001E_BUSINESS_BOOTSTRAP.md`
-
-Branch esperada:
-
-`claude/rodada-001e-business-bootstrap`
-
-`/proxima` está autorizado a executar **somente a Rodada 001E**.
+`/proxima` deve parar aguardando planejamento e autorização explícita do fundador.
 
 A fonte operacional é `estado.md`.
 
@@ -27,7 +19,8 @@ A fonte operacional é `estado.md`.
 1. `estado.md`
 2. `.gpt/PROJECT_PROMPT.md`
 3. `docs/00-governanca/ACTIVE_DOCS.md`
-4. `rodadas/gpt/RODADA_001E_BUSINESS_BOOTSTRAP.md`
+
+Quando houver mandato vigente, ele entra em seguida no working set.
 
 ## GATE OBRIGATÓRIO — planejamento e auditoria de produto
 
@@ -35,12 +28,12 @@ Antes de formular, refinar, dividir, autorizar ou auditar qualquer rodada que af
 
 `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
 
-Isso é obrigatório, e não pode ser substituído por referência curta, resumo de chat ou trecho do `MVP_CANONICAL.md`.
+Isso é obrigatório e não pode ser substituído por referência curta, resumo de chat ou trecho do `MVP_CANONICAL.md`.
 
-Considere a rodada afetada por produto/experiência se tocar em qualquer destes temas:
+Considere relevante qualquer rodada que toque, direta ou indiretamente, em:
 
-- onboarding ou configuração do negócio;
-- jornada/funil ou definição do evento de sucesso;
+- onboarding/configuração do negócio;
+- jornada/funil/definição de sucesso;
 - conteúdo, publicação ou criativo;
 - orgânico ou mídia paga;
 - Meta/Instagram;
@@ -48,48 +41,23 @@ Considere a rodada afetada por produto/experiência se tocar em qualquer destes 
 - personas, públicos, segmentação ou targeting;
 - leads, conversões ou mensuração;
 - inteligência, insights ou IA aplicada ao comportamento de mercado;
-- UX, navegação, configuração ou simplificação/complexidade da operação.
+- UX, navegação, configuração ou complexidade da operação.
 
 Se houver dúvida, tratar como relevante e ler o documento.
 
-Regras de execução/auditoria:
+Regras:
 
 - todo mandato relevante deve listar `GROWTH_INTELLIGENCE_CANONICAL.md` explicitamente no READ SET;
-- o Claude deve lê-lo antes de implementar o escopo relevante;
-- a auditoria GPT deve verificar aderência; contradição material é bloqueante salvo decisão explícita do fundador que atualize o contrato canônico;
-- até a harmonização dos canônicos antigos, o Growth Intelligence prevalece em modelo de crescimento, jornadas, orgânico/pago, conteúdo/criativo, personas/públicos, inteligência de mercado e simplicidade guiada;
-- essa prevalência não substitui contratos técnicos de segurança, tenancy, autorização financeira ou outros invariantes de seus próprios canônicos.
-
-**Transição 001E:** este gate não amplia o mandato já autorizado da 001E e não deve gerar retrabalho nela. Vincula planejamento futuro e harmonizações posteriores à auditoria da 001E.
-
-## READ SET específico da 001E
-
-Conforme mandato:
-
-- `docs/00-governanca/HISTORY_SUMMARY.md`;
-- `docs/00-governanca/IMPLEMENTATION_ROADMAP.md` — Fase 1;
-- `docs/01-produto/MVP_CANONICAL.md` — §§4 e 20;
-- `docs/03-canonical/DATA_MODEL.md` — §§1, 2, 16, 17;
-- `docs/03-canonical/SECURITY_MODEL.md` — §§3–6, 12, 15, 18, 20;
-- migrations 001C/001D;
-- arquivos auth/Supabase/env/`/conta` listados no mandato;
-- documentação oficial Supabase vigente para RLS, grants, service role/secret key, funções e Data API.
-
-Não reler relatórios completos das Rodadas 000–001D salvo dependência concreta.
-
-### Decisão canônica de produto publicada durante a 001E
-
-`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` foi consolidado em 2026-08-23 e passa a vincular o **planejamento das rodadas futuras**.
-
-Ele **não altera o mandato já autorizado da 001E** e não deve ser usado para ampliar seu escopo. A harmonização de `MVP_CANONICAL.md`, roadmap e demais contratos será feita após a auditoria da 001E, junto da próxima etapa substantiva apropriada.
-
-A lei de **simplicidade guiada** também foi incorporada ao `PROJECT_CHARTER.md`.
+- Claude deve lê-lo antes de implementar escopo relevante;
+- auditoria GPT deve verificar aderência; contradição material é bloqueante salvo decisão explícita do fundador que atualize o canônico;
+- até a harmonização completa dos documentos antigos, Growth Intelligence prevalece em modelo de crescimento, jornadas, orgânico/pago, conteúdo/criativo, personas/públicos, inteligência de mercado e simplicidade guiada;
+- essa prevalência não substitui contratos técnicos de segurança, tenancy ou autorização financeira.
 
 ## Resumo histórico preferencial
 
 - `docs/00-governanca/HISTORY_SUMMARY.md`
 
-O resumo incorpora 000–001D.
+O resumo incorpora Rodadas 000–001E.
 
 ## Canônicos ativos por área
 
@@ -102,7 +70,7 @@ O resumo incorpora 000–001D.
 ### Produto
 
 - `docs/01-produto/MVP_CANONICAL.md`
-- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` — modelo de crescimento/inteligência e lei detalhada de simplicidade; leitura integral obrigatória no planejamento/auditoria de rodadas relevantes.
+- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` — leitura integral obrigatória nas rodadas relevantes de produto.
 
 ### Arquitetura
 
@@ -112,35 +80,44 @@ O resumo incorpora 000–001D.
 - `docs/03-canonical/SECURITY_MODEL.md`
 - `docs/03-canonical/AI_ARCHITECTURE.md`
 
-## Corte da Rodada 001E
+## Estado técnico promovido relevante
 
-Dentro:
+- Auth real e sessão SSR;
+- organizations + organization_members;
+- grants mínimos e RLS tenant-scoped;
+- isolamento real 2 usuários × 2 organizações;
+- defaults de `postgres` endurecidos;
+- `business_profiles` tenant-scoped;
+- bootstrap inicial atômico por RPC INVOKER apenas server-side/service_role;
+- proteção de dupla submissão;
+- `/conta` com estados explícitos de tenancy;
+- segredo Supabase privilegiado somente server-side.
 
-- `business_profiles`;
-- leitura tenant-scoped;
-- caminho server-only privilegiado para bootstrap atômico;
-- organização + membership owner + profile;
-- `/conta` com zero/uma/múltiplas memberships tratadas explicitamente.
+Auditoria mais recente:
 
-Fora:
+`rodadas/gpt/AUDITORIA_RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-- recovery de senha;
-- gestão/convites de membros;
-- edição ampla;
-- multi-org switcher;
-- delete;
-- Meta/IA;
-- Fase 2.
+## Próxima direção planejável — não autorizada
 
-Nenhuma etapa posterior está autorizada.
+Antes de Meta/Instagram, avaliar o fechamento restante da Fase 1 e a harmonização proporcional do plano futuro com Growth Intelligence.
+
+Pontos a considerar no planejamento:
+
+- recovery de acesso;
+- gestão mínima necessária de conta/membership;
+- evolução do onboarding para trilha simples e perfil progressivo;
+- objetivo/jornada/resultado desejado versus mensurável;
+- harmonização de `MVP_CANONICAL.md`, roadmap e data model apenas na medida necessária à próxima etapa útil.
+
+Não assumir automaticamente que a próxima rodada será 001F nem que todos esses itens pertencem à mesma rodada.
 
 ## Histórico / evidência — NÃO ler por padrão
 
-- relatórios completos das Rodadas 000–001D;
-- auditorias completas antigas;
+- relatórios completos das Rodadas 000–001E;
+- auditorias completas antigas, exceto a última quando necessária;
 - correções 001B/001D já incorporadas;
 - `docs/02-research/`;
 - PRs e logs históricos;
 - `.gpt/CURRENT_STATE.md`.
 
-Abrir somente quando o mandato/canônicos atuais não resolverem uma dependência concreta.
+Abrir somente quando `HISTORY_SUMMARY.md`, canônicos e mandato vigente não resolverem uma dependência concreta.

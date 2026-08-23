@@ -20,109 +20,111 @@ Promovido e disponível:
 - Rodada 001B — Auth Real;
 - Rodada 001C — Organizations + Membership;
 - Rodada 001D — Default privileges + Grants + RLS + Isolamento;
+- Rodada 001E — Bootstrap de Negócio;
 - Auth real por e-mail/senha com confirmação SSR, sessão/cookies e rota protegida;
-- `public.organizations` e `public.organization_members` com constraints e RLS;
-- `authenticated` com SELECT apenas nas duas tabelas de tenancy atuais;
-- `anon` sem acesso às duas tabelas;
-- `service_role` preservado por grants explícitos;
-- policies SELECT não recursivas por membership própria ativa;
-- escrita direta do browser fechada nesta fundação;
-- default privileges futuros de tabelas/sequências de `postgres` em `public` endurecidos;
-- default global de EXECUTE de funções futuras owned por `postgres` fechado;
-- `ensure_rls` ativo;
-- isolamento tenant provado com sessões reais 2 usuários × 2 organizações.
+- `public.organizations`, `public.organization_members` e `public.business_profiles` com RLS;
+- isolamento tenant real e grants mínimos;
+- criação inicial atômica organization + owner membership + business_profile por caminho server-only;
+- RPC `SECURITY INVOKER` executável apenas por `service_role`;
+- proteção contra dupla submissão concorrente;
+- `/conta` trata zero/uma/múltiplas memberships e organização indisponível sem escolher tenant silenciosamente;
+- `SUPABASE_SECRET_KEY` consumida somente server-side;
+- default privileges seguros da 001D e `ensure_rls` preservados;
+- `GROWTH_INTELLIGENCE_CANONICAL.md` e Lei da Simplicidade Guiada vinculam o planejamento futuro de produto.
 
 Detalhes históricos: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
-## 3. Estado corrente
+## 3. Última rodada promovida
 
 **RODADA 001E — BOOTSTRAP DE NEGÓCIO**
 
-Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+Status: **APROVADA COM RESSALVAS NÃO BLOQUEANTES E PROMOVIDA**.
 
 Mandato:
-
 `rodadas/gpt/RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-Branch entregue:
-
-`claude/rodada-001e-business-bootstrap`
-
-Relatório entregue:
-
+Relatório Claude:
 `rodadas/claude/RELATORIO_RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-Commit: resolver pelo head da branch no GitHub (push único, conforme
-`PROJECT_PROMPT.md` §5.2).
+Auditoria GPT:
+`rodadas/gpt/AUDITORIA_RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-Migration aplicada no project ref `cbnxdoxpyioxjwgjhbtq`:
+PR #6.
+
+Head técnico original:
+`5fe60ea3ea56db7c1c5fc53d6a9f97a848d72466`
+
+Head reconciliado:
+`f2695300e99db3ca5b61a88160c0d94b0a30198f`
+
+Merge:
+`7cf7786320f49c1d5b3f486f4ba8ca4919fa2ffd`
+
+CI final reconciliada:
+`32638010339` — success.
+
+Migration incorporada:
 `20260823111051_create_business_profiles_and_bootstrap.sql`.
 
-Gates executados: `git diff --check`, lint, typecheck, 236 testes, build,
-`supabase migration list` (5 local = 5 remoto), 24/24 provas reais de
-banco/Data API, Security Advisor sem regressão, zero resíduo remoto.
+Provas principais:
 
-Bloqueios: nenhum.
+- 24/24 provas reais Auth/JWT/Data API reportadas pelo executor;
+- banco remoto revalidado independentemente pela auditoria;
+- zero fixture em organizations/memberships/business_profiles;
+- RPC INVOKER e ACL mínima confirmadas;
+- Advisor sem regressão além do WARN conhecido de Auth;
+- CI final reconciliada verde.
 
-Nenhuma etapa posterior está autorizada. A 001F não foi aberta.
+## 4. Estado corrente
 
-## 4. Objetivo autorizado da 001E
+**Não há mandato executável pendente.**
 
-Construir o primeiro fluxo real de domínio após autenticação:
+`/proxima` deve parar aguardando planejamento e autorização explícita de nova rodada.
 
-`conta autenticada → organização inicial → membership owner → business_profile → resumo em /conta`
+Nenhuma 001F está autorizada.
 
-A rodada deve:
+A Fase 1 **não é declarada encerrada automaticamente** pela promoção da 001E. Itens ainda precisam ser avaliados antes desse fechamento, incluindo recovery e o nível mínimo de gestão de conta/membros realmente necessário.
 
-- criar `public.business_profiles` conforme o modelo canônico mínimo;
-- manter `anon` sem acesso;
-- conceder a `authenticated` somente SELECT no profile, protegido por membership ACTIVE + organização ACTIVE;
-- preservar escrita direta do browser fechada em `organizations`, `organization_members` e `business_profiles`;
-- introduzir cliente Supabase privilegiado exclusivamente server-side usando `SUPABASE_SECRET_KEY`;
-- usar função `SECURITY INVOKER` chamável somente por `service_role` para criar organização + owner membership + profile atomicamente;
-- provar que `anon`/`authenticated` não conseguem invocar a RPC;
-- impedir dupla submissão concorrente de criar dois tenants para o onboarding inicial;
-- transformar `/conta` em onboarding/resumo mínimo, sem redesign amplo;
-- preservar todos os invariantes e hardenings promovidos na 001D.
+## 5. Gate obrigatório de produto
 
-## 5. Fora de escopo da 001E
+Antes de formular, refinar, dividir, autorizar ou auditar qualquer rodada que afete produto/experiência, ler integralmente:
 
-- recuperação/reset de senha;
-- convite/gestão de membros;
-- alteração de role/status/ownership;
-- edição ampla de organização/profile;
-- múltiplas organizações / tenant switcher;
-- delete account/organization;
-- limites financeiros;
-- Meta/Instagram;
-- Operations/Audit/Queues da Fase 2;
-- IA.
+`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
 
-## 6. Baseline e riscos conhecidos
+Não basta referência curta.
 
-1. `auth_leaked_password_protection` permanece desabilitado: hardening obrigatório antes de clientes reais/produção.
-2. Brevo Free permanece SMTP provisório de desenvolvimento.
+Todo mandato relevante deve incluí-lo no READ SET; contradição material é bloqueante salvo decisão explícita do fundador.
+
+A próxima etapa substantiva também deve harmonizar, no que for necessário ao seu próprio escopo, formulações antigas de `MVP_CANONICAL.md`, roadmap e data model com Growth Intelligence. Não criar rodada de housekeeping apenas para essa harmonização.
+
+## 6. Ressalvas e dívidas abertas
+
+1. `auth_leaked_password_protection` permanece desabilitado: hardening antes de clientes reais/produção.
+2. Brevo Free permanece SMTP provisório de desenvolvimento; produção exige decisão de domínio/provedor.
 3. Default ACL residual de `supabase_admin` continua aceito somente enquanto `public` tiver zero objetos owned por essa role.
-4. Funções futuras que precisem de execução exigem GRANT EXECUTE explícito.
-5. A secret key Supabase nunca pode ir para `NEXT_PUBLIC_*`, browser, logs, respostas ou relatório.
-6. `service_role` bypassa RLS; o caminho privilegiado desta rodada deve ser estreito, server-only e receber identidade exclusivamente do `getClaims()` verificado.
-7. A Fase 1 ainda não será considerada encerrada após esta autorização; recovery e demais itens pendentes serão avaliados depois da auditoria da 001E.
+4. Funções futuras exigem GRANT EXECUTE explícito.
+5. `SUPABASE_SECRET_KEY` deverá ser configurada no ambiente de deploy quando houver deploy; nunca pode ir para `NEXT_PUBLIC_*`, browser, logs ou respostas.
+6. Recovery/reset de senha ainda não foi implementado.
+7. Convite/gestão de membros, edição de negócio, multi-org switcher e exclusão continuam posteriores.
+8. A linguagem do onboarding 001E ainda é parcialmente paga-first e o formulário é concentrado; a próxima evolução de produto deve migrar para objetivo/jornada mais geral e perfil progressivo, conforme Growth Intelligence, sem desfazer a fundação segura.
+9. O tratamento de erro técnico de leitura em `/conta` pode ganhar UX mais explícita em rodada futura adequada.
 
-## 7. Próxima ação autorizada
+## 7. Próxima direção planejável — não autorizada
 
-Rodada 001E executada e parada em:
+Antes de entrar em Meta/Instagram, o GPT deve avaliar o fechamento restante da Fase 1 e harmonizar o plano futuro com Growth Intelligence.
 
-`RODADA 001E — EXECUTADA — AGUARDANDO AUDITORIA GPT`
+Possíveis componentes a avaliar, sem autorização automática:
 
-Próximo agente: **GPT**, auditando independentemente a branch
-`claude/rodada-001e-business-bootstrap` — diff, CI, migration aplicada, grants,
-policy de `business_profiles`, ACL da função de bootstrap, provas de isolamento
-e de dupla submissão, ausência de secret em código cliente e resíduo remoto.
+- recovery de acesso;
+- gestão mínima necessária de conta/membership;
+- evolução do onboarding para trilha simples e perfil progressivo;
+- modelagem futura de objetivo/jornada/resultado desejado versus mensurável;
+- atualização proporcional de MVP/roadmap/data model para evitar que fases futuras reintroduzam funil rígido ou paid-first.
 
-Claude Code não pode aprovar, promover nem iniciar 001F.
+A sequência e o recorte da próxima rodada serão definidos em planejamento posterior.
 
 ## 8. Continuidade
 
-Descompasso temporário de numeração/documentação é normal e não exige housekeeping isolado.
+Branch, relatório ou commit isolado não significam incorporação. Neste momento, 000–001E estão promovidas na `main`.
 
-Branch/relatório/commit não significam incorporação. O estado promovido continua 000–001D até auditoria e promoção formal da 001E.
+Descompasso documental temporário deve ser corrigido junto da próxima etapa substantiva quando não houver risco operacional.
