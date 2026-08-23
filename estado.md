@@ -30,7 +30,7 @@ Promovido e disponível:
 - `/conta` trata zero/uma/múltiplas memberships e organização indisponível sem escolher tenant silenciosamente;
 - `SUPABASE_SECRET_KEY` consumida somente server-side;
 - default privileges seguros da 001D e `ensure_rls` preservados;
-- `GROWTH_INTELLIGENCE_CANONICAL.md` e Lei da Simplicidade Guiada vinculam o planejamento futuro de produto.
+- `GROWTH_INTELLIGENCE_CANONICAL.md` e Lei da Simplicidade Guiada vinculam planejamento e auditoria futuros de produto.
 
 Detalhes históricos: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
@@ -40,91 +40,111 @@ Detalhes históricos: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 Status: **APROVADA COM RESSALVAS NÃO BLOQUEANTES E PROMOVIDA**.
 
-Mandato:
-`rodadas/gpt/RODADA_001E_BUSINESS_BOOTSTRAP.md`
+Mandato: `rodadas/gpt/RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-Relatório Claude:
-`rodadas/claude/RELATORIO_RODADA_001E_BUSINESS_BOOTSTRAP.md`
+Relatório Claude: `rodadas/claude/RELATORIO_RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
-Auditoria GPT:
-`rodadas/gpt/AUDITORIA_RODADA_001E_BUSINESS_BOOTSTRAP.md`
+Auditoria GPT: `rodadas/gpt/AUDITORIA_RODADA_001E_BUSINESS_BOOTSTRAP.md`
 
 PR #6.
 
-Head técnico original:
-`5fe60ea3ea56db7c1c5fc53d6a9f97a848d72466`
+Merge: `7cf7786320f49c1d5b3f486f4ba8ca4919fa2ffd`
 
-Head reconciliado:
-`f2695300e99db3ca5b61a88160c0d94b0a30198f`
+CI final reconciliada: `32638010339` — success.
 
-Merge:
-`7cf7786320f49c1d5b3f486f4ba8ca4919fa2ffd`
-
-CI final reconciliada:
-`32638010339` — success.
-
-Migration incorporada:
-`20260823111051_create_business_profiles_and_bootstrap.sql`.
-
-Provas principais:
-
-- 24/24 provas reais Auth/JWT/Data API reportadas pelo executor;
-- banco remoto revalidado independentemente pela auditoria;
-- zero fixture em organizations/memberships/business_profiles;
-- RPC INVOKER e ACL mínima confirmadas;
-- Advisor sem regressão além do WARN conhecido de Auth;
-- CI final reconciliada verde.
+Migration incorporada: `20260823111051_create_business_profiles_and_bootstrap.sql`.
 
 ## 4. Estado corrente
 
-**Não há mandato executável pendente.**
+**RODADA 001F — RECOVERY DE ACESSO + FECHAMENTO DA FASE 1**
 
-`/proxima` deve parar aguardando planejamento e autorização explícita de nova rodada.
+Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
 
-Nenhuma 001F está autorizada.
+Mandato vigente:
 
-A Fase 1 **não é declarada encerrada automaticamente** pela promoção da 001E. Itens ainda precisam ser avaliados antes desse fechamento, incluindo recovery e o nível mínimo de gestão de conta/membros realmente necessário.
+`rodadas/gpt/RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 
-## 5. Gate obrigatório de produto
+Branch esperada:
 
-Antes de formular, refinar, dividir, autorizar ou auditar qualquer rodada que afete produto/experiência, ler integralmente:
+`claude/rodada-001f-recovery-fechamento-fase1`
+
+Relatório esperado:
+
+`rodadas/claude/RELATORIO_RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
+
+`/proxima` está autorizado a executar **somente a Rodada 001F**.
+
+Nenhuma Fase 2 ou rodada posterior está autorizada.
+
+## 5. Objetivo autorizado da 001F
+
+Fechar a lacuna funcional objetiva restante da Fase 1 com recovery real por e-mail/senha e deixar a fase candidata a encerramento após auditoria GPT.
+
+Fluxo alvo:
+
+`entrar → esqueci minha senha → e-mail real → confirmação SSR recovery → nova senha → login com nova senha`
+
+A rodada deve:
+
+- implementar pedido de recuperação sem enumeração de contas;
+- versionar template de recovery e alinhar configuração local;
+- validar o template hosted efetivo por e-mail real;
+- ampliar `/auth/confirm` somente para `recovery`, preservando signup/email e open-redirect protection;
+- forçar recovery para a rota de nova senha, sem `next` arbitrário;
+- exigir sessão cujo JWT `amr` contenha método `recovery` para permitir redefinição;
+- usar `updateUser({ password })` no contexto do próprio usuário, sem admin/secret key;
+- provar senha antiga rejeitada, nova senha válida, não reutilização do link e comportamento real de sessões;
+- melhorar apenas a mensagem de erro técnico de `/conta` registrada como dívida da 001E;
+- preservar schema/RLS/grants sem migrations;
+- harmonizar proporcionalmente `MVP_CANONICAL.md` e `IMPLEMENTATION_ROADMAP.md` com Growth Intelligence no que afeta fechamento da Fase 1 e interpretação das próximas fases.
+
+## 6. Fora de escopo da 001F
+
+- convites e gestão de membros;
+- alteração de role/status/ownership;
+- multi-org switcher;
+- edição ampla/exclusão de negócio;
+- Meta/Instagram;
+- Operations/Audit/Queues da Fase 2;
+- Ads/campanhas;
+- IA/personas;
+- MFA/passkeys/social login;
+- plano Supabase pago;
+- SMTP/domínio de produção.
+
+Gestão avançada de membros **não bloqueia** o fechamento da Fase 1; a fundação multiusuário, papéis, tenancy e isolamento já existem e foram provados.
+
+## 7. Baseline e riscos conhecidos
+
+1. `auth_leaked_password_protection` permanece desabilitado: hardening obrigatório antes de clientes reais/produção e recurso Pro+ conforme documentação vigente.
+2. Brevo Free permanece SMTP provisório de desenvolvimento.
+3. Template Recovery do projeto hosted pode exigir um único gate humano no Dashboard; não pedir nem expor segredo SMTP.
+4. Default ACL residual de `supabase_admin` continua aceito somente enquanto `public` tiver zero objetos owned por essa role.
+5. Funções futuras exigem GRANT EXECUTE explícito.
+6. `SUPABASE_SECRET_KEY` nunca pode entrar no fluxo funcional de recovery, `NEXT_PUBLIC_*`, browser, logs ou respostas.
+7. A rota de redefinição não pode aceitar mera sessão autenticada comum como prova de recovery.
+8. A Fase 1 só pode ser declarada encerrada pela auditoria GPT após recovery real aprovado; Claude não promove nem fecha fase.
+
+## 8. Gate obrigatório de produto
+
+A 001F toca UX/onboarding e documentação de produto. Claude deve ler **integralmente**:
 
 `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`
 
-Não basta referência curta.
+A harmonização da rodada não pode reintroduzir paid-first, funil rígido, formulário total obrigatório nem complexidade desnecessária ao usuário.
 
-Todo mandato relevante deve incluí-lo no READ SET; contradição material é bloqueante salvo decisão explícita do fundador.
+## 9. Próxima ação autorizada
 
-A próxima etapa substantiva também deve harmonizar, no que for necessário ao seu próprio escopo, formulações antigas de `MVP_CANONICAL.md`, roadmap e data model com Growth Intelligence. Não criar rodada de housekeeping apenas para essa harmonização.
+Claude Code deve executar a Rodada 001F conforme o mandato e parar em:
 
-## 6. Ressalvas e dívidas abertas
+`001F EXECUTADA — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO AUDITORIA GPT`
 
-1. `auth_leaked_password_protection` permanece desabilitado: hardening antes de clientes reais/produção.
-2. Brevo Free permanece SMTP provisório de desenvolvimento; produção exige decisão de domínio/provedor.
-3. Default ACL residual de `supabase_admin` continua aceito somente enquanto `public` tiver zero objetos owned por essa role.
-4. Funções futuras exigem GRANT EXECUTE explícito.
-5. `SUPABASE_SECRET_KEY` deverá ser configurada no ambiente de deploy quando houver deploy; nunca pode ir para `NEXT_PUBLIC_*`, browser, logs ou respostas.
-6. Recovery/reset de senha ainda não foi implementado.
-7. Convite/gestão de membros, edição de negócio, multi-org switcher e exclusão continuam posteriores.
-8. A linguagem do onboarding 001E ainda é parcialmente paga-first e o formulário é concentrado; a próxima evolução de produto deve migrar para objetivo/jornada mais geral e perfil progressivo, conforme Growth Intelligence, sem desfazer a fundação segura.
-9. O tratamento de erro técnico de leitura em `/conta` pode ganhar UX mais explícita em rodada futura adequada.
+Se a configuração do template Recovery hosted exigir ação humana, deve concluir primeiro tudo que for não destrutivo e parar em um único gate com instruções exatas.
 
-## 7. Próxima direção planejável — não autorizada
+Não iniciar Fase 2.
 
-Antes de entrar em Meta/Instagram, o GPT deve avaliar o fechamento restante da Fase 1 e harmonizar o plano futuro com Growth Intelligence.
+## 10. Continuidade
 
-Possíveis componentes a avaliar, sem autorização automática:
+Branch/relatório/commit não significam incorporação. O estado efetivamente promovido continua 000–001E até auditoria e promoção formal da 001F.
 
-- recovery de acesso;
-- gestão mínima necessária de conta/membership;
-- evolução do onboarding para trilha simples e perfil progressivo;
-- modelagem futura de objetivo/jornada/resultado desejado versus mensurável;
-- atualização proporcional de MVP/roadmap/data model para evitar que fases futuras reintroduzam funil rígido ou paid-first.
-
-A sequência e o recorte da próxima rodada serão definidos em planejamento posterior.
-
-## 8. Continuidade
-
-Branch, relatório ou commit isolado não significam incorporação. Neste momento, 000–001E estão promovidas na `main`.
-
-Descompasso documental temporário deve ser corrigido junto da próxima etapa substantiva quando não houver risco operacional.
+Descompasso documental temporário deve ser resolvido junto da próxima etapa substantiva quando não houver risco operacional.
