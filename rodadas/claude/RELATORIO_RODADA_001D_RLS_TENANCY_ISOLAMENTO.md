@@ -1,15 +1,15 @@
 # RELATÓRIO — RODADA 001D — DEFAULT PRIVILEGES + GRANTS + RLS + ISOLAMENTO
 
-Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**
-Data: 2026-08-22
+Status: **EXECUTADA COM CORREÇÃO 001D-02 — AGUARDANDO AUDITORIA GPT**
+Data: 2026-08-22 (execução base) · 2026-08-23 (correção 001D-02)
 Branch: `claude/rodada-001d-rls-tenancy-isolamento`
-Mandato: `rodadas/gpt/RODADA_001D_RLS_TENANCY_ISOLAMENTO.md` + `rodadas/gpt/CORRECAO_001D_01_DEFAULT_PRIVILEGES_SCOPE.md`
+Mandato: `rodadas/gpt/RODADA_001D_RLS_TENANCY_ISOLAMENTO.md` + `rodadas/gpt/CORRECAO_001D_01_DEFAULT_PRIVILEGES_SCOPE.md` + `rodadas/gpt/CORRECAO_001D_02_GLOBAL_FUNCTION_DEFAULT_EXECUTE.md`
 
 Esta versão substitui o relatório de bloqueio anterior (parada em §4.4, sem mutação, registrada no
 histórico da branch). A retomada seguiu a Correção 001D-01: default privileges tratados somente para
 `role postgres`, `supabase_admin` como risco residual aceito.
 
-**Uma pendência bloqueante nova, provada e não contornada — ver §9.1.**
+A pendência bloqueante registrada em §9.1 foi **resolvida** pela Correção 001D-02 — ver §11.
 
 ## 1. Preflight
 
@@ -24,6 +24,7 @@ histórico da branch). A retomada seguiu a Correção 001D-01: default privilege
 ## 2. Arquivos alterados
 
 - `supabase/migrations/20260823003128_harden_default_privileges_grants_and_rls_policies.sql` (novo);
+- `supabase/migrations/20260823103521_revoke_global_default_execute_on_functions.sql` (novo — correção 001D-02);
 - `scripts/rls-isolation-001d.mjs` (novo — prova §9, versionado para reexecução na auditoria);
 - `rodadas/claude/RELATORIO_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`;
 - `estado.md` (campos de execução).
@@ -71,7 +72,7 @@ authenticated`, e `alter default privileges ... grant` restaurando o baseline an
 | objetos `public` owned por `supabase_admin` | `pg_class`/`pg_get_userbyid` | **0** — gatilho de reabertura não acionado OK |
 | probe tabela (tx + rollback) | `create table` em `public` | RLS auto-habilitado por `ensure_rls`; `relacl` owner-only; `has_table_privilege` **false** para os 3 papéis OK |
 | probe sequência (tx + rollback) | `create sequence` | `has_sequence_privilege` **false** para os 3 papéis OK |
-| probe função `SECURITY INVOKER` (tx + rollback) | `create function` | `has_function_privilege` **true** para PUBLIC/anon/authenticated/service_role — **FALHA, ver §9.1** |
+| probe função `SECURITY INVOKER` (tx + rollback) | `create function` | `has_function_privilege` **true** para PUBLIC/anon/authenticated/service_role — falhou nesta etapa; **corrigido em §11** |
 | resíduo de probes | `pg_class`/`pg_proc`/`pg_namespace` like `probe_001d%` | 0 OK |
 
 ## 6. Prova §9 — isolamento real, 2 usuários × 2 organizações
@@ -109,7 +110,7 @@ Resta apenas o WARN pré-existente `auth_leaked_password_protection`. Zero ERROR
 | `npm run lint` | limpo |
 | `npm run typecheck` | limpo |
 | `npm ci` / `npm test` / `npm run build` | não executados localmente — nenhuma dependência, lockfile ou código de runtime alterado (§12); a CI roda a bateria completa sobre o head |
-| `supabase migration list --linked` | local == remoto nas três migrations |
+| `supabase migration list --linked` | local == remoto nas quatro migrations (§11) |
 | provas SQL / Auth / Data API | §5, §6, §7 |
 
 Branch: `claude/rodada-001d-rls-tenancy-isolamento`. Um único push com implementação, prova,
@@ -117,38 +118,17 @@ relatório e `estado.md`.
 
 ## 9. Pendências, riscos e divergências
 
-### 9.1 BLOQUEANTE — default EXECUTE de funções não é fechável por `ALTER DEFAULT PRIVILEGES`
+### 9.1 RESOLVIDA pela Correção 001D-02 — default EXECUTE global de funções
 
-O critério de conclusão §14 ("default EXECUTE inseguro de futuras funções em `public` estiver
-corrigido") **não foi atingido**, e não o contornei.
+Registro original: o critério §14 do mandato-base não foi atingido pela migration `20260823003128_*`,
+que usou `revoke execute on functions from public` **com `IN SCHEMA public`**. Provado em três
+medições transacionais que o comando era aceito e descartado (nem chegava a gravar linha em
+`pg_default_acl`), e que funções novas nasciam com `proacl` nulo, herdando o `EXECUTE` de PUBLIC
+embutido em `acldefault()`.
 
-Provado em três medições independentes, todas transacionais com rollback:
-
-1. em `public`, após a migration, uma função `SECURITY INVOKER` nova nasce com `proacl` **nulo** →
-   PUBLIC mantém EXECUTE, e `anon`/`authenticated`/`service_role` o herdam;
-2. o mesmo ocorre em um schema recém-criado, com o `ALTER` aplicado na mesma transação — não é
-   particularidade de `public` nem cache;
-3. **causa raiz:** num schema virgem, `REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC` não chega a criar a
-   linha em `pg_default_acl` (`count = 0`). O comando é aceito e descartado. Idem para
-   `REVOKE ALL ... FROM PUBLIC` e para a forma sem `FOR ROLE`. Já um `GRANT ... TO anon` no mesmo
-   schema grava normalmente (`{anon=X/postgres}`) e a função seguinte nasce com
-   `{=X/postgres,postgres=X/postgres,anon=X/postgres}` — ou seja, `defaclacl` funciona como delta
-   sobre o `acldefault()` built-in, e o EXECUTE de PUBLIC embutido nesse built-in é inexpressável
-   como remoção. PostgreSQL 17.6.
-
-O que **foi** atingido: os grants nominais de `anon`/`authenticated`/`service_role` saíram dos
-defaults de funções, e tabelas e sequências futuras estão efetivamente fechadas (§5).
-
-Divergência com a doc oficial do Supabase, que prescreve exatamente esse `revoke` como caminho de
-hardening. Não implementei mitigação alternativa (event trigger ou equivalente): seria arquitetura
-nova, fora do escopo autorizado.
-
-Mitigação já vigente e suficiente hoje: nenhuma função nova foi criada nesta rodada, e a única
-função em `public` (`rls_auto_enable`) teve a ACL fechada explicitamente na 001A. O padrão a manter —
-até decisão do GPT — é **REVOKE explícito na migration que cria cada função**.
-
-**Decisão pedida ao GPT:** aceitar esse padrão como regra permanente, autorizar um mecanismo
-automático em rodada própria, ou escalar ao Supabase.
+O diagnóstico GPT (correção 001D-02 §1) corrigiu a conclusão: no PostgreSQL 17 defaults por schema
+são **adicionados** aos globais e não podem revogar privilégio concedido globalmente. A remoção é
+expressável — mas só no default **global**, sem `IN SCHEMA`. Resolvido em §11.
 
 ### 9.2 Demais
 
@@ -166,6 +146,69 @@ explícito, duas policies de leitura não recursivas, e isolamento provado com s
 21/21, incluindo negação de escrita para `owner` e limpeza sem resíduo. Advisor sem regressão e com
 os dois INFO da 001C resolvidos.
 
-Fica aberta a pendência §9.1, com causa raiz provada e sem solução improvisada.
+A pendência §9.1 deixou de existir com a Correção 001D-02 (§11): o default `EXECUTE` de PUBLIC sobre
+funções futuras de `postgres` está fechado, provado e versionado.
 
 Parado aguardando auditoria GPT. Nenhuma etapa posterior iniciada.
+
+## 11. Correção 001D-02 — default EXECUTE global de funções
+
+Mandato: `rodadas/gpt/CORRECAO_001D_02_GLOBAL_FUNCTION_DEFAULT_EXECUTE.md`. Escopo estrito: fechar a
+pendência §9.1. Nada da 001D base foi refeito; a migration `20260823003128_*` não teve um caractere
+de SQL executável alterado.
+
+Ferramenta das provas: `supabase db query --linked` (Management API, conecta como `postgres`,
+read-write). O MCP Supabase conecta como `supabase_read_only_user` e não serve para DDL/probe.
+
+### 11.1 Prova prévia em transação revertida (correção §2)
+
+`begin; alter default privileges for role postgres revoke execute on functions from public;` +
+`create function public.probe_001d02_fn() ... security invoker` + asserts + `rollback;`
+
+| Assert | Resultado |
+|---|---|
+| `proacl` da probe | `{postgres=X/postgres}` — não nulo, PUBLIC fora OK |
+| `EXECUTE` efetivo de PUBLIC (`aclexplode` sobre `coalesce(proacl, acldefault())`, grantee=0) | **0** OK |
+| `anon` / `authenticated` / `service_role` EXECUTE | **false** nos três OK |
+| linha global em `pg_default_acl` (`defaclobjtype='f'`, `defaclnamespace=0`) | criada: `{postgres=X/postgres}` OK |
+| resíduo pós-rollback | função 0 · linha global `pg_default_acl` 0 OK |
+
+A prova passou, então a correção foi aplicada. Nenhum event trigger ou arquitetura alternativa criada.
+
+### 11.2 Migration
+
+`supabase/migrations/20260823103521_revoke_global_default_execute_on_functions.sql`, criada por
+`supabase migration new` e aplicada por `supabase db push --linked`. Um único statement executável:
+`alter default privileges for role postgres revoke execute on functions from public;` — sem
+`IN SCHEMA`. O resto do arquivo é comentário registrando causa raiz, escopo global aceito e a regra
+operacional decorrente.
+
+### 11.3 Provas pós-migration (correção §5, 9 itens)
+
+| # | Prova | Fonte | Resultado |
+|---|---|---|---|
+| 1 | migrations local == remoto | `supabase migration list --linked` | 4/4 pareadas, incl. `20260823103521` OK |
+| 2 | default global de funções de `postgres` | `pg_default_acl` (`f`, ns=0) | `{postgres=X/postgres}` — sem PUBLIC OK |
+| 3 | probe reversível em `public` | tx + rollback | `proacl={postgres=X/postgres}`; PUBLIC=0; anon/authenticated/service_role **false** OK |
+| 4 | ACL de funções existentes | `pg_proc` owned por `postgres`, diff antes×depois | **50 funções, diff vazio** OK |
+| 5 | `rls_auto_enable()` e `ensure_rls` | `pg_proc` / `pg_event_trigger` | `{postgres=X/postgres,service_role=X/postgres}` · `evtenabled='O'` OK |
+| 6 | defaults por schema da 001D | `pg_default_acl` + probes tabela/sequência | `r={postgres=arwdDxtm/postgres}`, `S={postgres=rwU/postgres}`; probes com privilégio **false** nos 3 papéis; RLS auto-habilitado OK |
+| 7 | objetos `public` owned por `supabase_admin` | `pg_class` | **0** OK |
+| 8 | Advisor security | Supabase advisors pós-migration | só o WARN pré-existente `auth_leaked_password_protection`; 0 ERROR, nenhum novo OK |
+| 9 | resíduo de probes | `pg_proc`/`pg_class` like `probe_001d%` | **0** OK |
+
+Sem regressão nas tabelas promovidas: `public` com 2 tabelas e 2 policies; `anon` sem SELECT,
+`authenticated` e `service_role` com SELECT — idêntico ao pós-001D. Por isso a prova 21/21 de
+isolamento **não foi reexecutada** (correção §5 a dispensa quando policy/grant de tabela não muda).
+
+### 11.4 Gates da correção (§6)
+
+`git diff --check` limpo. Nenhum TS/JS/dependência alterado — bateria frontend local não reexecutada
+por ritual (correção §6); a CI remota roda o conjunto completo sobre o head final.
+
+### 11.5 Consequência operacional permanente
+
+`ALTER DEFAULT PRIVILEGES` é global para funções futuras de `postgres` neste banco, em qualquer
+schema. Toda função futura que precise ser chamada por `anon`, `authenticated`, `service_role` ou
+PUBLIC deve receber `GRANT EXECUTE` explícito e versionado na migration da própria feature. Funções
+existentes não foram afetadas (prova 4). Defaults de `supabase_admin` não foram tocados.
