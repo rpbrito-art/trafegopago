@@ -3,296 +3,133 @@
 Status: canônico
 Atualizado: 2026-08-23
 
-## 1. Objetivo
-
-Preservar rastreabilidade sem transformar histórico, documentação e provas em custo crescente de contexto.
-
-Princípios:
+## 1. Princípios
 
 `preservar tudo ≠ ler tudo`
 
 `rigor ≠ repetição`
 
-`evidência suficiente ≠ maior quantidade possível de evidência`
+`estado operacional ≠ documentação canônica`
 
-Fonte operacional: `estado.md` + conteúdo efetivamente incorporado à `main`.
+O projeto deve minimizar dois custos: contexto lido por agentes e quantidade de arquivos alterados por rodada.
 
----
+## 2. Responsabilidade única por documento
 
-## 2. Classes documentais
+### `estado.md`
 
-### A. HOT do GPT / continuidade
+Único documento volátil de operação. Contém apenas:
 
-Para novo chat de planejamento/auditoria:
+- estado incorporado resumido;
+- rodada/correção corrente;
+- status;
+- caminho do mandato e relatório;
+- bloqueios que afetam a próxima ação;
+- quem deve agir a seguir.
 
-- `.gpt/PROJECT_PROMPT.md`;
-- `estado.md`;
-- `docs/00-governanca/ACTIVE_DOCS.md`;
-- mandato/correção vigente;
-- READ SET necessário à decisão.
+É normal mudar durante uma rodada. Não deve repetir arquitetura, baseline extenso, regras permanentes ou histórico detalhado.
 
-Quando disponível, o GPT recupera antes o último chat relevante do projeto.
+### `.gpt/PROJECT_PROMPT.md`
 
-### B. HOT do Claude Code
+Método permanente, papéis, invariantes e regras de governança. Atualizar apenas quando o método mudar.
 
-O executor possui bootstrap próprio e menor:
+### `CLAUDE.md` e `.claude/commands/proxima.md`
 
-- `CLAUDE.md` — carregado automaticamente;
-- `estado.md`;
-- mandato/correção vigente.
+Contrato operacional estável do executor. Atualizar apenas quando o método de execução mudar.
 
-Depois disso lê somente o READ SET **OBRIGATÓRIO** do mandato.
+### `ACTIVE_DOCS.md`
 
-**Não são HOT do Claude por padrão:**
+Índice dos canônicos ativos. **Não contém rodada/status/branch** e não é atualizado a cada rodada.
 
-- `.gpt/PROJECT_PROMPT.md`;
-- `ACTIVE_DOCS.md`;
-- `HISTORY_SUMMARY.md`;
-- relatórios/auditorias antigos.
+### `HISTORY_SUMMARY.md`
 
-Esses arquivos são abertos somente quando o mandato exigir ou surgir dependência concreta/ambiguidade.
+Histórico promovido comprimido. Atualizar em fechamento de fase, a cada ~5 rodadas promovidas ou quando houver gatilho real de reciclagem — não em toda rodada.
 
-### C. ACTIVE CANONICAL
+### `IMPLEMENTATION_ROADMAP.md`
 
-Contratos atuais de produto, arquitetura e segurança. Ler somente as seções relevantes indicadas pelo mandato.
+Ordem macro de construção. Atualizar em fechamento/reordenação de fase ou mudança real de escopo macro, não por execução ordinária.
 
-### D. HISTORY / EVIDENCE
+### Canônicos de produto/técnica
 
-Rodadas antigas, relatórios Claude, auditorias GPT, pesquisas, logs e PRs. Não ler por padrão.
+Atualizar somente se o contrato daquela área mudar. Uma rodada que apenas implementa contrato já existente não reescreve canônico por ritual.
 
-Quando histórico for necessário, usar primeiro `HISTORY_SUMMARY.md`; abrir evidência original apenas se o resumo não resolver.
+### `rodadas/gpt/RODADA_*.md`
 
-### E. ARCHIVED / SUPERSEDED
+Especificação imutável da rodada. Criada uma vez. **Autorização vive em `estado.md`**, portanto o arquivo não precisa ser reescrito ao aprovar.
 
-Documentos canônicos substituídos podem ir para `docs/99-archive/` se sua presença ativa causar ambiguidade. Não mover por estética.
+### `rodadas/claude/RELATORIO_*.md`
 
----
+Criado uma vez no handoff do executor. Índice compacto de evidências.
 
-## 3. READ SET por rodada
+### `rodadas/gpt/AUDITORIA_*.md`
 
-Todo mandato substantivo deve dividir o READ SET em:
+Criado uma vez no julgamento GPT.
 
-### OBRIGATÓRIO
+### Correção
 
-Somente o mínimo necessário para executar corretamente.
+Só existe se a auditoria bloquear. É criada automaticamente pelo GPT e `estado.md` passa a apontar para ela.
 
-Alvo normal além de `estado.md + mandato`: **até 5 documentos/arquivos**. Mais de 7 exige justificativa explícita.
+## 3. Atualizações normais por rodada
 
-Sempre que possível apontar **seções**, não o documento inteiro.
+Uma rodada saudável costuma gerar apenas:
 
-### SOB DEMANDA
+1. uma especificação `RODADA_*.md` antes da autorização;
+2. pequenas mudanças em `estado.md` conforme o status muda;
+3. implementação/código;
+4. um relatório Claude;
+5. uma auditoria GPT.
 
-Material que pode ser aberto se uma dependência concreta surgir.
+`ACTIVE_DOCS`, README, Charter, Prompt, Roadmap, History e canônicos **não devem mudar por padrão**.
 
-### NÃO LER POR PADRÃO
+## 4. Bootstrap do Claude
 
-Histórico, pesquisas, canônicos fora do escopo e evidência já promovida.
+`CLAUDE.md automático → estado.md → mandato/correção → READ SET obrigatório`
 
-Não incluir no obrigatório apenas “por segurança”:
+Não reler por ritual `PROJECT_PROMPT`, `ACTIVE_DOCS`, `HISTORY_SUMMARY`, relatórios antigos ou todo o acervo canônico.
 
-- roadmap quando o mandato já contém contexto suficiente da fase;
-- `HISTORY_SUMMARY.md` sem necessidade histórica;
-- migrations antigas sem dependência direta;
-- relatórios/auditorias promovidos;
-- canônicos inteiros quando poucas seções resolvem o contrato.
+READ SET normal: até 5 documentos além de `estado + mandato`; preferir seções.
 
----
+## 5. Prova proporcional
 
-## 4. Distinção entre documentação e auditoria
+Estado promovido é baseline.
 
-O executor não precisa reproduzir a auditoria do GPT.
+- risco crítico: delta + fronteira crítica + regressões diretamente afetadas;
+- risco funcional: testes afetados + integração principal quando necessária;
+- risco baixo: checks pertinentes;
+- correção pequena: defeito + impacto direto.
 
-### Claude
+Suíte completa uma única vez na CI final por padrão.
 
-- implementa;
-- roda provas proporcionais;
-- entrega índice de evidências.
+## 6. CI sem duplicação por evento
 
-### GPT
-
-- inspeciona diff/código/CI/Supabase independentemente;
-- decide suficiência da evidência;
-- classifica bloqueios, ressalvas e promoção.
-
-Não exigir ao Claude consultas extras apenas para produzir um relatório mais completo se o GPT pode consultá-las diretamente.
-
----
-
-## 5. Orçamento de prova
-
-Estado promovido é baseline. A pergunta de cada rodada é:
-
-**“o que mudou e o que essa mudança pode realisticamente quebrar?”**
-
-### Risco A — crítico
-
-Auth, tenancy/RLS, secrets, dinheiro, permissões, endpoint público, mutação externa, idempotência ou migration destrutiva/compartilhada.
-
-Provar o delta, a fronteira crítica e invariantes diretamente afetadas. CI completa final uma vez.
-
-### Risco B — funcional
-
-Regra de domínio, state machine, worker interno, migration não destrutiva, transformação.
-
-Testes afetados + integração principal quando necessária + CI final.
-
-### Risco C — baixo
-
-Docs, comentários, organização e config sem runtime.
-
-Somente checks pertinentes. Não rodar suíte local completa.
-
-### Correções pequenas
-
-Testar:
-
-1. o defeito;
-2. o raio de impacto direto;
-3. invariantes compartilhadas realmente tocadas.
-
-Não repetir toda a bateria anterior salvo primitive compartilhada alterada, raio de impacto desconhecido ou exigência explícita do GPT.
-
----
-
-## 6. Execução local e CI
-
-Por padrão:
-
-- `npm ci` local só se dependências/lockfile mudarem, ambiente estiver inconsistente ou mandato exigir;
-- testes locais somente novos/afetados;
-- lint/typecheck apenas quando relevantes ao delta;
-- build local apenas quando build/rotas/configuração forem afetados ou mandato exigir;
-- suíte completa do repositório **uma única vez na CI final**.
-
-Não duplicar localmente a mesma suíte completa que será executada na CI sem justificativa concreta.
-
-Operações remotas devem ser agrupadas quando um único snapshot responder vários critérios.
-
----
-
-## 7. Relatórios do Claude
-
-Relatório é índice, não diário.
+A suíte completa não deve rodar simultaneamente por `push` de branch e `pull_request` do mesmo commit.
 
 Padrão:
 
-- rodada normal: ≤100 linhas / ~10 KB;
-- microcorreção: ≤60 linhas / ~6 KB;
-- exceder somente por incidente, divergência de segurança ou decisão arquitetural complexa.
+- `pull_request` para `main`: valida branch antes de promoção;
+- `push` apenas em `main`: valida estado já incorporado.
 
-Conteúdo:
+Branches de execução não disparam CI completa só pelo push quando ainda não há PR.
 
-- preflight resumido;
-- arquivos alterados;
-- decisões não óbvias;
-- `prova → fonte/comando → resultado`;
-- migrations/config remota;
-- gates/CI;
-- branch;
-- pendências.
+## 7. Relatórios
 
-Não copiar logs, SQL/código inteiro, documentação oficial, histórico nem outputs extensos.
+- rodada normal: ≤100 linhas/~10 KB;
+- microcorreção: ≤60 linhas/~6 KB;
+- exceder só por incidente material.
 
----
+Não copiar logs, código, SQL ou documentação oficial quando o GPT pode consultar a fonte.
 
-## 8. ACTIVE_DOCS.md
+## 8. Gatilhos de reciclagem
 
-É índice para GPT/continuidade, não segunda especificação e não leitura obrigatória do Claude.
+Reciclar dentro de etapa substantiva quando:
 
-Deve conter somente:
+- fechar fase;
+- ~5 rodadas promovidas desde a última síntese;
+- histórico começar a ser relido repetidamente;
+- um canônico for substituído;
+- ACTIVE_DOCS perder clareza.
 
-- fase/rodada/status;
-- mandato vigente;
-- baseline curto;
-- READ SET obrigatório/sob demanda em forma de índice;
-- dívidas que afetam a rodada;
-- próxima ação.
+Não criar rodada só para housekeeping.
 
-Alvo: permanecer curto e não repetir o mandato.
+## 9. Resultado esperado
 
----
-
-## 9. HISTORY_SUMMARY.md
-
-Resume somente estado promovido e decisões duradouras.
-
-Para cada rodada:
-
-- objetivo;
-- resultado promovido;
-- decisão estrutural persistente;
-- dívida aberta;
-- referência da auditoria/PR.
-
-Não copiar execução detalhada.
-
----
-
-## 10. Retomadas de branch
-
-Antes de confiar no estado local:
-
-1. `git fetch origin`;
-2. comparar branch com `origin/main`;
-3. verificar mudanças em `estado.md`, `CLAUDE.md` e mandato/correção;
-4. reconciliar governança atual quando seguro;
-5. parar apenas diante de conflito substantivo.
-
-O fundador não deve transportar manualmente correções já publicadas no Git.
-
----
-
-## 11. Gates humanos
-
-Quando resolvível na sessão:
-
-`EXECUÇÃO AUTÔNOMA → GATE HUMANO ATIVO → AÇÃO DO FUNDADOR → EXECUÇÃO RETOMADA → AUDITORIA GPT`
-
-Claude conclui antes tudo que puder sozinho, pede somente a intervenção necessária, aguarda e continua.
-
----
-
-## 12. Gatilhos de reciclagem
-
-Reciclar dentro da próxima rodada substantiva quando ocorrer:
-
-1. fechamento de fase;
-2. cinco rodadas substantivas promovidas desde a última reciclagem;
-3. mais de 20 pares mandato/relatório ainda não resumidos;
-4. `ACTIVE_DOCS.md` começar a duplicar mandato/canônicos;
-5. novo agente precisar abrir repetidamente histórico para compreender o presente;
-6. bootstrap do executor voltar a exigir mais de ~5 documentos além de `estado + mandato` sem justificativa.
-
-Não criar rodada isolada de housekeeping se não houver risco operacional.
-
----
-
-## 13. Auditoria de eficiência de 2026-08-23
-
-Problema encontrado:
-
-- `/proxima` ~13 KB;
-- `PROJECT_PROMPT` ~20 KB;
-- `estado.md` + `ACTIVE_DOCS` + mandato repetiam regras;
-- a 002C originalmente exigia mais de dez itens/documentos antes da implementação;
-- correções pequenas vinham repetindo regressões promovidas e relatórios longos.
-
-Decisão incorporada:
-
-- `CLAUDE.md` passa a conter o contrato curto do executor;
-- `/proxima` passa a ser apenas orquestrador;
-- Claude lê por padrão `estado + mandato + READ SET obrigatório`;
-- prompt canônico/ACTIVE_DOCS/histórico deixam de ser leitura ritual do executor;
-- prova por delta e orçamento por risco tornam-se regra permanente;
-- relatório padrão reduz para ≤100 linhas e microcorreção ≤60;
-- suíte completa passa a ser uma única CI final por padrão.
-
-A redução é de repetição, não de rigor.
-
----
-
-## 14. Resultado esperado
-
-O custo de bootstrap e prova deve permanecer aproximadamente constante mesmo com anos de histórico.
-
-O repositório pode crescer; a quantidade de contexto obrigatório para executar a próxima ação não deve crescer junto.
+O custo de documentação por rodada permanece quase constante, mesmo que o repositório acumule anos de história.

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: ["main"]
   pull_request:
-    branches: ["**"]
+    branches: ["main"]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   verify:
-    name: install / lint / typecheck / test / build
+    name: install / lint / typecheck / functions / test / build
     runs-on: ubuntu-latest
 
     steps:
@@ -34,11 +34,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Typecheck Edge Functions
+        run: npm run typecheck:functions
+
       - name: Test
         run: npm test
 
-      # O build não depende de credenciais Supabase: a leitura de env é feita
-      # em runtime, dentro das funções de criação de cliente. Nenhum secret é
-      # necessário para esta validação estrutural.
       - name: Build
         run: npm run build

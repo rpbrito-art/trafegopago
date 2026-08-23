@@ -2,133 +2,108 @@
 
 Atualizado: 2026-08-23
 
-Resume somente estado **auditado e promovido** e decisões de governança duradouras. Evidência completa permanece em `rodadas/`/Git e não deve ser relida por padrão.
+Resume somente estado auditado/promovido e decisões estruturais persistentes. Evidência completa permanece em `rodadas/` e no Git.
 
-## Fundação documental
+## Fundação do produto
 
-- produto: Instagram + Meta Ads + aprendizagem de aquisição, com mídia paga opcional;
-- arquitetura: Next.js/TypeScript + Supabase + APIs oficiais Meta + AI Router multi-provedor;
-- invariantes: tenancy/RLS, aprovação humana de gasto, IA sem autonomia financeira, cálculos determinísticos fora de LLM;
-- `GROWTH_INTELLIGENCE_CANONICAL.md` tornou jornadas configuráveis, separou conteúdo/criativo/anúncio, removeu quantidade fixa de oportunidades e definiu personas como hipóteses baseadas em evidência.
+- SaaS para inteligência de crescimento com Instagram + Meta Ads;
+- mídia paga é opcional;
+- jornada, resultado e quantidade de oportunidades são configuráveis;
+- conteúdo orgânico, criativo e anúncio são conceitos distintos;
+- personas são hipóteses apoiadas por evidência;
+- simplicidade guiada: complexidade técnica fica no sistema, não no usuário.
 
-## 000 — Bootstrap Técnico
+## Fase 0 — Bootstrap
 
-Next.js 16/React 19/TypeScript, App Router, Vitest, lint/typecheck/build, CI e clientes Supabase base.
+Promovida em PR #1. Base Next.js/React/TypeScript, CI e clientes Supabase.
 
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_000_BOOTSTRAP_TECNICO.md` — PR #1 — merge `9f0f6aaa205fe5b774faab92c34e8373e4ef7d6c`.
+## Fase 1 — Supabase, Auth e Tenancy
 
-## 001A — Baseline Supabase e Segurança
+Encerrada/promovida após 001F.
 
-Hardening de `rls_auto_enable`, `ensure_rls`, privilégios mínimos e prova transacional.
+Entregue:
 
-PR #2 — merge `fb9bc62e6cf25e03e39255bff7042e330a80e1d6`.
+- Auth real e recovery real;
+- organizations/memberships;
+- RLS/grants/isolamento;
+- business_profiles;
+- bootstrap de negócio server-only.
 
-## 001B — Auth Real
+Decisões persistentes:
 
-Cadastro/login/logout reais, confirmação SSR por e-mail, cookies, rota protegida e open-redirect protection.
+- default ACL residual de `supabase_admin` é aceito apenas enquanto nenhum objeto `public` pertencer à role;
+- Gmail SMTP permanece provisório de desenvolvimento;
+- novos métodos Auth exigem reabrir o guard de recovery.
 
-PR #3 — merge `4819875007784f9bc016abd57202fe1fe9a7063b`.
+PRs #2–#7.
 
-## 001C — Organizations + Membership
+## Fase 2 — Operations, Audit, Queues e Segurança Base
 
-`organizations` + `organization_members`, constraints, RLS habilitado e base tenant.
+**ENCERRADA E PROMOVIDA em 2026-08-23 após a 002C.**
 
-PR #4 — merge `a6b2e912f8d54005d1decf69cb4e4bf8335d31ec`.
+### 002A — Operations + Audit
 
-## 001D — Grants + RLS + Isolamento
-
-Defaults opt-in, grants mínimos, policies por membership ACTIVE, zero escrita direta e isolamento real 2 usuários × 2 organizações.
-
-Decisão persistente: default ACL residual de `supabase_admin` só é aceito enquanto nenhum objeto `public` pertencer a essa role.
-
-PR #5 — merge `178c2aa0e4ada91ae2bae73d2ff97c21f27c0222`.
-
-## 001E — Bootstrap de Negócio
-
-`business_profiles`, bootstrap atômico organization + owner membership + profile, RPC server-only e prevenção de dupla submissão.
-
-PR #6 — merge `7cf7786320f49c1d5b3f486f4ba8ca4919fa2ffd`.
-
-## 001F — Recovery + Fechamento da Fase 1
-
-Recovery real por e-mail, guard por claims verificadas, resposta anti-enumeração, logout global após troca, refresh anterior revogado e E2E real. Gmail SMTP permanece provisório de desenvolvimento.
-
-Decisão persistente: novos métodos Auth exigem reabrir o guard de recovery.
-
-PR #7 — merge `7f2a1b9631ce134ec9f39585fa2defa3185fcd05`.
-
-### Fase 1 encerrada
-
-Auth/recovery, organizations/memberships, RLS/isolamento, business_profiles e bootstrap server-only estão promovidos.
-
-## 002A — Operations + Audit Foundation
-
-Promovido:
-
-- `operations` idempotentes por organization/type/key;
-- estados/correlation ids;
+- `operations` idempotentes;
+- correlation IDs;
 - taxonomia de erro/retry;
 - `audit_events` append-oriented;
-- tabelas internas server-only com grants mínimos;
-- migration history 5 → 6.
+- tabelas internas server-only.
 
-Dívidas: `audit_events.actor_user_id` sem índice; `approval_id` reservado para fundação financeira posterior.
+PR #8.
 
-Incidente histórico: versão não promovida da migration foi corrigida/reaplicada; `migration repair` não vira padrão.
-
-PR #8 — merge `920114d3e04ac1f32c284a6ff867e1c9e53d920b`.
-
-## 002B — Queue + Worker Foundation
-
-Promovida com Correção 002B-01:
+### 002B — Queue + Worker Foundation
 
 - Supabase Queues/PGMQ 1.5.1;
-- fila durável `integration_jobs`;
-- wrappers PGMQ estreitos server-only;
-- claim/conclusão/falha de `operations`;
-- `integration-worker` Edge Function com autenticação por secret key;
-- redelivery, claim concorrente e idempotência provados;
-- poison interno sem falsa taxonomia externa;
-- validador SQL estrito alinhado ao contrato TypeScript;
-- `@supabase/server` pinado + `deno.lock`;
-- migration history 6 → 8;
-- fila/fixtures limpas após provas.
+- fila `integration_jobs`;
+- wrappers estreitos;
+- claim/conclusão/falha de operations;
+- Edge Function `integration-worker`;
+- redelivery, concorrência e idempotência;
+- poison interno sem taxonomia externa falsa;
+- contrato SQL/TypeScript alinhado;
+- dependências da função pinadas.
 
-Ressalva incorporada à 002C: `npm run typecheck:functions` existia, mas ainda não estava encadeado à CI.
+PR #9 — merge `c0af987ebe68cd0eafd80efef6a0e63e4c7d7042`.
 
-Auditoria final: `rodadas/gpt/REAUDITORIA_RODADA_002B_CORRECAO_01.md` — PR #9 — merge `c0af987ebe68cd0eafd80efef6a0e63e4c7d7042`.
+### 002C — Webhook Inbox + Observabilidade
 
-## Governança de eficiência — decisão de 2026-08-23
+- `public.webhook_events` server-only;
+- dedupe `(provider, dedupe_hash)`;
+- `service_role` sem DELETE;
+- índice de `audit_events.actor_user_id`;
+- observabilidade agregada sem payload/PII;
+- matriz de secrets/runtime;
+- `typecheck:functions` na CI;
+- 9 migrations no total;
+- CI final verde com 510 testes.
 
-Auditoria do método identificou excesso de contexto e prova repetida: `/proxima`, prompt canônico, estado, ACTIVE_DOCS e mandatos repetiam regras; correções pequenas repetiam regressões promovidas.
+Auditoria: `rodadas/gpt/AUDITORIA_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md` — PR #10.
 
-Contrato permanente adotado:
+## Governança de eficiência
 
-- Claude Code recebe regras curtas automaticamente em `CLAUDE.md`;
-- bootstrap normal do executor = `estado.md + mandato + READ SET obrigatório`;
-- `PROJECT_PROMPT`, `ACTIVE_DOCS`, `HISTORY_SUMMARY` e evidência antiga não são leitura ritual do Claude;
-- READ SET normal: até 5 documentos além de estado+mandato;
+Decisão persistente de 2026-08-23:
+
+- Claude: `CLAUDE.md → estado.md → mandato → READ SET mínimo`;
 - estado promovido é baseline;
-- prova por delta + raio de impacto;
-- correção pequena não reprova toda a rodada anterior sem risco concreto;
-- testes locais somente novos/afetados;
-- suíte completa uma única vez na CI final por padrão;
-- relatório normal ≤100 linhas/~10 KB; microcorreção ≤60 linhas/~6 KB;
-- um único handoff/push final quando possível.
+- prova por delta e raio de impacto;
+- correção pequena não repete bateria anterior sem risco concreto;
+- suíte completa uma vez na CI final por padrão;
+- `ACTIVE_DOCS` deixa de duplicar rodada/status;
+- documentação canônica só muda quando seu contrato muda;
+- CI de branch passa a rodar pelo PR, evitando duplicação `push + pull_request` do mesmo commit;
+- relatório normal ≤100 linhas; microcorreção ≤60.
 
-A redução é de repetição, não de rigor de segurança.
+## Próxima macrofase
 
-## Estado da Fase 2
+**Fase 3 — Meta Connection Foundation.**
 
-**EM ANDAMENTO.**
-
-002A e 002B estão promovidas. Restam `webhook_events`, observabilidade mínima e fechamento da estratégia de runtime/secrets antes de a fase poder ser auditada como concluída.
+A primeira rodada planejada é 003A, ainda não autorizada.
 
 ## Pendências transversais
 
 - leaked-password protection antes de produção;
 - SMTP/domínio de produção;
 - default ACL residual de `supabase_admin` enquanto inerte;
-- gestão avançada de membros/edição/multi-org/exclusão posteriores;
-- rate limiting conforme risco;
-- futuras fases de produto devem ser revalidadas contra `GROWTH_INTELLIGENCE_CANONICAL.md`.
+- gestão avançada de membros e multi-org posteriores;
+- rate limiting conforme exposição real;
+- App Review/Business Verification ficam para hardening/comercialização quando aplicável.
