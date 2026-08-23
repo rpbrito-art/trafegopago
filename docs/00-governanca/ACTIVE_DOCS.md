@@ -38,6 +38,18 @@ A fonte operacional é `estado.md`.
 4. `rodadas/gpt/RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 5. `rodadas/gpt/CORRECAO_001F_01_AMR_RECOVERY_PROVIDER_REAL.md`
 
+## REGRA PERMANENTE — retomadas e gates humanos
+
+A governança foi endurecida para reduzir idas e voltas manuais do fundador.
+
+Aplicar obrigatoriamente:
+
+- `.gpt/PROJECT_PROMPT.md` §4.1 — preflight de retomada: `git fetch origin`, comparar com `origin/main` e ler/reconciliar governança mais nova antes de decidir parar;
+- `.gpt/PROJECT_PROMPT.md` §5.5 — gate humano resolvível na sessão deve ser conduzido diretamente pelo Claude, que pede, aguarda e continua em vez de encerrar com pendência;
+- `docs/00-governanca/DOCUMENTATION_LIFECYCLE.md` §§4–5 — continuidade documental e estados `GATE HUMANO ATIVO/PENDENTE`.
+
+Princípio: **o fundador não é barramento de contexto entre GPT e Claude**.
+
 ## GATE OBRIGATÓRIO — planejamento e auditoria de produto
 
 Antes de formular, refinar, dividir, autorizar ou auditar qualquer rodada que afete produto/experiência, GPT e executor conforme o mandato devem ler **integralmente**:
