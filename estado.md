@@ -22,13 +22,13 @@ Promovidas: **000–002C**.
 
 Auditoria: `rodadas/gpt/AUDITORIA_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md`.
 
-## 3. Próxima rodada
+## 3. Rodada autorizada
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **PLANEJADA — AGUARDANDO APROVAÇÃO DO FUNDADOR**.
+Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
 
-Especificação registrada:
+Mandato:
 
 `rodadas/gpt/RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
@@ -40,11 +40,17 @@ Relatório previsto:
 
 `rodadas/claude/RELATORIO_RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
-## 4. Próxima ação
+A autorização cobre **somente a 003A**.
 
-**Fundador decide se autoriza a 003A.**
+## 4. Próxima ação autorizada
 
-Enquanto não houver autorização explícita, `/proxima` deve parar sem implementar.
+Claude Code deve executar **somente a 003A** via `/proxima`.
+
+Fluxo esperado:
+
+`AUTORIZADA → EXECUÇÃO CLAUDE → GATE HUMANO META SE NECESSÁRIO → PR/RELATÓRIO → 003A EXECUTADA — AGUARDANDO AUDITORIA GPT`
+
+Claude não promove, não inicia 003B e não amplia para importação de conteúdo, Ads ou gasto.
 
 ## 5. Pendências que não bloqueiam 003A
 
