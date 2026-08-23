@@ -43,11 +43,46 @@ export type StartResult =
 
 export type CompleteResult =
   | { ok: true; organizationId: string }
-  | { ok: false; reason: IntentRejection | "EXCHANGE_FAILED" | "DENIED" | "UNAVAILABLE" };
+  | {
+      ok: false;
+      reason:
+        | IntentRejection
+        | "EXCHANGE_FAILED"
+        | "DENIED"
+        | "NO_MEMBERSHIP"
+        | "UNAVAILABLE";
+    };
 
 export type DisconnectResult =
   | { ok: true }
-  | { ok: false; reason: "NOT_FOUND" | "UNAVAILABLE" };
+  | {
+      ok: false;
+      reason: "NOT_FOUND" | "NO_MEMBERSHIP" | "PROVIDER_REVOKE_FAILED" | "UNAVAILABLE";
+    };
+
+/**
+ * O usuário tem membership ACTIVE nesta organização **agora**?
+ *
+ * Conhecer o UUID de uma organização não autoriza nada. Esta checagem é
+ * repetida em cada operação — iniciar, concluir e desconectar — porque a
+ * membership pode ser removida no meio do fluxo OAuth, que passa por um
+ * provider externo e leva tempo indeterminado.
+ */
+async function hasActiveMembership(
+  supabase: ReturnType<typeof createSupabasePrivilegedClient>,
+  userId: string,
+  organizationId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
+    .eq("status", "ACTIVE")
+    .maybeSingle();
+
+  return Boolean(data);
+}
 
 /**
  * Inicia a autorização.
@@ -64,15 +99,9 @@ export async function startMetaAuthorization(input: {
 
   // A organização vem do servidor, mas a membership é reconferida aqui: quem
   // inicia a conexão precisa pertencer ao tenant, não apenas conhecer o id.
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("organization_id", input.organizationId)
-    .eq("user_id", input.userId)
-    .eq("status", "ACTIVE")
-    .maybeSingle();
-
-  if (!membership) return { ok: false, reason: "NO_MEMBERSHIP" };
+  if (!(await hasActiveMembership(supabase, input.userId, input.organizationId))) {
+    return { ok: false, reason: "NO_MEMBERSHIP" };
+  }
 
   const state = generateState();
   const stateHash = await hashState(state);
@@ -114,9 +143,10 @@ export async function completeMetaAuthorization(input: {
   const env = readMetaEnv();
   const supabase = createSupabasePrivilegedClient();
 
-  // Usuário recusou no diálogo da Meta. Não é falha do sistema.
-  if (input.error) return { ok: false, reason: "DENIED" };
-
+  // A recusa do usuário NÃO curto-circuita a validação. Retornar `DENIED` antes
+  // de consumir a intenção deixaria o `state` reutilizável: bastaria forjar um
+  // callback com `error=` para preservá-lo e reapresentá-lo depois. Uso único
+  // significa único, qualquer que seja o desfecho.
   const stateHash =
     typeof input.state === "string" && input.state.length > 0
       ? await hashState(input.state)
@@ -143,11 +173,14 @@ export async function completeMetaAuthorization(input: {
     currentUserId: input.userId,
   });
 
+  // `state` malformado ou desconhecido não consome nada — não há registro a
+  // consumir, e inventar um consumo afetaria outra intenção.
   if (!validacao.ok) return { ok: false, reason: validacao.reason };
 
-  // Consumo atômico: o `is` garante que só a primeira volta vence, mesmo que
-  // duas cheguem ao mesmo tempo. Sem isso, duas requisições simultâneas
-  // passariam pela validação de leitura acima.
+  const organizationId = validacao.organizationId;
+
+  // Consumo atômico antes de qualquer efeito. O `is` garante que só a primeira
+  // volta vence, mesmo com duas chegando ao mesmo tempo.
   const { data: consumida } = await supabase
     .from("meta_oauth_intents")
     .update({ consumed_at: new Date().toISOString() })
@@ -158,63 +191,53 @@ export async function completeMetaAuthorization(input: {
 
   if (!consumida) return { ok: false, reason: "ALREADY_CONSUMED" };
 
+  // Só agora o desfecho do provider importa. A intenção já morreu.
+  if (input.error) return { ok: false, reason: "DENIED" };
+
+  // A membership pode ter sido removida enquanto o usuário estava no diálogo da
+  // Meta. Reconferir aqui, antes de chamar o provider e antes de persistir
+  // qualquer coisa, é o que impede conectar uma organização à qual a pessoa já
+  // não pertence.
+  if (!(await hasActiveMembership(supabase, input.userId, organizationId))) {
+    return { ok: false, reason: "NO_MEMBERSHIP" };
+  }
+
   if (typeof input.code !== "string" || input.code.length === 0) {
     return { ok: false, reason: "EXCHANGE_FAILED" };
   }
 
-  const troca = await exchangeCodeForToken({
-    code: input.code,
-    env,
-  });
-
+  const troca = await exchangeCodeForToken({ code: input.code, env });
   if (!troca.ok) return { ok: false, reason: "EXCHANGE_FAILED" };
 
-  const organizationId = validacao.organizationId;
-
-  // A conexão nasce/volta a `PENDING` sem token; o segredo entra em seguida e
-  // só então o status vira `ACTIVE`. O CHECK
-  // `meta_connections_active_requires_token` garante essa ordem no banco.
-  const { data: conexao, error: erroConexao } = await supabase
-    .from("meta_connections")
-    .upsert(
-      {
-        organization_id: organizationId,
-        status: "PENDING",
-        connected_by: input.userId,
-        api_version_last_verified: env.META_GRAPH_API_VERSION,
-        granted_scopes: troca.grantedScopes,
-        external_user_id: troca.externalUserId,
-        disconnected_at: null,
-        action_required_reason: null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "organization_id" },
-    )
-    .select("id")
-    .maybeSingle();
-
-  if (erroConexao || !conexao) return { ok: false, reason: "UNAVAILABLE" };
-
-  const { error: erroToken } = await supabase.rpc(
-    "store_meta_connection_token",
+  // Abre ou retoma a conexão viva. Sem `upsert`: o índice único é parcial e
+  // `ON CONFLICT (organization_id)` não o cobre — e, se cobrisse, colidiria
+  // também com linhas terminais e destruiria o histórico.
+  const { data: connectionId, error: erroBegin } = await supabase.rpc(
+    "begin_meta_connection",
     {
-      p_connection_id: conexao.id,
-      p_token: troca.accessToken,
-      p_expires_at: troca.expiresAt,
+      p_organization_id: organizationId,
+      p_user_id: input.userId,
+      p_api_version: env.META_GRAPH_API_VERSION,
     },
   );
 
-  if (erroToken) return { ok: false, reason: "UNAVAILABLE" };
+  if (erroBegin || !connectionId) return { ok: false, reason: "UNAVAILABLE" };
 
-  await supabase
-    .from("meta_connections")
-    .update({
-      status: "ACTIVE",
-      connected_at: new Date().toISOString(),
-      last_health_check_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", conexao.id);
+  // Segredo, escopos, identidade e status numa única transação. Antes, guardar
+  // o token e falhar ao marcar `ACTIVE` devolvia sucesso com a conexão
+  // incoerente.
+  const { error: erroAtivacao } = await supabase.rpc(
+    "activate_meta_connection",
+    {
+      p_connection_id: connectionId,
+      p_token: troca.accessToken,
+      p_expires_at: troca.expiresAt,
+      p_scopes: troca.grantedScopes,
+      p_external_user_id: troca.externalUserId,
+    },
+  );
+
+  if (erroAtivacao) return { ok: false, reason: "UNAVAILABLE" };
 
   return { ok: true, organizationId };
 }
@@ -222,29 +245,58 @@ export async function completeMetaAuthorization(input: {
 /**
  * Desconecta.
  *
- * Remove o segredo do Vault e marca `REVOKED` — a linha permanece como
- * histórico de que a organização já esteve conectada. O CHECK
- * `meta_connections_revoked_has_no_token` impede marcar `REVOKED` com
- * referência de segredo ainda presente.
+ * Ordem deliberada, exigida pela auditoria: **membership → revogar na Meta →
+ * revogar localmente**.
+ *
+ * Revogar primeiro no provider é o que distingue "desconectar" de "esquecer".
+ * Se limpássemos o estado local antes, o app continuaria autorizado do lado da
+ * Meta e ninguém teria mais o token para revogá-lo — o usuário veria
+ * "desconectado" e a permissão seguiria de pé.
+ *
+ * Falha indeterminada do provider **não** vira desconexão concluída.
  */
 export async function disconnectMeta(input: {
   userId: string;
   organizationId: string;
 }): Promise<DisconnectResult> {
+  const env = readMetaEnv();
   const supabase = createSupabasePrivilegedClient();
+
+  // Primeiro de tudo: conhecer o id da organização não autoriza desconectá-la.
+  if (!(await hasActiveMembership(supabase, input.userId, input.organizationId))) {
+    return { ok: false, reason: "NO_MEMBERSHIP" };
+  }
 
   const { data: conexao } = await supabase
     .from("meta_connections")
-    .select("id")
+    .select("id, external_user_id")
     .eq("organization_id", input.organizationId)
     .in("status", ["PENDING", "ACTIVE", "ACTION_REQUIRED"])
     .maybeSingle();
 
   if (!conexao) return { ok: false, reason: "NOT_FOUND" };
 
-  // Uma chamada só: status e referência mudam no mesmo UPDATE, e o segredo é
-  // removido do Vault em seguida. Fazer isso em dois passos daqui violaria os
-  // CHECKs de coerência — foi o que a prova da rodada mostrou.
+  // O token sai do Vault apenas aqui, no servidor, para apresentar à Meta. Não
+  // é logado, não é retornado e não sobrevive a esta função.
+  const { data: token } = await supabase.rpc("read_meta_connection_token", {
+    p_connection_id: conexao.id,
+  });
+
+  if (typeof token === "string" && token.length > 0) {
+    const revogacao = await revokeOnMeta({
+      accessToken: token,
+      externalUserId: conexao.external_user_id as string | null,
+      env,
+    });
+
+    // Só `alreadyRevoked` e `revoked` autorizam seguir. Um erro transitório
+    // deixa tudo como está para que a pessoa possa tentar de novo — melhor uma
+    // desconexão que não completou do que uma que mente.
+    if (!revogacao.ok) return { ok: false, reason: "PROVIDER_REVOKE_FAILED" };
+  }
+
+  // Sem token não há o que revogar remotamente: a conexão nunca chegou a ter
+  // credencial (`PENDING`) ou já a perdeu. A limpeza local segue.
   const { error } = await supabase.rpc("revoke_meta_connection", {
     p_connection_id: conexao.id,
   });
@@ -252,6 +304,50 @@ export async function disconnectMeta(input: {
   if (error) return { ok: false, reason: "UNAVAILABLE" };
 
   return { ok: true };
+}
+
+/**
+ * Revoga a autorização no provider.
+ *
+ * `DELETE /{user-id}/permissions` remove todas as permissões concedidas ao app
+ * — é a desautorização oficial da Graph API. `me` é usado quando não temos o id
+ * externo, porque o token de usuário já identifica o dono.
+ *
+ * Um token já inválido (`190`) significa que não há mais autorização a revogar:
+ * o objetivo já está atingido, e tratar isso como falha prenderia o usuário
+ * numa conexão que ele não consegue remover.
+ */
+async function revokeOnMeta(input: {
+  accessToken: string;
+  externalUserId: string | null;
+  env: ReturnType<typeof readMetaEnv>;
+}): Promise<{ ok: boolean }> {
+  const alvo = input.externalUserId ?? "me";
+  const url = new URL(
+    `${graphApiBaseUrl(input.env.META_GRAPH_API_VERSION)}/${alvo}/permissions`,
+  );
+  url.searchParams.set("access_token", input.accessToken);
+
+  try {
+    const resposta = await fetch(url, { method: "DELETE" });
+
+    if (resposta.ok) {
+      const corpo = (await resposta.json()) as { success?: unknown };
+      return { ok: corpo.success === true };
+    }
+
+    // Token inválido/expirado: a autorização já não existe do lado da Meta.
+    const corpo = (await resposta.json().catch(() => null)) as {
+      error?: { code?: unknown };
+    } | null;
+
+    if (corpo?.error?.code === 190) return { ok: true };
+
+    return { ok: false };
+  } catch {
+    // Rede indeterminada. Não sabemos se a revogação chegou; não fingimos.
+    return { ok: false };
+  }
 }
 
 type Exchange =
