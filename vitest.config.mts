@@ -14,6 +14,13 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // `scripts/` entra porque a classificação do link de recovery mora lá e
+    // precisa de teste: a versão anterior, embutida no smoke, confundia o
+    // domínio do próprio projeto Supabase com um rastreador de terceiro.
+    include: [
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+      "scripts/**/*.test.mjs",
+    ],
   },
 });

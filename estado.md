@@ -58,9 +58,9 @@ Migration incorporada: `20260823111051_create_business_profiles_and_bootstrap.sq
 
 **RODADA 001F — RECOVERY DE ACESSO + FECHAMENTO DA FASE 1**
 
-Status: **CORREÇÃO 001F-01 EXECUTADA — E2E COM E-MAIL REAL PENDENTE DE GATE HUMANO — AGUARDANDO AUDITORIA GPT**.
+Status: **001F EXECUTADA COM CORREÇÃO 001F-01 — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO AUDITORIA GPT**.
 
-**Ainda NÃO é candidata a fechamento da Fase 1:** o critério §7 da correção exige o E2E com e-mail real, que o executor não tem como produzir.
+Claude não declara a Fase 1 encerrada: isso depende de auditoria e promoção do GPT.
 
 Mandato original:
 
@@ -70,49 +70,56 @@ Correção vigente e prevalente sobre o ponto divergente do mandato:
 
 `rodadas/gpt/CORRECAO_001F_01_AMR_RECOVERY_PROVIDER_REAL.md`
 
-Branch entregue/em correção:
+Branch entregue:
 
 `claude/rodada-001f-recovery-fechamento-fase1`
 
 PR de auditoria: **#7 — draft, não promover**.
 
-Head entregue antes da correção:
-
-`4d9e4276609f9d3bb9484ede2bf313e6ac38a0c8`
-
-Relatório atualizado:
+Relatório:
 
 `rodadas/claude/RELATORIO_RODADA_001F_RECOVERY_FECHAMENTO_FASE1.md`
 
 ### Execução da correção (2026-08-23)
 
-Branch reconciliada com `origin/main` por merge — sem rebase, sem force, sem reescrita de histórico. Conflito só em `estado.md`, resolvido pela versão da `main`. Implementação da 001F preservada integralmente.
+Branch reconciliada com `origin/main` por merge — sem rebase, sem force, sem reescrita de histórico. Conflito só em `estado.md`, resolvido pela versão da `main`. Implementação da 001F preservada.
 
 Entregue:
 
 - predicado temporal da §3 em `src/lib/auth/recovery.ts` e `src/lib/auth/session.ts` — `otp`/`recovery` recente (≤ 15 min, skew ≤ 60 s), sem `password`, `sub` e `email` obrigatórios;
-- `signOut({ scope: "global" })` explícito em `resetPasswordAction`, com o retorno tratado e mensagem própria quando falha;
-- smoke ampliado com provas de recência do AMR e de revogação do refresh anterior.
+- `signOut({ scope: "global" })` explícito em `resetPasswordAction`, com retorno tratado e mensagem própria quando falha;
+- classificação do link de recovery extraída para `scripts/lib/recovery-link.mjs`, com testes;
+- smoke ampliado: recência do AMR, revogação do refresh anterior e diagnóstico de link.
 
 Medido contra o projeto hospedado, não presumido:
 
-- `amr` chega como `{method, timestamp}`, com **timestamp em segundos** (leitura como ms daria ~56 anos de idade);
+- `amr` chega como `{method, timestamp}`, com **timestamp em segundos**;
 - relógio do Auth 0,6 s adiantado — o skew de 60 s existe por isso;
-- `signOut({scope:"global"})` sem erro e refresh token da sessão anterior recusado depois dele (**HTTP 400**). Critério de parada §5.4 **não** acionado.
+- `signOut({scope:"global"})` sem erro e refresh anterior recusado (**HTTP 400**). Critério de parada §5.4 **não** acionado.
 
-Gates locais: lint (0 warnings), typecheck, `vitest run` (19 arquivos / **349** testes) e build — todos verdes. Sem migration, sem DDL. Migration history permanece em 5, última `20260823111051`. Advisor só com o WARN conhecido.
+### E2E real — APROVADO
 
-Divergência registrada: no ensaio isolado, `updateUser({ password })` já revogou o refresh anterior antes do `signOut` — ao contrário do que a correção §5 assume a partir da medição da 001F. Causa não afirmada; consumir um refresh token o rotaciona e contamina a medição seguinte. O E2E no fluxo real é a prova que vale.
+`npm run smoke:recovery` com e-mail real, executado pelo fundador em terminal interativo: **40/40 provas**.
 
-### Pendência única
+Verificação independente pelo executor via MCP `query_logs` sobre `auth_logs` (15:11–15:15Z): `/recover`×3 (200) → `/verify` → `/user` → `/logout` → `login` → `/verify` (reuso) → `DELETE /admin/users/…`. A ordem confirma confirmação SSR, troca de senha, logout global, login com a nova senha, link de uso único e remoção da fixture.
 
-**Fundador:** com a aplicação de pé (`npm run dev`), rodar
+Identidade de teste removida; `auth.users` contém apenas a conta real do fundador.
 
-`RECOVERY_TEST_EMAIL=<caixa real de teste> npm run smoke:recovery`
+Gates: lint (0 warnings), typecheck, `vitest run` (20 arquivos / **357** testes) e build — verdes. Sem migration, sem DDL. Migration history permanece em 5, última `20260823111051`. Advisor só com o WARN conhecido.
 
-O E2E depende de abrir uma caixa de entrada real e colar a URL do link no processo — não há caminho para o executor fazer isso. Todas as verificações não destrutivas possíveis foram concluídas antes deste pedido. O smoke é também a única verificação técnica aceita do template hosted (§6 da correção); se o link não chegar no formato versionado, ele acusa e a correção manda parar.
+### Substituição do SMTP de desenvolvimento
 
-O fundador confirmou em 2026-08-23 que atualizou manualmente no Supabase hospedado o template **Reset Password / Recovery** com o conteúdo versionado. Isso libera a retomada, mas **não equivale a verificação técnica do template**: a conformidade remota só será aceita quando o smoke final receber e usar um e-mail real do Auth hospedado e comprovar o link esperado.
+O SMTP provisório de desenvolvimento deixa de ser **Brevo Free** e passa a ser **Gmail SMTP** (`smtp.gmail.com`, App Password de conta Gmail pessoal, sem click tracking). Nenhum segredo SMTP foi solicitado, exibido ou versionado.
+
+Causa raiz que forçou a troca: desde **2026-06-03**, projetos free criados após essa data e usando o provider de e-mail nativo do Supabase **não podem customizar templates de auth**. Este projeto foi criado em **2026-08-22T18:59:34Z**, em org free (`zksyfyxfokixzlzxuubr`, "Trafego Pago"). Com o provider nativo, o envio usa `{{ .ConfirmationURL }}` e o link SSR da 001F nunca chega, por mais correto que esteja o template no Dashboard.
+
+Referência: <https://supabase.com/changelog/46599-changes-to-email-template-customisation-on-free-tier>
+
+Enquadramento no mandato: a 001F l.214 exige a prova "através do SMTP de desenvolvimento configurado" e l.313 exclui apenas "domínio/SMTP **de produção**". É substituição de baseline, não ampliação de escopo.
+
+### Pendência aberta
+
+**Fundador, após auditoria e promoção da 001F:** revogar a App Password do Gmail em `myaccount.google.com/apppasswords`. Ela concede envio pela conta Gmail usada e existe apenas para o E2E desta rodada.
 
 O estado promovido continua **000–001E**. A 001F não foi aprovada nem incorporada.
 
@@ -170,33 +177,31 @@ Claude deve verificar isso empiricamente no smoke final. Se o e-mail real não v
 
 Nenhum segredo SMTP deve ser solicitado ou exposto.
 
-## 8. Próxima execução autorizada
+## 8. Próxima ação autorizada
 
-Claude Code deve retomar **a mesma branch** e executar somente a Correção 001F-01:
+A execução da Correção 001F-01 está **concluída**. Cumprido pelo executor:
 
-- sincronizar/reconciliar a branch com a `main` atual sem perder a implementação já entregue;
-- ajustar o guard de recovery para o predicado temporal autorizado;
-- tornar o logout global explícito e testado;
-- atualizar testes/smoke/comentários necessários;
-- executar o smoke final com e-mail real;
-- verificar no e-mail real que o template hosted efetivo corresponde ao link versionado;
-- manter zero migration/DDL;
-- preservar a harmonização MVP/roadmap já entregue;
-- rodar gates e CI;
-- atualizar relatório e `estado.md`.
+- branch reconciliada com a `main` sem perder a implementação entregue;
+- guard de recovery no predicado temporal autorizado;
+- logout global explícito, com retorno tratado e efeito provado;
+- testes, smoke e comentários atualizados;
+- smoke final com e-mail real — 40/40, executado pelo fundador no terminal;
+- template hosted efetivo verificado no e-mail real (link SSR com `type=recovery`);
+- zero migration/DDL;
+- harmonização MVP/roadmap preservada;
+- gates locais e CI;
+- relatório e `estado.md` atualizados.
 
-Durante o smoke, qualquer URL real de recovery contendo `token_hash` deve ser fornecida somente ao processo local/terminal e nunca registrada em relatório, Git ou chat.
+Nenhuma URL de recovery contendo `token_hash` foi registrada em relatório, Git ou documentação.
 
-Conclusão esperada, se tudo passar:
+**A próxima ação é do GPT: auditar independentemente a 001F com a Correção 001F-01 e decidir sobre promoção e sobre o encerramento da Fase 1.**
 
-`001F EXECUTADA COM CORREÇÃO 001F-01 — CANDIDATA A FECHAMENTO DA FASE 1 — AGUARDANDO AUDITORIA GPT`
-
-Claude não aprova, não promove e não inicia Fase 2.
+Claude não aprova, não promove, não declara fase encerrada e não inicia Fase 2.
 
 ## 9. Baseline e riscos conhecidos
 
 1. `auth_leaked_password_protection` permanece desabilitado: hardening obrigatório antes de clientes reais/produção e recurso Pro+ conforme documentação vigente.
-2. Brevo Free permanece SMTP provisório de desenvolvimento.
+2. Gmail SMTP é o SMTP provisório de desenvolvimento (substituiu o Brevo Free em 2026-08-23). Inadequado para produção; App Password a revogar após a promoção da 001F.
 3. Default ACL residual de `supabase_admin` continua aceito somente enquanto `public` tiver zero objetos owned por essa role.
 4. Funções futuras exigem GRANT EXECUTE explícito.
 5. `SUPABASE_SECRET_KEY` nunca pode entrar no fluxo funcional de recovery, `NEXT_PUBLIC_*`, browser, logs ou respostas.

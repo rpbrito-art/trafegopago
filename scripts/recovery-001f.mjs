@@ -7,6 +7,11 @@
  * fluxo, porque isso provaria o endpoint e não o caminho que o usuário
  * percorre.
  *
+ * Com o serviço nativo de e-mail do Supabase (sem SMTP customizado), a entrega
+ * só ocorre para endereços de membros da equipe da organização, e o limite de
+ * envio é baixo. `RECOVERY_TEST_EMAIL` precisa ser um desses endereços, e cada
+ * execução gasta um envio.
+ *
  * O link chega a uma caixa de entrada humana, então o script para uma vez e
  * pede que o operador cole a URL. Esse valor carrega um token de uso único: é
  * lido de stdin, nunca é impresso, nunca vai para arquivo e some com o
@@ -41,6 +46,13 @@ import { createInterface } from "node:readline/promises";
 
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+
+import {
+  classificarLinkRecovery,
+  LINK_CONFIRMATION_URL_NATIVA,
+  LINK_SSR,
+  LINK_TERCEIRO,
+} from "./lib/recovery-link.mjs";
 
 // ---------------------------------------------------------------------------
 // Ambiente
@@ -158,8 +170,23 @@ class CookieJar {
     return [...this.#cookies].map(([name, value]) => ({ name, value }));
   }
 
+  /**
+   * Cookies que realmente carregam sessão.
+   *
+   * `resetPasswordForEmail` grava o *code verifier* do PKCE com prefixo `sb-`.
+   * Ele não é sessão: não carrega access nem refresh token e não autentica
+   * ninguém — a prova disso é o ensaio contra `/conta` logo abaixo. Contá-lo
+   * como sessão dava falso positivo no pedido e falso negativo depois da
+   * troca, quando o verifier sobrevive ao logout.
+   */
+  nomesDeSessao() {
+    return this.nomes().filter(
+      (name) => name.startsWith("sb-") && !name.endsWith("code-verifier"),
+    );
+  }
+
   temSessao() {
-    return this.nomes().some((name) => name.startsWith("sb-"));
+    return this.nomesDeSessao().length > 0;
   }
 }
 
@@ -385,6 +412,35 @@ try {
   );
 
   // -- 4. Identidade de teste -------------------------------------------------
+  // Antes de criar: o endereço já pertence a alguém? O script cria e APAGA a
+  // identidade que usa. Se o e-mail informado for de uma conta real, apagá-la
+  // no final destruiria dado de verdade. Diante de qualquer conta preexistente
+  // o smoke recusa e pede outro endereço — nunca toca no que já existe.
+  const { data: existentes, error: erroLista } =
+    await admin.auth.admin.listUsers({ perPage: 1000 });
+
+  if (erroLista) {
+    throw new Error(`não foi possível verificar auth.users: ${erroLista.message}`);
+  }
+
+  const jaExiste = existentes.users.some(
+    (u) => (u.email ?? "").toLowerCase() === TEST_EMAIL.toLowerCase(),
+  );
+
+  prova(
+    "endereço de teste não colide com conta existente em auth.users",
+    !jaExiste,
+    jaExiste ? "já existe — nada foi tocado" : "livre",
+  );
+
+  if (jaExiste) {
+    throw new Error(
+      "o endereço informado já tem conta neste projeto. O smoke NÃO usa nem " +
+        "remove contas preexistentes. Informe outro endereço autorizado da " +
+        "equipe da organização Supabase e repita.",
+    );
+  }
+
   const { data: criado, error: erroCriacao } =
     await admin.auth.admin.createUser({
       email: TEST_EMAIL,
@@ -474,7 +530,16 @@ try {
   prova(
     "pedido de recuperação não cria sessão",
     !jarPedido.temSessao(),
-    `cookies=${jarPedido.nomes().join(", ") || "nenhum"}`,
+    `cookies de sessão=${jarPedido.nomesDeSessao().join(", ") || "nenhum"}`,
+  );
+
+  // O verifier do PKCE fica no jar, então a prova de que ele não vale como
+  // credencial é empírica: com esses cookies, a área protegida continua fechada.
+  const contaComPedido = await pedir("/conta", { jar: jarPedido });
+  prova(
+    "cookies do pedido não abrem a área protegida",
+    destino(contaComPedido) === "/entrar" || contaComPedido.status >= 300,
+    `HTTP ${contaComPedido.status} -> ${destino(contaComPedido) ?? "sem redirect"}`,
   );
 
   // -- 6. Gate humano: o link chega por e-mail real ---------------------------
@@ -486,25 +551,66 @@ try {
   console.log("");
 
   let urlRecovery;
+  let link;
   try {
     urlRecovery = new URL(linkColado);
+    link = classificarLinkRecovery(linkColado, {
+      appUrl: APP_URL,
+      supabaseUrl: SUPABASE_URL,
+    });
   } catch {
     throw new Error("o valor colado não é uma URL");
+  }
+
+  // A classificação vive em `scripts/lib/recovery-link.mjs`, com testes: as
+  // três formas possíveis exigem reações diferentes e confundi-las já produziu
+  // um diagnóstico falso nesta rodada.
+  prova(
+    "link do e-mail aponta para o endpoint SSR da própria aplicação",
+    link.tipo === LINK_SSR,
+    `host=${link.host} classificado como ${link.tipo}`,
+  );
+
+  if (link.tipo === LINK_CONFIRMATION_URL_NATIVA) {
+    throw new Error(
+      "o link recebido é a ConfirmationURL nativa do Supabase " +
+        `(${link.host}${link.path}). É um link LEGÍTIMO do provider, não um ` +
+        "rastreador — mas significa que o template efetivo do envio é o " +
+        "padrão, e não o versionado em supabase/templates/recovery.html. " +
+        "Em projeto Free criado depois de 2026-06-03, o SMTP nativo do " +
+        "Supabase ignora templates customizados: é preciso SMTP de " +
+        "desenvolvimento próprio para provar o template. Correção 001F-01 §6 " +
+        "manda parar, não contornar.",
+    );
+  }
+
+  if (link.tipo === LINK_TERCEIRO) {
+    throw new Error(
+      `o link foi reescrito por um host de terceiro (${link.host}), ` +
+        "tipicamente click tracking do provedor SMTP. O token de recuperação " +
+        "passa por fora do Supabase e da aplicação. Desabilite o rastreamento " +
+        "de cliques no provedor e repita — não contornar.",
+    );
   }
 
   const tokenHash = urlRecovery.searchParams.get("token_hash");
 
   prova(
-    "link do e-mail aponta para o endpoint SSR de confirmação",
-    urlRecovery.pathname === "/auth/confirm",
-    `path=${urlRecovery.pathname}`,
-  );
-  prova(
     "link do e-mail declara type=recovery e traz token_hash",
-    urlRecovery.searchParams.get("type") === "recovery" && Boolean(tokenHash),
-    `type=${urlRecovery.searchParams.get("type")}`,
+    link.type === "recovery" && link.temTokenHash,
+    `type=${link.type}`,
   );
-  prova("link do e-mail não carrega next", !urlRecovery.searchParams.has("next"));
+  prova("link do e-mail não carrega next", !link.temNext);
+
+  if (link.type !== "recovery" || !link.temTokenHash) {
+    throw new Error(
+      `o link recebido declara type=${link.type}, não \`recovery\`. O ` +
+        "template hospedado em Authentication > Emails > Reset Password não é " +
+        "o versionado em supabase/templates/recovery.html (o de confirmação " +
+        "de cadastro usa type=email). Corrija o template e repita — correção " +
+        "001F-01 §6 manda parar, não contornar.",
+    );
+  }
 
   const caminhoRecovery = `${urlRecovery.pathname}${urlRecovery.search}`;
 
@@ -620,6 +726,8 @@ try {
     passwordConfirmation: SENHA_NOVA,
   });
   const locationTroca = troca.headers.get("location") ?? "";
+  const trocaEfetivada =
+    destino(troca) === "/entrar" && locationTroca.includes("redefinida=1");
 
   prova(
     "troca bem-sucedida volta ao login com aviso",
@@ -633,7 +741,7 @@ try {
   prova(
     "sessão de recovery é encerrada depois da troca",
     !jarRecovery.temSessao(),
-    `cookies de sessão=${jarRecovery.nomes().filter((n) => n.startsWith("sb-")).length}`,
+    `cookies de sessão=${jarRecovery.nomesDeSessao().length}`,
   );
 
   const loginPosTroca = await pedir("/entrar?redefinida=1");
@@ -694,11 +802,22 @@ try {
   const sessaoAnteriorRevogada = refreshDepois.status >= 400;
   const contaSessaoAntiga = await pedir("/conta", { jar: jarLogin });
 
-  prova(
-    "refresh token da sessão anterior é recusado após o logout global",
-    sessaoAnteriorRevogada,
-    `HTTP ${refreshDepois.status}`,
-  );
+  // Só é prova de logout global se a troca realmente ocorreu. Sem isso, um
+  // fluxo que morreu antes da troca produziria um "§5.4 acionado" falso — e um
+  // alarme falso aqui desvaloriza o alarme verdadeiro.
+  if (trocaEfetivada) {
+    prova(
+      "refresh token da sessão anterior é recusado após o logout global",
+      sessaoAnteriorRevogada,
+      `HTTP ${refreshDepois.status}`,
+    );
+  } else {
+    prova(
+      "revogação do refresh anterior NÃO avaliada: a troca de senha não ocorreu",
+      false,
+      "corrija a causa raiz acima e repita o smoke",
+    );
+  }
   nota(
     `área protegida com os cookies da sessão anterior: HTTP ${contaSessaoAntiga.status} ` +
       `-> ${destino(contaSessaoAntiga) ?? "sem redirect"}`,
@@ -708,7 +827,7 @@ try {
       "conhecida do Supabase (Correção 001F-01 §5.3), não falha desta rodada.",
   );
 
-  if (!sessaoAnteriorRevogada) {
+  if (trocaEfetivada && !sessaoAnteriorRevogada) {
     nota(
       "PARADA §5.4 da correção: logout global sem efeito sobre o refresh " +
         "anterior. Não contornar — retornar ao GPT.",
