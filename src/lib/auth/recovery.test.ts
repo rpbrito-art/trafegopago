@@ -39,22 +39,31 @@ describe("readAmrEntries", () => {
     ]);
   });
 
-  it.each([undefined, null, "recovery", 42, {}, { method: "recovery" }])(
-    "devolve lista vazia para %j em vez de lançar",
+  it.each([undefined, null, "recovery", 42, {}, { method: "recovery" }, []])(
+    "devolve null para %j em vez de lançar",
     (valor) => {
-      expect(readAmrEntries(valor)).toEqual([]);
+      expect(readAmrEntries(valor)).toBeNull();
     },
   );
 
-  it("descarta entradas malformadas sem perder as válidas", () => {
+  it("invalida o claim inteiro quando UMA entrada é malformada", () => {
+    // Fail-closed por claim, não por entrada (Correção 001F-02 §3): a versão
+    // anterior devolvia só a entrada boa, e um claim misto seguia autorizável.
     expect(
       readAmrEntries([null, { timestamp: 1 }, 7, { method: "password" }]),
-    ).toEqual([{ method: "password", timestampMs: null }]);
+    ).toBeNull();
+    expect(readAmrEntries([{ method: "otp", timestamp: 1 }, null])).toBeNull();
+    expect(readAmrEntries([{ method: "otp", timestamp: 1 }, 42])).toBeNull();
+    expect(
+      readAmrEntries([{ method: "otp", timestamp: 1 }, { timestamp: 2 }]),
+    ).toBeNull();
   });
 
   it.each([undefined, null, "1700000000", Number.NaN, Infinity, 0, -5])(
     "trata o timestamp %j como ausente em vez de inventar uma data",
     (timestamp) => {
+      // Entrada com `method` válido é estruturalmente aceitável; o que falta é
+      // prova de recência, e isso quem recusa é `grantsPasswordReset`.
       expect(readAmrEntries([{ method: "otp", timestamp }])).toEqual([
         { method: "otp", timestampMs: null },
       ]);
@@ -191,6 +200,63 @@ describe("grantsPasswordReset", () => {
       expect(grantsPasswordReset(valor, AGORA)).toBe(false);
     },
   );
+
+  describe("claim estruturalmente malformado (Correção 001F-02 §3)", () => {
+    const OTP_RECENTE = { method: OTP_AMR_METHOD, timestamp: segundosAtras(0) };
+
+    it.each([
+      ["null", null],
+      ["número", 42],
+      ["objeto sem method", { timestamp: segundosAtras(0) }],
+      ["method não string", { method: 7, timestamp: segundosAtras(0) }],
+      ["array aninhado", [OTP_AMR_METHOD]],
+    ])(
+      "nega [otp recente válido, %s] em vez de sanear o claim",
+      (_nome, lixo) => {
+        expect(grantsPasswordReset([OTP_RECENTE, lixo], AGORA)).toBe(false);
+        // Também na ordem inversa: não depende de a entrada boa vir primeiro.
+        expect(grantsPasswordReset([lixo, OTP_RECENTE], AGORA)).toBe(false);
+      },
+    );
+
+    it("nega [otp recente válido, password]", () => {
+      expect(
+        grantsPasswordReset(
+          [OTP_RECENTE, { method: PASSWORD_AMR_METHOD, timestamp: 1 }],
+          AGORA,
+        ),
+      ).toBe(false);
+    });
+
+    it("autoriza [otp recente válido, método adicional bem formado]", () => {
+      expect(
+        grantsPasswordReset(
+          [OTP_RECENTE, { method: "token_refresh", timestamp: segundosAtras(0) }],
+          AGORA,
+        ),
+      ).toBe(true);
+      // Método adicional sem timestamp continua sendo entrada bem formada.
+      expect(grantsPasswordReset([OTP_RECENTE, "token_refresh"], AGORA)).toBe(
+        true,
+      );
+    });
+
+    it("nega otp sem timestamp utilizável", () => {
+      expect(
+        grantsPasswordReset([{ method: OTP_AMR_METHOD }], AGORA),
+      ).toBe(false);
+      expect(
+        grantsPasswordReset(
+          [{ method: OTP_AMR_METHOD, timestamp: "agora" }],
+          AGORA,
+        ),
+      ).toBe(false);
+    });
+
+    it("nega array vazio", () => {
+      expect(grantsPasswordReset([], AGORA)).toBe(false);
+    });
+  });
 
   it("não aceita method parecido por prefixo", () => {
     expect(grantsPasswordReset(amr("otp_backup"), AGORA)).toBe(false);

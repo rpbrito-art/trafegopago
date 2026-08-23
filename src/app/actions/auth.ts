@@ -6,8 +6,6 @@ import {
   describePasswordUpdateError,
   describeSignInError,
   describeSignUpError,
-  GENERIC_ERROR,
-  isRateLimited,
   PASSWORD_CHANGED_SESSIONS_KEPT,
   RECOVERY_SESSION_REQUIRED,
 } from "@/lib/auth/errors";
@@ -145,11 +143,22 @@ export type NewPasswordState = {
 /**
  * Pedido de recuperação de senha.
  *
- * A resposta é a mesma para e-mail cadastrado e não cadastrado — inclusive
- * quando o provider devolve erro. As duas exceções são situações que não
- * dependem do e-mail existir: excesso de tentativas e indisponibilidade do
- * provider. Qualquer outro erro vira a mensagem neutra, porque tratá-lo de
- * forma distinta é exatamente o que permitiria sondar a base.
+ * Passada a validação sintática, a resposta pública é **sempre a mesma**:
+ * sucesso, e-mail inexistente, rate limit, 4xx ou 5xx do provider terminam
+ * todos em `requested: true`.
+ *
+ * Por que nem o rate limit pode ter mensagem própria: o `/recover` do Supabase
+ * Auth procura o usuário antes de enviar. E-mail inexistente volta `200` de
+ * imediato; e-mail existente entra no envio e passa pelo controle de
+ * frequência, que pode devolver `429`. Diferenciar essa resposta na UI daria
+ * um oráculo de existência de conta — bastaria repetir o pedido duas vezes
+ * para saber se o endereço está cadastrado. O texto da mensagem era neutro; o
+ * **comportamento** não era.
+ *
+ * O custo assumido: numa indisponibilidade real do Auth, quem pediu a
+ * recuperação vê a mesma confirmação e não recebe e-mail. É a troca
+ * deliberada da Correção 001F-02 §2.2 — nenhum rate limiter próprio, CAPTCHA
+ * ou fila entra nesta fase.
  *
  * Usa o cliente Supabase comum, com a chave publicável. A secret key não
  * participa deste fluxo (`SECURITY_MODEL.md` §6).
@@ -170,22 +179,10 @@ export async function requestPasswordResetAction(
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(
-    parsed.data.email,
-  );
 
-  if (error) {
-    if (isRateLimited(error)) {
-      return {
-        message: "Muitas tentativas em pouco tempo. Aguarde alguns minutos.",
-        email: parsed.data.email,
-      };
-    }
-
-    if (typeof error.status === "number" && error.status >= 500) {
-      return { message: GENERIC_ERROR, email: parsed.data.email };
-    }
-  }
+  // O retorno do provider é deliberadamente ignorado: qualquer ramificação
+  // aqui vira canal de enumeração. Ver o comentário acima.
+  await supabase.auth.resetPasswordForEmail(parsed.data.email);
 
   // Sem eco do e-mail: a tela de confirmação é acessível por navegação direta,
   // e repetir o endereço nela daria a um terceiro uma forma de confirmar o que

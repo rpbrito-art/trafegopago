@@ -134,21 +134,44 @@ function toEntry(entry: unknown): AmrEntry | null {
 }
 
 /**
- * Lista as entradas de `amr` em qualquer um dos dois formatos aceitos.
+ * Lê `amr` inteiro, ou devolve `null` se o claim não for utilizável.
  *
- * Valor ausente ou malformado devolve lista vazia — nunca lança. Uma claim
- * corrompida deve resultar em "não autoriza", não em erro 500 numa rota
- * pública.
+ * **Fail-closed por claim, não por entrada** (Correção 001F-02 §3): uma única
+ * entrada estruturalmente inválida invalida o claim todo. A versão anterior
+ * descartava a entrada ruim e ficava com as boas — de modo que um `amr` misto,
+ * com um `otp` recente ao lado de um item corrompido, seguia autorizando a
+ * troca de senha. Sanear um claim inesperado até que ele passe é exatamente o
+ * oposto do contrato de segurança autorizado.
+ *
+ * `null` também para não-array e para array vazio: nenhum dos dois prova
+ * método de autenticação nenhum.
+ *
+ * Nunca lança. Claim corrompido deve virar "não autoriza", não erro 500 numa
+ * rota pública.
  */
-export function readAmrEntries(amr: unknown): AmrEntry[] {
-  if (!Array.isArray(amr)) return [];
+export function readAmrEntries(amr: unknown): AmrEntry[] | null {
+  if (!Array.isArray(amr) || amr.length === 0) return null;
 
-  return amr.map(toEntry).filter((entry): entry is AmrEntry => entry !== null);
+  const entries: AmrEntry[] = [];
+
+  for (const bruto of amr) {
+    const entry = toEntry(bruto);
+    if (entry === null) return null;
+
+    entries.push(entry);
+  }
+
+  return entries;
 }
 
-/** Só os métodos declarados, para diagnóstico e para as recusas. */
+/**
+ * Só os métodos declarados, para diagnóstico e para as recusas.
+ *
+ * Claim inutilizável vira lista vazia: quem só quer saber "qual método está
+ * aí" não precisa distinguir ausência de corrupção.
+ */
 export function readAmrMethods(amr: unknown): string[] {
-  return readAmrEntries(amr).map((entry) => entry.method);
+  return (readAmrEntries(amr) ?? []).map((entry) => entry.method);
 }
 
 /**
@@ -185,10 +208,10 @@ export function isAuthorizingEntryFresh(
 /**
  * A sessão pode redefinir a senha sem informar a senha atual?
  *
- * Verdadeiro apenas quando `amr` é bem formado, **nenhuma** entrada declara
- * `password` e existe uma entrada de OTP por e-mail usada há no máximo 15
- * minutos. `nowMs` é injetável para que a janela seja testável sem esperar o
- * relógio.
+ * Verdadeiro apenas quando `amr` é bem formado **por inteiro**, **nenhuma**
+ * entrada declara `password` e existe uma entrada de OTP por e-mail usada há
+ * no máximo 15 minutos. Métodos adicionais bem formados podem coexistir.
+ * `nowMs` é injetável para que a janela seja testável sem esperar o relógio.
  */
 export function grantsPasswordReset(
   amr: unknown,
@@ -196,7 +219,7 @@ export function grantsPasswordReset(
 ): boolean {
   const entries = readAmrEntries(amr);
 
-  if (entries.length === 0) return false;
+  if (entries === null) return false;
   if (entries.some((entry) => entry.method === PASSWORD_AMR_METHOD)) {
     return false;
   }

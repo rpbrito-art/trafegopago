@@ -267,43 +267,80 @@ describe("requestPasswordResetAction", () => {
     expect(state.email).toBeUndefined();
   });
 
-  it.each([
-    ["user_not_found", 400],
-    ["email_not_confirmed", 400],
-    ["validation_failed", 422],
-  ])("responde igual quando o provider devolve %s", async (code, status) => {
-    resetRequestResult = { error: { code, status } };
+  /**
+   * Cada entrada é um desfecho possível do `/recover` do Supabase Auth. O
+   * `429` é o caso que motivou a Correção 001F-02: e-mail inexistente volta
+   * `200` sem entrar no envio, enquanto e-mail cadastrado passa pelo controle
+   * de frequência e pode devolver `429`. Se a UI diferenciasse esse desfecho,
+   * repetir o pedido revelaria se a conta existe.
+   */
+  const DESFECHOS_DO_PROVIDER: ReadonlyArray<[string, ErrorOnly]> = [
+    ["sucesso", { error: null }],
+    ["user_not_found", { error: { code: "user_not_found", status: 400 } }],
+    [
+      "email_not_confirmed",
+      { error: { code: "email_not_confirmed", status: 400 } },
+    ],
+    ["validation_failed", { error: { code: "validation_failed", status: 422 } }],
+    ["429 sem code", { error: { status: 429 } }],
+    [
+      "over_email_send_rate_limit",
+      { error: { code: "over_email_send_rate_limit", status: 429 } }
+    ],
+    ["500", { error: { status: 500 } }],
+    ["503", { error: { status: 503 } }],
+  ];
 
-    const state = await requestPasswordResetAction(
-      undefined,
-      form({ email: "pessoa@exemplo.com" }),
-    );
+  it.each(DESFECHOS_DO_PROVIDER)(
+    "responde exatamente { requested: true } quando o provider devolve %s",
+    async (_nome, resultado) => {
+      resetRequestResult = resultado;
 
-    expect(state).toEqual({ requested: true });
+      const state = await requestPasswordResetAction(
+        undefined,
+        form({ email: "pessoa@exemplo.com" }),
+      );
+
+      expect(state).toEqual({ requested: true });
+    },
+  );
+
+  it("produz resposta byte a byte idêntica em todos os desfechos", async () => {
+    // A prova que interessa não é cada resposta isolada, e sim que elas são
+    // indistinguíveis entre si: é a diferença que vaza a existência da conta.
+    const respostas: string[] = [];
+
+    for (const [, resultado] of DESFECHOS_DO_PROVIDER) {
+      resetRequestResult = resultado;
+
+      respostas.push(
+        JSON.stringify(
+          await requestPasswordResetAction(
+            undefined,
+            form({ email: "pessoa@exemplo.com" }),
+          ),
+        ),
+      );
+    }
+
+    expect(new Set(respostas).size).toBe(1);
   });
 
-  it("informa excesso de tentativas sem revelar a conta", async () => {
-    resetRequestResult = { error: { status: 429 } };
+  it("nunca vaza e-mail, código do provider ou status na resposta", async () => {
+    for (const [, resultado] of DESFECHOS_DO_PROVIDER) {
+      resetRequestResult = resultado;
 
-    const state = await requestPasswordResetAction(
-      undefined,
-      form({ email: "pessoa@exemplo.com" }),
-    );
+      const bruto = JSON.stringify(
+        await requestPasswordResetAction(
+          undefined,
+          form({ email: "pessoa@exemplo.com" }),
+        ),
+      );
 
-    expect(state.requested).toBeUndefined();
-    expect(state.message).toMatch(/tentativas/i);
-    expect(state.message).not.toMatch(/conta|cadastr/i);
-  });
-
-  it("informa indisponibilidade do provider", async () => {
-    resetRequestResult = { error: { status: 503 } };
-
-    const state = await requestPasswordResetAction(
-      undefined,
-      form({ email: "pessoa@exemplo.com" }),
-    );
-
-    expect(state.message).toBe(GENERIC_ERROR);
+      expect(bruto).not.toContain("pessoa@exemplo.com");
+      expect(bruto).not.toMatch(/user_not_found|rate_limit|validation_failed/);
+      expect(bruto).not.toMatch(/429|503|500/);
+    }
   });
 });
 
