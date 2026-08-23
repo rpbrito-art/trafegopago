@@ -24,6 +24,31 @@ Este arquivo é carregado automaticamente pelo Claude Code e contém as regras p
 
 Abra esses arquivos somente se o mandato exigir, houver conflito de governança ou uma dependência concreta não resolvida pelo mandato/canônico já indicado.
 
+## Branch da rodada — antes de executar
+
+Antes de qualquer implementação relevante:
+
+- identificar em `estado.md` a branch esperada;
+- criar/usar **essa branch exata**;
+- nunca executar a rodada em `main`, detached HEAD ou branch de outra rodada;
+- preservar working tree existente quando estiver reconciliando handoff anterior; nunca usar reset/clean para “facilitar”.
+
+## Checkpoint durável antes de mutação externa
+
+**Nenhuma mutação externa pode ocorrer enquanto o trabalho só existir na memória da sessão ou no working tree local.**
+
+Antes da primeira ação que altere Supabase remoto, Meta, deploy, provider externo ou outro estado compartilhado:
+
+1. a branch exata da rodada deve existir localmente **e em `origin`**;
+2. os arquivos que causarão a mutação devem estar salvos na branch;
+3. para DDL/migration, o arquivo exato da migration deve estar **commitado e publicado na branch antes de ser aplicado remotamente**;
+4. para deploy/configuração externa relevante, o código/config correspondente deve estar commitado e publicado antes do deploy quando isso for tecnicamente possível;
+5. um único commit de checkpoint pode agrupar todos os artefatos de mutação da rodada.
+
+Depois desse checkpoint, continue a execução normalmente. Não criar um commit por comando, por teste ou por migration se várias puderem ser agrupadas com segurança.
+
+Se o estado remoto precisar ser alterado antes de existir artefato versionável correspondente, **pare e reporte ao GPT** em vez de improvisar.
+
 ## Execução
 
 - executar somente o escopo autorizado;
@@ -65,7 +90,22 @@ Registrar: resumo do preflight, arquivos alterados, decisões não óbvias, `pro
 
 Não copiar logs, SQL/código inteiro, documentação oficial ou histórico.
 
-Preferir **um único commit/push final** com implementação + testes + relatório + estado. O relatório não precisa conhecer o próprio SHA.
+### Handoff é gate técnico, não tarefa administrativa
+
+Claude **não pode declarar que terminou** enquanto não confirmar cumulativamente:
+
+1. está na branch correta;
+2. `HEAD` está commitado e publicado em `origin/<branch>`;
+3. o relatório esperado existe nessa branch;
+4. `estado.md` da branch registra `EXECUTADA — AGUARDANDO AUDITORIA GPT` ou o estado final exigido pela correção;
+5. existe PR para `main` quando o mandato exigir;
+6. o PR aponta para a branch/HEAD corretos;
+7. a CI exigida pelo mandato foi iniciada e concluiu verde, salvo blocker explicitamente previsto;
+8. `git status` não contém trabalho autorizado esquecido fora do handoff.
+
+Se qualquer item falhar, a rodada está **EM EXECUÇÃO/BLOQUEADA**, não “terminada”. Corrigir o handoff na própria sessão sem repetir testes já válidos.
+
+Preferir um único commit/push final quando não há mutação externa. Em rodada com mutação externa, são aceitáveis **até dois checkpoints normais**: um pré-mutação durável e um handoff final.
 
 ## Gate humano
 
