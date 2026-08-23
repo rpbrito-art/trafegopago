@@ -44,6 +44,14 @@ Conforme mandato:
 
 Não reler relatórios completos das Rodadas 000–001D salvo dependência concreta.
 
+### Decisão canônica de produto publicada durante a 001E
+
+`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` foi consolidado em 2026-08-23 e passa a vincular o **planejamento das rodadas futuras**.
+
+Ele **não altera o mandato já autorizado da 001E** e não deve ser usado para ampliar seu escopo. A harmonização de `MVP_CANONICAL.md`, roadmap e demais contratos será feita após a auditoria da 001E, junto da próxima etapa substantiva apropriada.
+
+A lei de **simplicidade guiada** também foi incorporada ao `PROJECT_CHARTER.md`.
+
 ## Resumo histórico preferencial
 
 - `docs/00-governanca/HISTORY_SUMMARY.md`
@@ -61,6 +69,7 @@ O resumo incorpora 000–001D.
 ### Produto
 
 - `docs/01-produto/MVP_CANONICAL.md`
+- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` — modelo de crescimento/inteligência e lei detalhada de simplicidade; vincula planejamento futuro sem ampliar a 001E.
 
 ### Arquitetura
 
