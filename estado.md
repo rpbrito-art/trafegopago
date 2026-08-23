@@ -24,73 +24,79 @@ Promovido e disponível:
 - `public.organizations` e `public.organization_members` criadas por migration versionada;
 - constraints/FKs/índice de membership conforme contrato;
 - RLS explicitamente habilitado nas duas tabelas;
-- zero policies de domínio até a próxima rodada;
+- zero policies de domínio antes da execução da 001D;
 - `anon` e `authenticated` sem privilégios funcionais nas duas tabelas atuais;
 - `ensure_rls` permanece ativo;
-- CI do head final da 001C verde.
+- método documental enxuto e histórico reciclado até a 001C.
 
-A reciclagem de `HISTORY_SUMMARY.md` pode incorporar a 001C junto da próxima etapa substantiva; não criar housekeeping isolado apenas para isso.
+Detalhes: `docs/00-governanca/HISTORY_SUMMARY.md`.
 
 ## 3. Estado corrente
 
-**RODADA 001C — ORGANIZATIONS + MEMBERSHIP**
+**RODADA 001D — DEFAULT PRIVILEGES + GRANTS + RLS + ISOLAMENTO**
 
-Status: **APROVADA E PROMOVIDA**.
+Status: **AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE**.
 
-PR: #4
-Merge: `a6b2e912f8d54005d1decf69cb4e4bf8335d31ec`
-Head auditado: `a599d68220095d2fb147529684410ec137949435`
-CI final: run `32606516377` — success
-Auditoria: `rodadas/gpt/AUDITORIA_RODADA_001C_ORGANIZATIONS_MEMBERSHIP.md`
-Migration: `20260822234354_create_organizations_and_members.sql`
+Mandato vigente:
 
-Não há mandato executável pendente.
+`rodadas/gpt/RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`
 
-`/proxima` deve parar aguardando nova autorização.
+Branch esperada:
 
-Nenhuma 001D está autorizada.
+`claude/rodada-001d-rls-tenancy-isolamento`
 
-## 4. Provas consolidadas da 001C
+Relatório esperado:
 
-- migration local/remota registrada;
-- somente `organizations` e `organization_members` foram adicionadas ao schema `public`;
-- PKs, FKs, CHECKs, defaults e índice `organization_members_user_id_idx` conferidos diretamente;
-- `relrowsecurity=true` nas duas tabelas;
-- zero policies nas duas tabelas, deliberadamente;
-- ACL final das duas tabelas: somente `postgres` e `service_role`;
-- `anon` e `authenticated`: SELECT/INSERT/UPDATE/DELETE = false nas duas tabelas;
-- `ensure_rls` ativo;
-- zero linhas residuais em organizations/memberships;
-- nenhuma função ou trigger de domínio criada;
-- CI final verde.
+`rodadas/claude/RELATORIO_RODADA_001D_RLS_TENANCY_ISOLAMENTO.md`
 
-## 5. Pendências e gates para a próxima etapa
+`/proxima` está autorizado a executar **somente a Rodada 001D**.
 
-1. **Default privileges de tabelas no schema `public`**: `pg_default_acl` ainda concede ALL a `anon`/`authenticated` para novas tabelas criadas por `postgres`/`supabase_admin`. As duas tabelas atuais foram fechadas por REVOKE escopado. Esta pendência é **bloqueante antes de qualquer nova tabela futura** e deve ser tratada na 001D.
-2. **Policies RLS**: os INFO `rls_enabled_no_policy` são esperados até a 001D, que deverá criar policies e provas adversariais.
-3. **Default privileges de funções**: antes da primeira função própria sensível, definir política mínima de EXECUTE; nenhuma função própria foi criada ainda.
-4. `auth_leaked_password_protection` permanece WARN conhecido de Auth; hardening antes de clientes reais/produção.
+Nenhuma etapa posterior está autorizada.
+
+## 4. Escopo autorizado da 001D
+
+Fechar a autorização de leitura e o isolamento multi-tenant da fundação já criada:
+
+- corrigir default privileges inseguros de novas tabelas `public` para as roles criadoras relevantes;
+- fechar default EXECUTE inseguro de futuras funções `public` para `PUBLIC`/browser roles;
+- definir grants mínimos: `authenticated` com SELECT apenas em `organizations` e `organization_members`; `anon` sem acesso;
+- criar policy de `organization_members` para leitura somente da própria membership;
+- criar policy de `organizations` para leitura somente quando existir membership ativa do próprio usuário e a organização estiver ativa;
+- manter INSERT/UPDATE/DELETE diretos pelo browser fechados;
+- provar isolamento real com 2 usuários × 2 organizações usando sessões/JWTs reais;
+- provar que `owner` não ganha bypass de escrita;
+- limpar usuários, organizações e objetos-probe temporários ao final;
+- rodar Security Advisor e CI final.
+
+Não criar novas tabelas, `business_profiles`, onboarding, convites, UI de Organizations, policies de escrita ou função `SECURITY DEFINER` persistente.
+
+## 5. Baseline e riscos conhecidos
+
+1. `pg_default_acl` observado na 001C concede privilégios automáticos de novas tabelas `public` a `anon`/`authenticated` para `postgres` e `supabase_admin`. Esta pendência é **bloqueante antes de qualquer nova tabela** e deve ser resolvida nesta 001D.
+2. As duas tabelas atuais têm RLS habilitado e zero policies; os INFO `rls_enabled_no_policy` são esperados antes da 001D e devem desaparecer depois das policies.
+3. `public.rls_auto_enable()` deve preservar a ACL segura promovida na 001A; `ensure_rls` deve permanecer ativo.
+4. `auth_leaked_password_protection` permanece WARN conhecido de Auth e não bloqueia a 001D se for o único WARN pré-existente.
 5. Brevo Free permanece SMTP provisório de desenvolvimento.
-6. Rate limiting próprio permanece futuro conforme `SECURITY_MODEL.md`.
 
-## 6. Próxima direção planejada, ainda não autorizada
+## 6. Decisão de segurança da 001D
 
-Rodada 001D — **Default privileges + grants + RLS policies + prova adversarial 2 usuários × 2 organizações**.
+O desenho autorizado evita função privilegiada:
 
-Escopo esperado:
+- `organization_members` SELECT: `user_id = auth.uid()`;
+- `organizations` SELECT: existe membership ativa do próprio usuário para a organização;
+- nenhuma policy de escrita nesta rodada.
 
-- corrigir default privileges de tabelas antes de ampliar o schema;
-- definir grants mínimos coerentes com a Data API;
-- criar policies de membership para `organizations` e `organization_members`;
-- provar membro lê apenas org própria e não lê/escreve org alheia;
-- provar não membro sem acesso;
-- provar comportamento de roles onde aplicável;
-- usar ao menos 2 usuários e 2 organizações em prova controlada;
-- limpar fixtures/provas ou preservar somente se explicitamente autorizado.
+Se esse desenho não puder funcionar sem `SECURITY DEFINER`, o Claude deve **parar e reportar**, não criar helper privilegiado por conta própria.
 
-A 001D precisa de nova autorização explícita antes de `/proxima` executar qualquer implementação.
+## 7. Próxima direção após 001D
 
-## 7. Continuidade
+Ainda **não autorizada**.
+
+Depois de a 001D ser executada, auditada e promovida, o GPT deverá planejar a próxima etapa substantiva da Fundação Supabase/Auth/Tenancy, considerando o roadmap e as pendências restantes (`business_profiles`, fluxo mínimo de conta/organização e demais gates da Fase 1).
+
+Não antecipar automaticamente 001E apenas por numeração histórica; definir a próxima rodada com base no estado real após a auditoria.
+
+## 8. Continuidade
 
 Descompasso temporário de numeração/documentação é normal e deve ser corrigido na próxima etapa substantiva quando não houver risco operacional.
 
