@@ -45,7 +45,7 @@ Persistem como decisões:
 
 Supabase após a 003A: 14 migrations.
 
-## 4. Rodada 003B — execução inicial auditada parcialmente
+## 4. Rodada 003B — EM EXECUÇÃO
 
 Mandato:
 
@@ -61,58 +61,58 @@ Branch:
 
 PR: **#12 draft**.
 
-HEAD auditado antes da correção:
+HEAD atual auditado:
 
-`6fe1dac32912e11afab1382e0c9fdfbf6d39b920`
+`77f7c8288208b5b97fe0367ef48c6ad08b1329dd`
 
 CI:
 
-`32777340430` — verde em install, lint, typecheck, Edge Functions, testes e build.
+`32779213462` — verde em install, lint, typecheck, Edge Functions, testes e build.
 
-### Executado e comprovado até aqui
+### Executado e comprovado
 
 - migration `20260824210000_create_meta_asset_selection.sql` aplicada depois de checkpoint versionado;
 - histórico remoto = **15 migrations**;
 - `instagram_accounts` e `ad_accounts` presentes;
-- zero linhas residuais nas duas tabelas após o proof;
+- zero linhas residuais nas duas tabelas antes do E2E;
 - zero conexões Meta `ACTIVE` antes do novo E2E;
 - RLS habilitado nas tabelas novas;
 - `authenticated` sem INSERT/UPDATE/DELETE;
 - external ids fora dos grants SELECT de `authenticated`;
 - `select_instagram_account` e `select_ad_account` são `security invoker`, sem EXECUTE para `authenticated`/`anon` e com EXECUTE para `service_role`;
 - descoberta/seleção, capabilities e UX implementadas;
-- nenhuma configuração Meta nova nem OAuth real executados.
+- nenhuma configuração Meta nova nem OAuth real executados ainda.
 
-Esses itens estão **executados**, mas a 003B ainda não está aprovada nem promovida.
+Esses itens estão **executados**, mas a 003B ainda não está promovida.
 
-## 5. Auditoria pré-gate — bloqueio 003B-01
+## 5. Correção 003B-01 — AUDITADA E APROVADA
 
-Auditoria GPT encontrou dois pontos que precisam ser corrigidos **antes** de qualquer nova ação manual na Meta.
-
-Correção vigente:
+Correção:
 
 `rodadas/gpt/CORRECAO_003B_01_FAIL_CLOSED_METADATA_E_MEMBERSHIP.md`
 
+Auditoria:
+
+`rodadas/gpt/AUDITORIA_003B_01_FAIL_CLOSED_METADATA_E_MEMBERSHIP.md`
+
 Status:
 
-**003B-01 AUTORIZADA — GATE EXTERNO META BLOQUEADO — AGUARDANDO EXECUÇÃO DO CLAUDE**.
+**003B-01 EXECUTADA, AUDITADA E APROVADA — GATE EXTERNO META LIBERADO — 003B AINDA NÃO PROMOVIDA**.
 
-### Bloqueio A — metadata IG falha aberto
+### Resultado A — metadata IG fail-closed
 
-`lerMetadadosInstagram` trata HTTP não-OK e falha de rede como `null`; `descobrirInstagram` então mantém o candidato e a seleção pode persistir.
+`lerMetadadosInstagram` distingue:
 
-Isso viola o mandato §6: `provider 4xx/5xx/rede em fail-closed`.
+- 2xx com campos opcionais ausentes → candidato válido com campos nulos;
+- 4xx/5xx, rede quebrada ou corpo ilegível → falha de domínio sanitizada, sem candidato gravável e sem RPC de seleção.
 
-A correção deve separar:
+Uma conta ilegível derruba a descoberta inteira; não há lista parcial que esconda o problema.
 
-- HTTP 2xx com campos opcionais ausentes → candidato válido com campos nulos;
-- HTTP 4xx/5xx/rede → falha de domínio sanitizada, sem candidato gravável e sem RPC de seleção.
+### Resultado B — membership temporal
 
-### Bloqueio B — membership precisa de recheck antes da escrita
+`selectInstagramAccount` e `selectAdAccount` reconferem membership imediatamente antes da RPC privilegiada, depois das chamadas externas.
 
-A seleção valida membership antes da redescoberta na Meta, mas há chamadas externas antes da RPC privilegiada de persistência.
-
-A correção deve reconferir membership imediatamente antes da RPC de seleção para Instagram e Ad Account.
+Se a membership cair durante a redescoberta, nenhuma seleção é persistida.
 
 ## 6. Estado remoto atual
 
@@ -120,40 +120,50 @@ Supabase:
 
 - 15 migrations;
 - `20260824210000` aplicada;
-- `instagram_accounts`: 0 linhas;
-- `ad_accounts`: 0 linhas;
-- conexões Meta `ACTIVE`: 0.
+- `instagram_accounts`: 0 linhas antes do E2E;
+- `ad_accounts`: 0 linhas antes do E2E;
+- conexões Meta `ACTIVE`: 0 antes do E2E.
 
 Nenhum novo OAuth da 003B foi feito e nenhum token novo está ativo.
 
-## 7. Próxima ação autorizada
+## 7. Gate externo da Meta — PRÓXIMA AÇÃO AUTORIZADA
 
-Claude Code deve executar **somente a Correção 003B-01**:
+Próximo a agir: **GPT + fundador**.
 
-1. trazer a `main` atual para a branch 003B;
-2. corrigir fail-closed da leitura de metadata do IG User;
-3. adicionar recheck de membership imediatamente antes das RPCs de seleção;
-4. adicionar testes focados;
-5. rodar CI uma vez no HEAD final;
-6. atualizar relatório;
-7. parar em `003B-01 EXECUTADA — AGUARDANDO AUDITORIA GPT`.
+Objetivo do gate:
 
-Depois da auditoria GPT, se passar, o gate externo da Meta poderá ser retomado.
+1. criar uma nova Business Login Configuration para a 003B, preservando a configuração histórica da 003A;
+2. usar o mesmo App ID real `2940404272985831`;
+3. nome sugerido: `Quoron Instagram Dev Login`;
+4. configuração pretendida: General + System-user access token/BISU + 60 dias;
+5. tipos de ativos: Pages + Instagram Accounts + Ad Accounts;
+6. permissões iniciais:
+   - `pages_show_list`;
+   - `pages_read_engagement`;
+   - `instagram_basic`;
+   - `instagram_manage_insights`;
+   - `ads_read` opcional/read-only.
+7. NÃO solicitar inicialmente:
+   - `ads_management`;
+   - `business_management`;
+   - publicação/comentários/leads.
+8. após criar, obter o novo `config_id` e atualizar `META_LOGIN_CONFIG_ID` localmente antes do OAuth real.
+
+Se `instagram_basic` ou `instagram_manage_insights` não aparecerem disponíveis, não criar novo App ID nem adicionar permissões por tentativa; GPT deve reavaliar o use case/produto atual do mesmo app.
 
 ## 8. Continua NÃO autorizado
 
-Até a 003B-01 passar na auditoria:
+Até o gate avançar sob instrução do GPT:
 
-- criar/alterar configuração Facebook Login for Business no painel Meta;
-- trocar `META_LOGIN_CONFIG_ID`;
-- novo OAuth real;
-- selecionar/remover/reassociar ativos no painel Meta;
+- Claude alterar painel Meta;
+- criar novo Meta App ID;
+- ampliar permissões por tentativa;
 - persistir Page Access Token;
-- solicitar `ads_management` ou `business_management`;
+- solicitar `ads_management` ou `business_management` automaticamente;
 - criar anúncios ou gerar gasto;
 - importar conteúdo do Instagram;
 - iniciar Fase 4;
-- promover/mergear a 003B.
+- promover/mergear a 003B antes do E2E real.
 
 ## 9. Pendências não bloqueantes
 
