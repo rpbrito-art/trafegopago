@@ -4,7 +4,7 @@ Data inicial: 2026-08-23
 Reauditorias: 2026-08-24
 PR: #11
 
-Classificação vigente: **003A-03 PARCIALMENTE APROVADA — 003A AINDA BLOQUEADA — CORREÇÃO 003A-04 AUTORIZADA**.
+Classificação vigente: **003A-04 APROVADA — E2E REAL DE DESCONEXÃO AUTORIZADO — 003A AINDA NÃO PROMOVIDA**.
 
 ## 1. Auditoria inicial / Correção 003A-01
 
@@ -126,34 +126,72 @@ Passou:
 
 O Supabase remoto foi conferido novamente: a conexão `Teste 003A - conexao Meta` continua **ACTIVE**, `disconnected_at` nulo, referência presente e segredo correspondente ainda existente no Vault. Nenhuma revogação real ocorreu.
 
-## 7. Único bloqueio remanescente — tipo de token desconhecido ainda dispara mutação
+## 7. Bloqueio encontrado — tipo de token desconhecido ainda disparava mutação
 
 O mandato 003A-03 determinava que falha/UNKNOWN não completasse nem adivinhasse o mecanismo de revogação.
 
-O código atual, porém, decide:
+O código da 003A-03 decidia:
 
 - `SYSTEM_USER` → `oauth/revoke`;
 - qualquer outro tipo → `/permissions`.
 
-O teste atual consolida explicitamente esse comportamento com `type: PAGE`, sob o nome `tipo desconhecido segue pelo caminho conservador de usuário`.
+O teste consolidava explicitamente esse comportamento com `type: PAGE`.
 
-Isso não é fail-closed. Quando `debug_token` afirma que o token está **válido**, mas o tipo não é `SYSTEM_USER` nem `USER`, o sistema não conhece a primitive correta e não deve executar uma mutação remota por tentativa.
+Isso não era fail-closed. Quando `debug_token` afirma que o token está **válido**, mas o tipo não é `SYSTEM_USER` nem `USER`, o sistema não conhece a primitive correta e não deve executar uma mutação remota por tentativa.
 
 A pós-condição de invalidez permanece correta e suficiente: depois que o mesmo token foi explicitamente observado como `is_valid=false`, seu `type` já não é necessário para decidir a limpeza local. O `type` é obrigatório apenas para escolher a primitive enquanto o token ainda está válido.
 
-## 8. Veredicto vigente
+Essa decisão originou a Correção 003A-04.
 
-**NÃO APROVADA PARA E2E REAL AINDA.**
+---
 
-- 003A-02: partes auditadas, incluindo Vault fail-closed: **APROVADAS**;
-- 003A-03: tratamento de `190` + pós-verificação: **APROVADOS**;
-- tipo de token desconhecido: **BLOQUEIO REMANESCENTE**;
-- desconexão real: **não autorizada**;
-- 003A: **não promovida**;
-- 003B: **não autorizada**.
+# REAUDITORIA 3 — 2026-08-24
 
-Próxima ação autorizada:
+Head auditado: `8332bec58d14c0e6687f02340cfd5c545b34942d`
+CI: `32751232306` — **success** em install, lint, typecheck, Edge Functions, testes e build.
 
-`rodadas/gpt/CORRECAO_003A_04_TIPO_TOKEN_FAIL_CLOSED.md`
+## 8. Resultado da 003A-04
 
-Claude Code deve executar apenas essa microcorreção, atualizar a mesma branch/PR e parar em `003A-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT`.
+A inspeção independente do código e dos testes confirmou:
+
+- token válido `SYSTEM_USER` usa somente `oauth/revoke`;
+- token válido `USER` usa somente `DELETE /{user-id}/permissions`;
+- token válido de tipo diferente, como `PAGE`, retorna falha antes de chamar qualquer endpoint de revogação;
+- token válido sem `type` também falha antes de qualquer endpoint de revogação;
+- em ambos os casos desconhecidos, `revoke_meta_connection` não é chamado;
+- a pós-verificação continua exigindo `is_valid=false` do mesmo token;
+- depois de `is_valid=false`, ausência de `type` não bloqueia a limpeza, porque o tipo já não é necessário para escolher mecanismo algum;
+- os testes de erro `190`, falha de provider, pós-verificação e falha de leitura do Vault continuam preservados;
+- total informado pelo executor: **83 testes em `src/lib/meta`**.
+
+O Supabase remoto foi reconferido depois da execução da 003A-04:
+
+- conexão `Teste 003A - conexao Meta` = **ACTIVE**;
+- `disconnected_at` = `null`;
+- referência do token = presente;
+- segredo correspondente no Vault = presente;
+- expiração = 2026-10-23.
+
+Nenhuma mutação externa real foi executada pela 003A-04.
+
+## 9. Veredicto e autorização do gate final
+
+A 003A-04 está **AUDITADA E APROVADA**.
+
+Não há bloqueio de código conhecido restante antes do gate real de desconexão. O fluxo de desconexão agora sustenta a invariante:
+
+**estado local só é limpo depois que a própria Meta confirma, por pós-verificação do mesmo token, que ele está inválido.**
+
+Fica **AUTORIZADO exclusivamente o E2E REAL DE DESCONEXÃO** da conexão de teste existente `Teste 003A - conexao Meta`, pelo fluxo normal do próprio aplicativo.
+
+Este gate é deliberadamente destrutivo: ele deve revogar a autorização real na Meta e, somente se a pós-verificação confirmar a invalidez, remover o segredo do Vault e marcar a conexão como `REVOKED` localmente.
+
+Ainda não estão autorizados:
+
+- refazer OAuth;
+- selecionar ativos;
+- revogar pelo painel da Meta como atalho;
+- iniciar 003B;
+- promover 003A antes da auditoria do resultado real.
+
+Após o E2E, o GPT deve auditar o estado remoto e o resultado observado antes de decidir a promoção da 003A.
