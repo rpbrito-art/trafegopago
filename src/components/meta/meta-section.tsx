@@ -121,10 +121,6 @@ export function MetaSection({
             ? `Conectada em ${formatarData(state.conectadaEm)}.`
             : null}
         </p>
-        <p className="text-sm text-neutral-600">
-          Ainda não trazemos publicações nem métricas — isso vem na próxima
-          etapa.
-        </p>
         <MetaDisconnectButton organizationId={state.organizationId} />
       </Bloco>
     );

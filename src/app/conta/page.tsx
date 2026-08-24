@@ -1,8 +1,13 @@
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { BusinessSection } from "@/components/business/business-section";
+import {
+  MetaAssetsSection,
+  type AtivoResultado,
+} from "@/components/meta/meta-assets-section";
 import { MetaSection, type MetaResultado } from "@/components/meta/meta-section";
 import { requireUser } from "@/lib/auth/session";
 import { getAccountBusinessState } from "@/lib/business/account";
+import { getMetaAssetState, type MetaAssetState } from "@/lib/meta/asset-state";
 import { getMetaConnectionState } from "@/lib/meta/connection-state";
 
 export const metadata = {
@@ -30,7 +35,7 @@ export const dynamic = "force-dynamic";
 export default async function ContaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ meta?: string }>;
+  searchParams: Promise<{ meta?: string; ativo?: string }>;
 }) {
   const user = await requireUser();
   const state = await getAccountBusinessState();
@@ -47,8 +52,27 @@ export default async function ContaPage({
     "nao-verificado",
   ];
 
-  const { meta } = await searchParams;
+  const RESULTADOS_ATIVO: readonly AtivoResultado[] = [
+    "ok",
+    "nao-encontrado",
+    "sem-permissao",
+    "erro",
+  ];
+
+  const { meta, ativo } = await searchParams;
   const resultadoMeta = DESFECHOS.find((d) => d === meta);
+  const resultadoAtivo = RESULTADOS_ATIVO.find((r) => r === ativo);
+
+  // A escolha do ativo só faz sentido sobre uma conexão realmente ativa. Numa
+  // desconexão em curso, oferecer "escolha o seu Instagram" contradiria o passo
+  // que a pessoa acabou de pedir.
+  const assetState: MetaAssetState =
+    metaState.kind === "conectado"
+      ? await getMetaAssetState({
+          userId: user.id,
+          organizationId: metaState.organizationId,
+        })
+      : { kind: "sem-conexao" };
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-col gap-6 p-8">
@@ -73,6 +97,8 @@ export default async function ContaPage({
       <BusinessSection state={state} />
 
       <MetaSection state={metaState} resultado={resultadoMeta} />
+
+      <MetaAssetsSection state={assetState} resultado={resultadoAtivo} />
 
       <SignOutButton />
     </main>
