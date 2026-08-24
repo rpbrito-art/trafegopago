@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-04 AUDITADA E APROVADA — E2E REAL DE DESCONEXÃO AUTORIZADO — AGUARDANDO GATE HUMANO**.
+Status: **E2E REAL DE DESCONEXÃO EXECUTADO UMA VEZ E FALHOU FECHADO — INVESTIGAÇÃO 003A-05 AUTORIZADA**.
 
 Mandato original:
 
@@ -34,17 +34,21 @@ Auditoria/reauditorias:
 
 `rodadas/gpt/AUDITORIA_RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
+Investigação vigente:
+
+`rodadas/gpt/INVESTIGACAO_003A_05_E2E_DESCONEXAO_FALHOU.md`
+
 Branch:
 
 `claude/rodada-003a-meta-connection-foundation`
 
 PR: **#11 draft**.
 
-Head auditado:
+Último head de código auditado antes do gate real:
 
 `8332bec58d14c0e6687f02340cfd5c545b34942d`
 
-CI:
+CI correspondente:
 
 `32751232306` — **verde** em install, lint, typecheck, Edge Functions, testes e build.
 
@@ -52,7 +56,7 @@ Relatório:
 
 `rodadas/claude/RELATORIO_RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
-## 4. Resultado auditado
+## 4. Resultado auditado antes do gate
 
 A auditoria independente confirmou como fechados:
 
@@ -71,46 +75,48 @@ A auditoria independente confirmou como fechados:
 - token válido `USER` usando apenas `/permissions`;
 - token válido de tipo desconhecido/ausente falhando fechado sem tentativa de revogação.
 
-## 5. Estado remoto antes do gate final
+## 5. Gate real de desconexão — resultado observado
 
-Supabase remoto, reconferido em 2026-08-24:
+Em 2026-08-24 o fundador acionou **uma única vez** `Desconectar` pela UI local da conexão `Teste 003A - conexao Meta`.
 
-- migration history = **13**;
-- última migration = `20260823203915`;
-- conexão `Teste 003A - conexao Meta` = **ACTIVE**;
-- `connected_at` = 2026-08-24 01:47:57Z;
-- expiração = 2026-10-23;
-- token type observado no E2E de conexão = `SYSTEM_USER`;
-- referência de segredo presente;
-- segredo correspondente ainda existe no Vault;
-- `disconnected_at` continua nulo.
+Resultado visível:
 
-A conexão está preservada deliberadamente para o gate final.
+- redirect para `/conta?meta=erro`;
+- a UI continuou mostrando **Meta conectada**.
+
+Auditoria GPT imediatamente após a tentativa confirmou no Supabase remoto:
+
+- conexão = **ACTIVE**;
+- `disconnected_at` = nulo;
+- referência de segredo = presente;
+- segredo correspondente = ainda presente no Vault;
+- `external_user_id` e escopos = preservados.
+
+Portanto o fail-closed funcionou: **a tentativa real falhou sem produzir limpeza local enganosa**.
+
+Ainda não está determinado se a falha ocorreu na inspeção inicial, no `oauth/revoke`, na pós-verificação ou em outro ponto do runtime.
 
 ## 6. Próxima ação autorizada
 
-Está autorizado **somente o E2E real de desconexão pelo próprio aplicativo** da conexão `Teste 003A - conexao Meta`.
+Claude Code deve executar **somente a investigação**:
 
-O fluxo esperado é:
+`rodadas/gpt/INVESTIGACAO_003A_05_E2E_DESCONEXAO_FALHOU.md`
 
-1. usuário aciona `Desconectar` no aplicativo;
-2. o servidor lê o token do Vault;
-3. confirma que é `SYSTEM_USER`;
-4. chama o mecanismo `oauth/revoke`;
-5. reinspeciona o mesmo token;
-6. apenas se `is_valid=false`, remove o segredo do Vault e marca a conexão `REVOKED`.
+Objetivo principal: determinar, sem nova mutação externa, se o token Meta está atualmente válido ou inválido e em qual etapa a tentativa anterior falhou.
 
-Se qualquer passo externo falhar ou ficar ambíguo, o aplicativo deve informar falha e preservar a conexão local para nova tentativa.
+Está permitido apenas diagnóstico/read-only conforme o mandato, inclusive `debug_token` somente leitura sem expor credenciais.
 
-Após o clique, o GPT deve auditar o estado remoto antes de qualquer promoção.
+**Não está autorizado:**
 
-**Ainda não autorizado:**
-
+- clicar `Desconectar` novamente;
+- chamar `oauth/revoke` novamente;
+- chamar `/permissions`;
+- revogar pelo painel Meta;
+- limpar estado local;
 - refazer OAuth;
 - selecionar ativos;
-- revogar pelo painel Meta;
 - iniciar 003B;
-- promover 003A antes da auditoria do resultado real.
+- promover 003A.
 
 ## 7. Pendências não bloqueantes
 
