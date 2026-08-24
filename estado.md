@@ -18,228 +18,167 @@ Promovidas: **000–003A**.
 - Fase 1 — Supabase, Auth e Tenancy: **ENCERRADA**.
 - Fase 2 — Operations, Audit, Queues e Segurança Base: **ENCERRADA**.
 - Fase 3 — Meta Connection Foundation: **EM ANDAMENTO**.
+- última rodada promovida: **003A — Meta Connection Foundation**.
+- PR #11: MERGED.
+- merge commit 003A: `546838db8e7ced4e9045c05feb8c7b2f0c476cc2`.
+- CI final 003A: `32772710738` — verde.
 
-Última rodada promovida: **003A — Meta Connection Foundation**.
+A 003A está **EXECUTADA, AUDITADA E PROMOVIDA**. Permanecem canônicos: Facebook Login for Business + Graph API v26.0; token Meta server-side no Vault; OAuth `state` de uso único; membership reconferida; BISU classificado por `client_business_id`; desconexão BISU por remoção da integração em Apps conectados; `190` genérico não prova revogação; assinatura `190/464` só vale no fluxo de remoção externa previamente marcado e com prova composta; E2E real de desconexão 003A concluído.
 
-Promoção 003A:
+## 3. Rodada 003B — EM EXECUÇÃO, NÃO PROMOVIDA
 
-- PR #11 — MERGED;
-- merge commit: `546838db8e7ced4e9045c05feb8c7b2f0c476cc2`;
-- CI final: `32772710738` — verde.
+Mandato: `rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
 
-## 3. Baseline promovido da 003A
+Autorização original: `rodadas/gpt/AUTORIZACAO_003B_EXECUCAO.md`
 
-A 003A está **EXECUTADA, AUDITADA E PROMOVIDA**.
-
-Persistem como decisões:
-
-- Facebook Login for Business + Graph API v26.0;
-- token Meta server-side no Vault;
-- `state` OAuth de uso único e membership reconferida;
-- credencial real classificada como BISU por `client_business_id`;
-- BISU não usa `oauth/revoke`, `/permissions` ou `/access_tokens` como revogação do produto;
-- remoção instalada ocorre em **Configurações do negócio > Apps conectados**;
-- `190` genérico não prova revogação;
-- assinatura `190/464` só vale no fluxo BISU previamente marcado com os controles promovidos;
-- desconexão real foi provada ponta a ponta e o fixture terminou `REVOKED`, sem segredo no Vault.
-
-Supabase após a 003A: 14 migrations.
-
-## 4. Rodada 003B — EM EXECUÇÃO
-
-Mandato:
-
-`rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
-
-Autorização:
-
-`rodadas/gpt/AUTORIZACAO_003B_EXECUCAO.md`
-
-Branch:
-
-`claude/rodada-003b-meta-asset-discovery-selection`
+Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
 PR: **#12 draft**.
 
-HEAD atual observado:
+HEAD de código auditado: `9991ab9b8e22c549bb52b9a0ea7b03ee09f309f8`
 
-`9991ab9b8e22c549bb52b9a0ea7b03ee09f309f8`
+Última CI de código auditado: `32779213462` — verde em install, lint, typecheck, Edge Functions, testes e build.
 
-Última CI de código auditado:
+Executado/auditado na 003B até aqui:
 
-`32779213462` — verde em install, lint, typecheck, Edge Functions, testes e build.
-
-### Executado e comprovado
-
-- migration `20260824210000_create_meta_asset_selection.sql` aplicada depois de checkpoint versionado;
-- histórico remoto = **15 migrations**;
+- migration `20260824210000_create_meta_asset_selection.sql` aplicada;
+- remoto com 15 migrations;
 - `instagram_accounts` e `ad_accounts` presentes;
-- RLS habilitado nas tabelas novas;
-- `authenticated` sem INSERT/UPDATE/DELETE;
-- external ids fora dos grants SELECT de `authenticated`;
-- `select_instagram_account` e `select_ad_account` são `security invoker`, sem EXECUTE para `authenticated`/`anon` e com EXECUTE para `service_role`;
+- RLS/grants/funções de seleção auditados;
 - descoberta/seleção, capabilities e UX implementadas;
-- Correção 003B-01 executada, auditada e aprovada.
+- Correção 003B-01 fail-closed metadata + membership: **EXECUTADA, AUDITADA E APROVADA**;
+- ainda **não promovido**.
 
-Esses itens estão **executados/auditados**, mas a 003B ainda não está promovida.
+## 4. Produto — centralidade de mídia paga corrigida
 
-## 5. Correção 003B-01 — AUDITADA E APROVADA
+Canônico vigente: `docs/01-produto/PAID_MEDIA_CANONICAL.md`
 
-Correção:
+Decisão: `rodadas/gpt/DECISAO_003B_02_MIDIA_PAGA_CENTRAL_E_OAUTH_LIBERADO.md`
 
-`rodadas/gpt/CORRECAO_003B_01_FAIL_CLOSED_METADATA_E_MEMBERSHIP.md`
+Regra atual:
 
-Auditoria:
+- orgânico deve entregar valor e pode existir sozinho por períodos;
+- **mídia paga é pilar central da proposta de crescimento**, não capacidade periférica;
+- todo usuário deve poder evoluir para tráfego pago quando houver motivo estratégico;
+- permissão técnica Ads ≠ criar campanha ≠ aprovar orçamento ≠ gerar gasto;
+- gasto continua exigindo aprovação humana explícita, comando de domínio, idempotência e auditoria.
 
-`rodadas/gpt/AUDITORIA_003B_01_FAIL_CLOSED_METADATA_E_MEMBERSHIP.md`
+Antes da próxima rodada substantiva pós-003B, harmonizar diretamente as formulações antigas conflitantes em `.gpt/PROJECT_PROMPT.md`, `GROWTH_INTELLIGENCE_CANONICAL.md`, `MVP_CANONICAL.md`, `IMPLEMENTATION_ROADMAP.md` e demais canônicos afetados, sem criar rodada apenas de housekeeping.
 
-Resultado:
+## 5. Configuração externa Meta da 003B
 
-- leitura de IG User distingue 2xx com campos opcionais ausentes de 4xx/5xx/rede/corpo ilegível;
-- recusas/falhas sobem como falha de domínio sem candidato gravável;
-- membership é reconferida imediatamente antes da RPC privilegiada de seleção para Instagram e Ad Account.
+App: **Trafego Pago Business Dev** — App ID `2940404272985831`.
 
-## 6. Gate externo da Meta — CONFIGURAÇÃO E ATIVOS PREPARADOS
-
-Registro inicial:
-
-`rodadas/gpt/GATE_003B_CONFIGURACAO_META_CRIADA.md`
-
-No app Meta **Trafego Pago Business Dev** (App ID `2940404272985831`) foi criada:
+Configuração usada pelo produto:
 
 - nome: `Quoron Instagram Dev Login`;
 - Configuration ID: `38307908848822330`;
 - variação: General;
 - token: System-user access token / BISU;
-- ativos da configuração: Pages + Instagram Accounts;
-- permissões inicialmente pretendidas para Instagram/Insights:
-  - `pages_show_list`;
-  - `pages_read_engagement`;
-  - `instagram_basic`;
-  - `instagram_manage_insights`.
+- ativos: Pages + Instagram Accounts.
 
 Configuração histórica da 003A permanece existente e não deve ser apagada antes da promoção da 003B:
 
 - `Trafego Pago Dev Login`;
 - Configuration ID `1549901823029730`.
 
-Ativos reais preparados no portfólio **Quoron**:
+Ativos reais do portfólio **Quoron**:
 
-- Página do Facebook: **Quoron**;
-- conta profissional do Instagram: **@goquoron**;
-- ambos aparecem no fluxo de seleção do Facebook Login for Business.
+- Página Facebook: **Quoron**;
+- Instagram profissional: **@goquoron**;
+- ambos aparecem no Facebook Login for Business.
 
-## 7. Gate local — AUDITADO E APROVADO
+### Diagnóstico de permissões e correção externa
 
-Auditoria:
-
-`rodadas/gpt/AUDITORIA_GATE_003B_CONFIG_LOCAL_PRONTA.md`
-
-Claude executou o gate local autorizado:
-
-- reconciliou a branch com a `main`;
-- atualizou somente o `.env.local` não versionado para `META_LOGIN_CONFIG_ID=38307908848822330`;
-- reiniciou o servidor local;
-- parou antes do OAuth real.
-
-Auditoria independente no Supabase após esse gate:
-
-- conexões `ACTIVE`: **0**;
-- conexão histórica `REVOKED`: **1**;
-- `instagram_accounts`: **0 linhas**;
-- `ad_accounts`: **0 linhas**.
-
-Logo, nenhum OAuth real ocorreu por engano até aquele ponto.
-
-## 8. Correção canônica — centralidade de mídia paga
-
-Canônico vigente:
-
-`docs/01-produto/PAID_MEDIA_CANONICAL.md`
-
-Decisão da rodada:
-
-`rodadas/gpt/DECISAO_003B_02_MIDIA_PAGA_CENTRAL_E_OAUTH_LIBERADO.md`
-
-O fundador corrigiu explicitamente um pressuposto documental anterior.
-
-Regra vigente:
-
-- orgânico deve entregar valor e pode existir sozinho por períodos;
-- **mídia paga é pilar central da proposta de crescimento do produto**, não capacidade periférica;
-- todo usuário deve poder evoluir para tráfego pago quando houver motivo estratégico;
-- não investir agora não significa que a arquitetura deva esconder ou remover capacidade Ads;
-- permissão técnica para Ads não equivale a criar campanha, aprovar orçamento ou gerar gasto;
-- qualquer gasto continua exigindo aprovação humana explícita, comando de domínio, idempotência e auditoria.
-
-O gate histórico:
-
-`rodadas/gpt/GATE_003B_OAUTH_BLOQUEADO_PERMISSOES_ANUNCIOS.md`
-
-permanece apenas como evidência da hipótese anterior. A decisão de bloquear o OAuth por aparecer capacidade de anúncios está **SUPERADA**.
-
-Antes da próxima rodada substantiva depois da 003B, harmonizar diretamente as formulações conflitantes em `.gpt/PROJECT_PROMPT.md`, `GROWTH_INTELLIGENCE_CANONICAL.md`, `MVP_CANONICAL.md`, `IMPLEMENTATION_ROADMAP.md` e demais canônicos afetados. Não criar rodada apenas para housekeeping.
-
-## 9. OAuth real 003B — CONEXÃO ATIVA, ESCOPOS INSTAGRAM AUSENTES
-
-Registro factual:
-
-`rodadas/gpt/GATE_003B_OAUTH_ESCOPO_INSTAGRAM_AUSENTE.md`
-
-No OAuth real mais recente foram selecionados:
-
-- Empresa/portfólio: **Quoron**;
-- Página do Facebook: **Quoron**;
-- Conta profissional do Instagram: **goquoron**;
-- nenhuma conta de anúncios foi selecionada como ativo nesse passo.
-
-A conexão real `655da6e6-9056-456d-a81d-5e2570da5faf` está **ACTIVE** e possui referência de token no Vault.
-
-Escopos efetivamente concedidos pela Meta, auditados no Supabase:
+No primeiro OAuth real 003B, apesar de Página + Instagram terem sido selecionados, o token veio somente com:
 
 - `pages_show_list`;
 - `pages_read_engagement`;
 - `public_profile`.
 
-Escopos necessários do Instagram que **não foram concedidos**:
+Faltaram:
 
-- `instagram_basic` — bloqueia a descoberta de `@goquoron`;
-- `instagram_manage_insights` — necessário para Insights/métricas futuras.
+- `instagram_basic`;
+- `instagram_manage_insights`.
 
-Nenhuma linha foi gravada em `instagram_accounts` ou `ad_accounts`.
+A investigação no Meta for Developers provou que o caso de uso Instagram ainda não estava habilitado no caminho correto. Foi adicionado **Gerenciar mensagens e conteúdo no Instagram**, e distinguimos os dois caminhos:
 
-A mensagem atual da UI `Falta uma autorização` é genérica demais; depois do diagnóstico externo, corrigir UX para informar explicitamente qual capacidade/escopo está faltando sem expor jargão desnecessário ao usuário final.
+- **Instagram Login** / `instagram_business_*` — NÃO é o caminho desta arquitetura;
+- **Instagram API setup with Facebook Login** — caminho correto, compatível com `graph.facebook.com` e com o backend atual.
 
-### Próxima ação autorizada
+O fundador habilitou o setup com Facebook Login e salvou `instagram_basic` + `instagram_manage_insights` na configuração `Quoron Instagram Dev Login`.
 
-Próximo a agir: **GPT + fundador**.
+A configuração externa está, portanto, preparada para novo consentimento. O token já emitido não ganha novos escopos retroativamente.
 
-Abrir no Meta for Developers a configuração `Quoron Instagram Dev Login` e editar **Permissões** para conferir especificamente se `instagram_basic` e `instagram_manage_insights` estão selecionadas.
+## 6. Conexão real atual — PRESERVAR
 
-- Se não estiverem, adicioná-las e salvar.
-- Se já estiverem selecionadas, não repetir OAuth ainda: investigar nível de acesso/use case do app para essas permissões antes de nova tentativa.
+Conexão real atual:
 
-A conexão atual deve permanecer intacta durante esse diagnóstico.
+- id: `655da6e6-9056-456d-a81d-5e2570da5faf`;
+- status: **ACTIVE**;
+- referência de token no Vault: presente;
+- escopos atuais persistidos: `pages_show_list`, `pages_read_engagement`, `public_profile`;
+- `instagram_accounts`: 0 linhas;
+- `ad_accounts`: 0 linhas.
 
-## 10. Continua NÃO autorizado
+Essa conexão deve permanecer intacta até a reautorização controlada.
 
-- desconectar a conexão real atual durante o diagnóstico de escopos;
-- repetir OAuth por tentativa antes de conferir a configuração;
+## 7. Correção 003B-03 — REAUTORIZAÇÃO DE CONEXÃO ATIVA
+
+Planejamento: `rodadas/gpt/CORRECAO_003B_03_REAUTORIZACAO_CONEXAO_ATIVA.md`
+
+Status: **PLANEJADA — AGUARDANDO AUTORIZAÇÃO EXPLÍCITA DO FUNDADOR**.
+
+Diagnóstico técnico já feito pelo GPT:
+
+- o backend **já suporta** reautorização sobre conexão viva;
+- `startMetaAuthorization` cria nova intenção sem destruir a conexão atual;
+- `completeMetaAuthorization` só retoma a conexão depois que a troca de `code` por token já teve sucesso;
+- `begin_meta_connection` reutiliza a linha viva e preserva o token anterior ao entrar em `PENDING`;
+- `activate_meta_connection` substitui token + escopos + identidade + status atomicamente;
+- não é necessária migration nem endpoint novo.
+
+Lacuna encontrada:
+
+- no estado `permissao-faltando`, `MetaAssetsSection` mostra texto para reconectar, mas **não oferece botão de reautorização**.
+
+Delta planejado, ainda não autorizado:
+
+- renderizar `MetaConnectButton` nesse estado com rótulo **Atualizar autorização**;
+- linguagem de negócio, sem expor nomes de escopo;
+- testes focados + regressão;
+- reutilizar integralmente o backend já existente.
+
+## 8. Próxima ação
+
+Próximo a agir: **fundador**.
+
+Se aprovar a Correção 003B-03, responder explicitamente **`autorizo`**.
+
+Somente depois o GPT marca a correção como autorizada e libera o Claude via `/proxima`.
+
+Depois da execução do Claude, o GPT audita antes de qualquer novo OAuth real.
+
+## 9. Continua NÃO autorizado
+
+- desconectar a conexão real atual;
+- remover novamente a integração em Apps conectados;
+- repetir OAuth manualmente antes da Correção 003B-03 ser executada e auditada;
 - Claude alterar painel Meta;
 - apagar a configuração histórica da 003A;
 - criar novo Meta App ID;
-- ampliar permissões adicionais por tentativa fora do fluxo real apresentado;
+- migrar a arquitetura para Instagram Login/`instagram_business_*`;
 - persistir Page Access Token sem decisão arquitetural;
-- criar campanha manualmente por teste;
-- criar anúncios ou gerar gasto;
+- criar campanha, anúncio ou gasto;
 - importar conteúdo do Instagram;
 - iniciar Fase 4;
 - promover/mergear a 003B antes do E2E real, sondas e auditoria final.
 
-## 11. Pendências não bloqueantes
+## 10. Pendências não bloqueantes
 
-- harmonização direta dos canônicos antigos com `PAID_MEDIA_CANONICAL.md` antes da próxima rodada substantiva pós-003B;
-- revisar onboarding final para não depender de configurações manuais desnecessárias no painel da Meta;
+- harmonização dos canônicos antigos com `PAID_MEDIA_CANONICAL.md` antes da próxima rodada substantiva pós-003B;
+- revisar onboarding final para não depender de configurações manuais desnecessárias no painel Meta;
+- melhorar a mensagem `Falta uma autorização` para explicar a capacidade faltante em linguagem de negócio;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
 - leaked-password protection antes de produção;
 - SMTP/domínio de produção;
