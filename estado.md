@@ -78,15 +78,21 @@ Nenhuma conexão Meta ativa ficou aberta por esse fixture.
 - a assinatura `190/464` só vale como pós-condição dentro do fluxo BISU previamente marcado e com os controles da 003A-10;
 - redaction da URL de callback/log continua pendência antes de produção.
 
-## 6. Rodada 003B — planejamento concluído
+## 6. Rodada 003B — AUTORIZADA
 
-Mandato preparado:
+Mandato técnico:
 
 `rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
 
+Autorização explícita do fundador:
+
+`rodadas/gpt/AUTORIZACAO_003B_EXECUCAO.md`
+
 Status da 003B:
 
-**PLANEJADA PELO GPT — AGUARDANDO AUTORIZAÇÃO EXPLÍCITA DO FUNDADOR — NÃO AUTORIZADA PARA CLAUDE CODE**.
+**AUTORIZADA PELO FUNDADOR — CLAUDE CODE PODE INICIAR A EXECUÇÃO — CONFIGURAÇÃO EXTERNA META CONTINUA SOB GATE DO GPT**.
+
+A frase antiga do cabeçalho do mandato que dizia `AGUARDANDO AUTORIZAÇÃO DO FUNDADOR — NÃO EXECUTAR AINDA` está superada exclusivamente por esta autorização e por este `estado.md`; o restante do mandato permanece vigente.
 
 Objetivo:
 
@@ -97,15 +103,13 @@ Objetivo:
 
 ### Decisão de capacidade
 
-A conexão Meta não será monolítica:
-
 - Instagram orgânico/Insights é a capacidade principal;
 - conta de anúncios é ramo opcional;
 - ausência de `ads_read` ou de Ad Account não invalida o Instagram nem bloqueia o caminho orgânico.
 
-### Revalidação Meta 2026-08-24
+### Escopos pretendidos
 
-Para o caminho já escolhido pelo projeto — **Instagram API with Facebook Login + Facebook Login for Business + `graph.facebook.com`** — o planejamento parte de:
+Para o caminho **Instagram API with Facebook Login + Facebook Login for Business + `graph.facebook.com`**:
 
 - `pages_show_list`;
 - `pages_read_engagement`;
@@ -119,47 +123,37 @@ Não solicitar inicialmente:
 - `business_management`;
 - permissões de publicação/comentários/leads.
 
-A documentação atual da Meta registra que Insights pode exigir também `ads_management` + `ads_read` quando o papel sobre a Page vier via Business Manager. Essa condição deve ser **provada no E2E**. Se ocorrer, Claude deve parar para decisão GPT; não ampliar escopos por conta própria.
-
-### Gate externo planejado
-
-Quando a execução for autorizada, o GPT conduzirá a configuração manual na Meta.
-
-Preferência: criar uma nova configuração Facebook Login for Business para a 003B, preservando a configuração histórica da 003A.
-
-Nome interno sugerido: `Quoron Instagram Dev Login`.
-
-Pretendido:
-
-- General;
-- System-user access token/BISU;
-- 60 dias em desenvolvimento;
-- assets Pages + Instagram Accounts + Ad Accounts;
-- permissões mínimas acima.
-
-Se as permissões Instagram não estiverem disponíveis no painel, não criar novo App ID por tentativa; primeiro confirmar/habilitar o produto/use case correto no app atual.
+Se o E2E provar necessidade material de `ads_management`, Page Access Token persistente ou outra ampliação arquitetural, Claude deve parar em `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`.
 
 ## 7. Próxima ação autorizada
 
-**Nenhuma execução pelo Claude está autorizada ainda.**
+Claude Code deve iniciar a 003B via `/proxima`.
 
-Próxima decisão humana: fundador autorizar ou ajustar o mandato `RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`.
+Pode:
 
-Se autorizado, o GPT atualizará este estado para execução e somente então o Claude poderá iniciar a 003B via `/proxima`.
+1. executar preflight não destrutivo;
+2. criar branch/PR próprios da 003B;
+3. implementar o escopo técnico do mandato;
+4. criar migrations/testes/provas proporcionais ao risco;
+5. avançar até o ponto em que configuração externa Meta ou OAuth real sejam necessários.
+
+Ao chegar ao gate externo, deve parar e devolver fatos objetivos ao GPT.
+
+O fundador não deve alterar nada manualmente na Meta até instrução do GPT.
 
 ## 8. Continua NÃO autorizado
 
-Até autorização explícita da 003B:
+Mesmo com a 003B autorizada, continua proibido ao Claude/fundador sem novo gate GPT:
 
-- Claude iniciar a 003B;
-- novo OAuth;
-- criar/alterar configuração Meta para a 003B;
+- criar/alterar configuração Facebook Login for Business no painel Meta por conta própria;
 - adicionar permissões por tentativa;
-- novo Meta App ID;
-- selecionar/remover/reassociar ativos no painel Meta;
+- criar novo Meta App ID;
+- executar novo OAuth real antes do gate;
+- selecionar/remover/reassociar ativos manualmente no painel Meta sem instrução;
+- persistir Page Access Token sem decisão arquitetural;
+- solicitar `ads_management` ou `business_management` automaticamente;
 - criar anúncios ou gerar gasto;
 - importar conteúdo do Instagram;
-- persistir Page Access Token;
 - iniciar Fase 4.
 
 ## 9. Pendências não bloqueantes
