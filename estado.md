@@ -61,11 +61,11 @@ Branch:
 
 PR: **#12 draft**.
 
-HEAD atual auditado:
+HEAD atual observado:
 
-`77f7c8288208b5b97fe0367ef48c6ad08b1329dd`
+`9991ab9b8e22c549bb52b9a0ea7b03ee09f309f8`
 
-CI:
+Última CI de código auditado:
 
 `32779213462` — verde em install, lint, typecheck, Edge Functions, testes e build.
 
@@ -74,15 +74,14 @@ CI:
 - migration `20260824210000_create_meta_asset_selection.sql` aplicada depois de checkpoint versionado;
 - histórico remoto = **15 migrations**;
 - `instagram_accounts` e `ad_accounts` presentes;
-- zero linhas residuais nas duas tabelas antes do E2E;
-- zero conexões Meta `ACTIVE` antes do novo E2E;
 - RLS habilitado nas tabelas novas;
 - `authenticated` sem INSERT/UPDATE/DELETE;
 - external ids fora dos grants SELECT de `authenticated`;
 - `select_instagram_account` e `select_ad_account` são `security invoker`, sem EXECUTE para `authenticated`/`anon` e com EXECUTE para `service_role`;
-- descoberta/seleção, capabilities e UX implementadas.
+- descoberta/seleção, capabilities e UX implementadas;
+- Correção 003B-01 executada, auditada e aprovada.
 
-Esses itens estão **executados**, mas a 003B ainda não está promovida.
+Esses itens estão **executados/auditados**, mas a 003B ainda não está promovida.
 
 ## 5. Correção 003B-01 — AUDITADA E APROVADA
 
@@ -94,85 +93,81 @@ Auditoria:
 
 `rodadas/gpt/AUDITORIA_003B_01_FAIL_CLOSED_METADATA_E_MEMBERSHIP.md`
 
-Status:
+Resultado:
 
-**003B-01 EXECUTADA, AUDITADA E APROVADA**.
+- leitura de IG User distingue 2xx com campos opcionais ausentes de 4xx/5xx/rede/corpo ilegível;
+- recusas/falhas sobem como falha de domínio sem candidato gravável;
+- membership é reconferida imediatamente antes da RPC privilegiada de seleção para Instagram e Ad Account.
 
-### Resultado A — metadata IG fail-closed
-
-`lerMetadadosInstagram` distingue:
-
-- 2xx com campos opcionais ausentes → candidato válido com campos nulos;
-- 4xx/5xx, rede quebrada ou corpo ilegível → falha de domínio sanitizada, sem candidato gravável e sem RPC de seleção.
-
-Uma conta ilegível derruba a descoberta inteira; não há lista parcial que esconda o problema.
-
-### Resultado B — membership temporal
-
-`selectInstagramAccount` e `selectAdAccount` reconferem membership imediatamente antes da RPC privilegiada, depois das chamadas externas.
-
-Se a membership cair durante a redescoberta, nenhuma seleção é persistida.
-
-## 6. Estado remoto atual
-
-Supabase:
-
-- 15 migrations;
-- `20260824210000` aplicada;
-- `instagram_accounts`: 0 linhas antes do E2E;
-- `ad_accounts`: 0 linhas antes do E2E;
-- conexões Meta `ACTIVE`: 0 antes do E2E.
-
-Nenhum novo OAuth da 003B foi feito e nenhum token novo está ativo.
-
-## 7. Gate externo da Meta — CONFIGURAÇÃO CRIADA
+## 6. Gate externo da Meta — CONFIGURAÇÃO CRIADA
 
 Registro:
 
 `rodadas/gpt/GATE_003B_CONFIGURACAO_META_CRIADA.md`
 
-No app Meta **Trafego Pago Business Dev** (App ID `2940404272985831`) foi criada a nova configuração da 003B:
+No app Meta **Trafego Pago Business Dev** (App ID `2940404272985831`) foi criada:
 
 - nome: `Quoron Instagram Dev Login`;
 - Configuration ID: `38307908848822330`;
 - variação: General;
 - token: System-user access token / BISU;
 - ativos obrigatórios: Pages + Instagram Accounts;
-- configuração de anúncios não foi tornada obrigatória;
-- permissões da configuração orgânica/Insights:
+- permissões:
   - `pages_show_list`;
   - `pages_read_engagement`;
   - `instagram_basic`;
   - `instagram_manage_insights`.
 
-Decisão refinada no gate: **`ads_read` não entra nesta configuração orgânica**, porque toda permissão selecionada nessa tela é obrigatória no login. Obrigar `ads_read` violaria o contrato de produto de que mídia paga é opcional. A capacidade de anúncios será autorizada separadamente quando houver necessidade real.
+`ads_read` ficou fora por decisão de produto/gate: nessa configuração as permissões escolhidas são obrigatórias, e mídia paga continua opcional.
 
-Configuração histórica da 003A permanece existente:
+Configuração histórica da 003A permanece existente e não deve ser apagada antes da promoção da 003B:
 
 - `Trafego Pago Dev Login`;
 - Configuration ID `1549901823029730`.
 
-Ela não deve ser usada pela 003B e **não deve ser apagada antes da promoção da 003B**; fica como referência histórica/rollback.
+## 7. Gate local — AUDITADO E APROVADO
+
+Auditoria:
+
+`rodadas/gpt/AUDITORIA_GATE_003B_CONFIG_LOCAL_PRONTA.md`
+
+Claude executou o gate local autorizado:
+
+- reconciliou a branch com a `main`;
+- atualizou somente o `.env.local` não versionado para `META_LOGIN_CONFIG_ID=38307908848822330`;
+- reiniciou o servidor local;
+- parou antes do OAuth real.
+
+Auditoria independente no Supabase após esse gate:
+
+- conexões `ACTIVE`: **0**;
+- conexão histórica `REVOKED`: **1**;
+- `instagram_accounts`: **0 linhas**;
+- `ad_accounts`: **0 linhas**.
+
+Logo, nenhum OAuth real ocorreu por engano.
 
 ## 8. Próxima ação autorizada
 
-Próximo a agir: **Claude Code**.
+Próximo a agir: **GPT + fundador**.
 
-Pode executar somente o gate local:
+OAuth real da 003B está **LIBERADO**.
 
-1. trazer a `main` atual para a branch 003B se necessário;
-2. atualizar no arquivo local não versionado `.env.local` apenas `META_LOGIN_CONFIG_ID=38307908848822330`;
-3. confirmar sem imprimir segredos que o novo ID foi reconhecido;
-4. iniciar/reiniciar o servidor local se necessário;
-5. parar antes do OAuth real em `003B — CONFIGURAÇÃO LOCAL PRONTA — AGUARDANDO OAUTH REAL CONDUZIDO PELO GPT`.
+Fluxo autorizado:
 
-Depois disso, o GPT conduzirá o fundador no novo OAuth real e na seleção do Instagram.
+1. abrir `http://localhost:3000/conta`;
+2. clicar em `Conectar a Meta` uma única vez;
+3. no diálogo Meta, usar a configuração nova e selecionar o portfólio/ativos de teste correspondentes ao negócio Quoron quando solicitados;
+4. selecionar a Página e a conta profissional do Instagram do negócio quando a Meta apresentar os ativos;
+5. não autorizar conta de anúncios nem permissões extras se aparecerem fora do fluxo esperado;
+6. concluir o login e retornar ao Tráfego Pago;
+7. parar antes de escolher o Instagram dentro do Tráfego Pago se houver qualquer ambiguidade/erro; devolver a tela ao GPT.
+
+Após o callback, o GPT audita a nova conexão `ACTIVE`, os escopos realmente concedidos e a descoberta antes de liberar a seleção final e as sondas read-only.
 
 ## 9. Continua NÃO autorizado
 
-Até o próximo gate:
-
-- Claude alterar novamente o painel Meta;
+- Claude alterar painel Meta;
 - apagar a configuração histórica da 003A;
 - criar novo Meta App ID;
 - ampliar permissões por tentativa;
