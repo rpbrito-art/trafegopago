@@ -57,7 +57,12 @@ export type DisconnectResult =
   | { ok: true }
   | {
       ok: false;
-      reason: "NOT_FOUND" | "NO_MEMBERSHIP" | "PROVIDER_REVOKE_FAILED" | "UNAVAILABLE";
+      reason:
+        | "NOT_FOUND"
+        | "NO_MEMBERSHIP"
+        | "TOKEN_READ_FAILED"
+        | "PROVIDER_REVOKE_FAILED"
+        | "UNAVAILABLE";
     };
 
 /**
@@ -278,9 +283,25 @@ export async function disconnectMeta(input: {
 
   // O token sai do Vault apenas aqui, no servidor, para apresentar à Meta. Não
   // é logado, não é retornado e não sobrevive a esta função.
-  const { data: token } = await supabase.rpc("read_meta_connection_token", {
-    p_connection_id: conexao.id,
-  });
+  const { data: token, error: erroLeitura } = await supabase.rpc(
+    "read_meta_connection_token",
+    { p_connection_id: conexao.id },
+  );
+
+  // Falha ao LER o token não é o mesmo que "não há token". A RPC devolve
+  // `data: null` nos dois casos, e confundi-los seria fatal: seguiríamos para a
+  // revogação local achando que não havia credencial, deixando a autorização
+  // viva na Meta e sem nenhuma referência para revogá-la depois.
+  //
+  // Diante de erro de leitura, nada é limpo. A conexão permanece como está e a
+  // desconexão pode ser tentada de novo.
+  if (erroLeitura) {
+    console.error("falha ao ler token para revogacao", {
+      connectionId: conexao.id,
+      code: erroLeitura.code,
+    });
+    return { ok: false, reason: "TOKEN_READ_FAILED" };
+  }
 
   if (typeof token === "string" && token.length > 0) {
     const revogacao = await revokeOnMeta({
@@ -295,8 +316,9 @@ export async function disconnectMeta(input: {
     if (!revogacao.ok) return { ok: false, reason: "PROVIDER_REVOKE_FAILED" };
   }
 
-  // Sem token não há o que revogar remotamente: a conexão nunca chegou a ter
-  // credencial (`PENDING`) ou já a perdeu. A limpeza local segue.
+  // Chegando aqui, a leitura funcionou e devolveu vazio: a conexão realmente não
+  // tem credencial — nunca chegou a ter (`PENDING`) ou já a perdeu. Só neste
+  // caso a limpeza local segue sem revogação remota.
   const { error } = await supabase.rpc("revoke_meta_connection", {
     p_connection_id: conexao.id,
   });

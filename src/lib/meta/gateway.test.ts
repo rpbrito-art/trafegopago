@@ -76,6 +76,7 @@ const supabaseFalso = {
     if (fn === "begin_meta_connection") return { data: CONN, error: null };
     if (fn === "read_meta_connection_token") return { data: tokenNoVault, error: null };
 
+
     return { data: null, error: null };
   }),
 };
@@ -426,6 +427,34 @@ describe("disconnectMeta", () => {
 
     expect(r).toEqual({ ok: true });
     expect(rpcUsados()).toContain("revoke_meta_connection");
+  });
+
+  it("erro ao LER o token não conclui a desconexão nem limpa o local", async () => {
+    // O buraco que a reauditoria encontrou: a RPC devolve `data: null` tanto
+    // para "não há token" quanto para "falhou ao ler". Tratar os dois igual
+    // limparia o estado local deixando a autorização viva na Meta — e sem
+    // nenhuma referência para revogá-la depois.
+    erroRpc = { read_meta_connection_token: { code: "42501" } };
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: false, reason: "TOKEN_READ_FAILED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    expect(chamouMeta()).toBe(false);
+  });
+
+  it("erro de leitura é distinguido de ausência de token", async () => {
+    // Mesma resposta `null` da RPC, desfechos opostos: um preserva a conexão,
+    // o outro pode limpá-la.
+    erroRpc = { read_meta_connection_token: { code: "XX000" } };
+    const comErro = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    erroRpc = {};
+    tokenNoVault = null;
+    const semToken = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(comErro).toEqual({ ok: false, reason: "TOKEN_READ_FAILED" });
+    expect(semToken).toEqual({ ok: true });
   });
 
   it("conexão sem token pula a revogação remota e limpa o local", async () => {

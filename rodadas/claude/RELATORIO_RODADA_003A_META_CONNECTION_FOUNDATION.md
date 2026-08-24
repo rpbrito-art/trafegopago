@@ -32,7 +32,7 @@ para `service_role`.
 Migration `20260823203915` — histórico **13**, local == remoto, sem editar migration
 anterior.
 
-**Provas do delta:** 74 testes em `src/lib/meta` — cross-tenant recusado, membership sumida
+**Provas do delta:** 76 testes em `src/lib/meta` — cross-tenant recusado, membership sumida
 no meio do fluxo, replay após negado, corrida de consumo, ausência de `upsert`, falha de
 ativação sem sucesso e ordem segura da revogação. Lint, typecheck e build verdes.
 
@@ -75,6 +75,17 @@ para `USER`. Tipo desconhecido segue pelo caminho de usuário, que falha fechado
 presumir system user e completar sem revogar. Token já inválido conta como revogado.
 
 **Não provado ponta a ponta:** validar `oauth/revoke` exige revogar a conexão existente.
+
+### Bloqueio da reauditoria — leitura do Vault falhando em aberto
+
+`disconnectMeta` desestruturava apenas `data` de `read_meta_connection_token`. A RPC devolve
+`data: null` tanto para "não há token" quanto para "falhou ao ler" — e o código tratava os
+dois igual: pulava a revogação remota e **executava a revogação local**, deixando a
+autorização possivelmente viva na Meta e sem referência para revogá-la depois.
+
+Corrigido: erro de leitura agora retorna `TOKEN_READ_FAILED`, sem chamar a Meta e sem tocar
+o estado local. Só a leitura bem-sucedida que devolve vazio autoriza a limpeza. Dois testes
+cobrem isso, um deles comparando explicitamente os dois desfechos da mesma resposta `null`.
 
 ## Investigação 2 — por que `ads_*` e `business_management` não vieram
 

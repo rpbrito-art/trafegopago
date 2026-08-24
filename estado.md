@@ -92,6 +92,12 @@ Conexão real concluída pelo fluxo completo (UI → diálogo Meta → callback)
 
 **Corrigido por delta:** a desconexão inspeciona o tipo via `debug_token` e escolhe o caminho (`oauth/revoke` para SYSTEM_USER, `/permissions` para USER); tipo desconhecido segue pelo caminho conservador que falha fechado. **Não provado ponta a ponta** — validar exige revogar a conexão existente.
 
+### Bloqueio da reauditoria — corrigido
+
+`disconnectMeta` ignorava o erro de `read_meta_connection_token`. Como a RPC devolve `data: null` tanto para "sem token" quanto para "falha de leitura", uma falha seria lida como ausência de credencial: a revogação remota era pulada e a **local executada**, deixando a autorização possivelmente ativa na Meta.
+
+Agora erro de leitura retorna `TOKEN_READ_FAILED`, sem chamar a Meta e sem alterar estado local. Apenas leitura bem-sucedida com retorno vazio autoriza a limpeza. Dois testes novos cobrem o caso, incluindo a comparação direta entre os dois desfechos da mesma resposta `null`. Total: **76 testes**.
+
 ### Investigação 2 — escopos ausentes
 
 A hipótese de App Review/restrição de publicidade **estava errada**. Leituras na Graph API: `me/assigned_pages` = 0, `me/accounts` = 0, `me/adaccounts` 403 `Missing Permissions`, `me/businesses` 400 `Missing Permission`. **Nenhum ativo foi selecionado no diálogo OAuth** — e a Meta condiciona permissões de ativo à seleção. O app está em desenvolvimento (`app_type: 0`), onde o administrador dispensa App Review, o que reforça o diagnóstico. Confirmar exige refazer o diálogo, o que substituiria a conexão atual.
