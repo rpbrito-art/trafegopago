@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-08 AUDITADA E APROVADA — GATE HUMANO DE DESCONEXÃO BISU AUTORIZADO — 003A AINDA NÃO PROMOVIDA**.
+Status: **003A-08 AUDITADA E APROVADA — GATE HUMANO BISU EM EXECUÇÃO — PASSO LOCAL APROVADO — PRÓXIMO PASSO: IDENTIFICAR O APP CORRETO EM CONNECTED APPS — 003A AINDA NÃO PROMOVIDA**.
 
 Mandato original:
 
@@ -57,7 +57,7 @@ Relatório:
 
 `rodadas/claude/RELATORIO_RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
-## 4. Estado comprovado da conexão real antes do gate
+## 4. Estado comprovado da conexão real durante o gate
 
 A conexão `Teste 003A - conexao Meta` permanece preservada:
 
@@ -69,6 +69,16 @@ A conexão `Teste 003A - conexao Meta` permanece preservada:
 - token previamente reconfirmado como `is_valid=true`;
 - credencial real classificada como BISU por `client_business_id`;
 - `external_user_id=122103866379446065`.
+
+Em 2026-08-24, após a aprovação da 003A-08, o fundador clicou `Desconectar` uma vez no Tráfego Pago local. Resultado auditado:
+
+- URL `/conta?meta=externo`;
+- UI mostrou `Falta concluir na Meta`;
+- instrução `Integrações > Aplicativos conectados`;
+- botão `Já removi — verificar`;
+- Supabase permaneceu intacto: `ACTIVE`, `disconnected_at` nulo, referência e segredo no Vault presentes.
+
+Portanto o primeiro passo do gate humano passou: o produto entrou no fluxo guiado sem executar mutação externa nem limpeza local.
 
 ## 5. Decisão arquitetural BISU — FECHADA
 
@@ -100,24 +110,30 @@ Não existe bloqueio de código material conhecido restante antes do gate humano
 
 ## 7. Próxima ação autorizada
 
-O GPT conduz o **E2E REAL DE DESCONEXÃO BISU**, uma ação manual por vez.
+O GPT continua conduzindo o **E2E REAL DE DESCONEXÃO BISU**, uma ação manual por vez.
 
-Sequência autorizada:
+Próximo passo autorizado:
 
-1. no Tráfego Pago local, clicar `Desconectar` uma vez;
-2. auditar que a UI apenas mostra a orientação externa e que o Supabase continua intacto;
-3. somente depois, o GPT orientará a remoção do aplicativo no ambiente Meta em `Configurações do negócio > Integrações > Aplicativos conectados`;
-4. depois da remoção externa, usar `Já removi — verificar`;
-5. GPT audita a pós-condição real: token inválido, segredo removido, conexão `REVOKED`, `disconnected_at` preenchido.
+1. abrir as configurações do negócio Meta;
+2. navegar até `Integrações > Aplicativos conectados`;
+3. identificar visualmente o aplicativo correspondente à integração atual;
+4. **não remover ainda** até o GPT confirmar o alvo a partir da tela mostrada pelo fundador.
+
+Depois da confirmação do alvo pelo GPT:
+
+- remover o aplicativo correto;
+- voltar ao Tráfego Pago local;
+- clicar `Já removi — verificar`;
+- GPT audita a pós-condição real: token inválido, segredo removido, conexão `REVOKED`, `disconnected_at` preenchido.
 
 A promoção da 003A só pode ocorrer depois desse gate real passar integralmente.
 
 ## 8. Continua NÃO autorizado
 
-Até o GPT conduzir cada passo do gate:
+Até o GPT confirmar visualmente o aplicativo correto em Connected apps:
 
-- não remover o app da Meta antecipadamente;
-- não clicar `Já removi — verificar` antes da remoção externa;
+- não remover nenhum aplicativo da Meta;
+- não clicar `Já removi — verificar`;
 - não chamar `oauth/revoke`;
 - não chamar `/permissions` ou `/access_tokens` para o BISU;
 - não refazer OAuth;
