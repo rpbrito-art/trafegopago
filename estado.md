@@ -112,7 +112,7 @@ No app Meta **Trafego Pago Business Dev** (App ID `2940404272985831`) foi criada
 - variação: General;
 - token: System-user access token / BISU;
 - ativos da configuração: Pages + Instagram Accounts;
-- permissões inicialmente configuradas para Instagram/Insights:
+- permissões inicialmente pretendidas para Instagram/Insights:
   - `pages_show_list`;
   - `pages_read_engagement`;
   - `instagram_basic`;
@@ -180,41 +180,51 @@ permanece apenas como evidência da hipótese anterior. A decisão de bloquear o
 
 Antes da próxima rodada substantiva depois da 003B, harmonizar diretamente as formulações conflitantes em `.gpt/PROJECT_PROMPT.md`, `GROWTH_INTELLIGENCE_CANONICAL.md`, `MVP_CANONICAL.md`, `IMPLEMENTATION_ROADMAP.md` e demais canônicos afetados. Não criar rodada apenas para housekeeping.
 
-## 9. OAuth real 003B — EM ANDAMENTO
+## 9. OAuth real 003B — CONEXÃO ATIVA, ESCOPOS INSTAGRAM AUSENTES
 
-No fluxo real atual foram selecionados:
+Registro factual:
+
+`rodadas/gpt/GATE_003B_OAUTH_ESCOPO_INSTAGRAM_AUSENTE.md`
+
+No OAuth real mais recente foram selecionados:
 
 - Empresa/portfólio: **Quoron**;
 - Página do Facebook: **Quoron**;
-- Conta do Instagram: **goquoron**;
+- Conta profissional do Instagram: **goquoron**;
 - nenhuma conta de anúncios foi selecionada como ativo nesse passo.
 
-A tela final de consentimento informa também capacidade relacionada a gerenciamento/leitura de anúncios. Após a correção canônica acima, isso **não bloqueia o fluxo** por si só.
+A conexão real `655da6e6-9056-456d-a81d-5e2570da5faf` está **ACTIVE** e possui referência de token no Vault.
+
+Escopos efetivamente concedidos pela Meta, auditados no Supabase:
+
+- `pages_show_list`;
+- `pages_read_engagement`;
+- `public_profile`.
+
+Escopos necessários do Instagram que **não foram concedidos**:
+
+- `instagram_basic` — bloqueia a descoberta de `@goquoron`;
+- `instagram_manage_insights` — necessário para Insights/métricas futuras.
+
+Nenhuma linha foi gravada em `instagram_accounts` ou `ad_accounts`.
+
+A mensagem atual da UI `Falta uma autorização` é genérica demais; depois do diagnóstico externo, corrigir UX para informar explicitamente qual capacidade/escopo está faltando sem expor jargão desnecessário ao usuário final.
 
 ### Próxima ação autorizada
 
-Próximo a agir: **fundador**.
+Próximo a agir: **GPT + fundador**.
 
-Na tela atual de consentimento da Meta, clicar **Confirmar**.
+Abrir no Meta for Developers a configuração `Quoron Instagram Dev Login` e editar **Permissões** para conferir especificamente se `instagram_basic` e `instagram_manage_insights` estão selecionadas.
 
-Depois:
+- Se não estiverem, adicioná-las e salvar.
+- Se já estiverem selecionadas, não repetir OAuth ainda: investigar nível de acesso/use case do app para essas permissões antes de nova tentativa.
 
-1. permitir que a Meta conclua e redirecione sozinha para `http://localhost:3000/conta`;
-2. não iniciar campanha, não escolher conta de anúncios manualmente e não gerar gasto;
-3. ao retornar ao Tráfego Pago, **não clicar ainda em `Usar esta conta`** se o botão aparecer;
-4. devolver a tela ao GPT.
-
-O GPT então audita no Supabase:
-
-- nova conexão `ACTIVE`;
-- escopos realmente concedidos;
-- presença do token no Vault sem exposição;
-- descoberta da Página/Instagram;
-- qualquer capacidade Ads efetivamente concedida;
-- antes de liberar seleção do Instagram e sondas read-only.
+A conexão atual deve permanecer intacta durante esse diagnóstico.
 
 ## 10. Continua NÃO autorizado
 
+- desconectar a conexão real atual durante o diagnóstico de escopos;
+- repetir OAuth por tentativa antes de conferir a configuração;
 - Claude alterar painel Meta;
 - apagar a configuração histórica da 003A;
 - criar novo Meta App ID;
@@ -229,6 +239,7 @@ O GPT então audita no Supabase:
 ## 11. Pendências não bloqueantes
 
 - harmonização direta dos canônicos antigos com `PAID_MEDIA_CANONICAL.md` antes da próxima rodada substantiva pós-003B;
+- revisar onboarding final para não depender de configurações manuais desnecessárias no painel da Meta;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
 - leaked-password protection antes de produção;
 - SMTP/domínio de produção;
