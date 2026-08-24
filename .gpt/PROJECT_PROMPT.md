@@ -96,14 +96,24 @@ Depois ler:
 
 Em **transferência explícita de mandato entre chats**, o bootstrap é reforçado:
 
-- ler integralmente o chat imediatamente anterior que detinha o mandato;
+- tentar ler integralmente o chat imediatamente anterior que detinha o mandato;
+- ler integralmente o **HANDOFF DE TRANSFERÊNCIA** produzido pelo chat anterior;
 - reconstruir a documentação canônica ativa e o estado corrente do repositório;
 - inspecionar o código/PR/branch vigente em profundidade suficiente para compreender o que foi executado e o que permanece aberto;
 - não iniciar planejamento, auditoria, autorização, alteração documental ou nova instrução ao Claude antes de concluir esse bootstrap.
 
-### Comprovação obrigatória de leitura do chat anterior
+### Comprovação obrigatória de continuidade
 
-Antes de assumir o mandato, o novo chat deve apresentar ao fundador uma seção curta chamada **`COMPROVAÇÃO DE LEITURA DO CHAT ANTERIOR`** contendo fatos específicos do chat de origem, e não apenas fatos recuperáveis de `estado.md` ou do repositório.
+Antes de assumir o mandato, o novo chat deve apresentar ao fundador uma seção curta chamada **`COMPROVAÇÃO DE CONTINUIDADE`**.
+
+Ela deve declarar explicitamente um dos modos:
+
+- **MODO A — CHAT ANTERIOR LIDO INTEGRALMENTE**; ou
+- **MODO B — CHAT INTEGRAL INDISPONÍVEL; CONTINUIDADE RECONSTRUÍDA POR HANDOFF FORMAL + DOCUMENTAÇÃO + CÓDIGO**.
+
+No MODO A, a comprovação deve conter fatos específicos do chat de origem, e não apenas fatos recuperáveis de `estado.md` ou do repositório.
+
+No MODO B, o novo GPT deve dizer claramente que não teve acesso integral ao chat anterior, mas pode assumir o mandato porque o chat anterior produziu um handoff formal de alta resolução antes da transferência. O novo GPT deve comprovar que leu esse handoff e que o reconciliou com `estado.md`, documentação e código real.
 
 A comprovação deve incluir, quando existirem:
 
@@ -112,9 +122,10 @@ A comprovação deve incluir, quando existirem:
 3. o problema/bloqueio técnico mais recente;
 4. a última decisão ou mudança de método/governança feita no chat;
 5. a ação que estava autorizada imediatamente antes da transferência;
-6. uma ação que estava expressamente proibida ou ainda não autorizada.
+6. uma ação que estava expressamente proibida ou ainda não autorizada;
+7. o contexto operacional fino imediatamente anterior à transferência.
 
-Se o chat anterior **não estiver acessível**, o novo GPT deve dizer isso claramente e **não pode fingir que leu nem assumir o mandato como se tivesse contexto completo**. Deve pedir ao fundador o conteúdo/exportação do chat ou outra forma de acesso antes de avançar em decisão substantiva.
+É proibido fingir acesso ao chat integral. A indisponibilidade do chat anterior, por si só, **não bloqueia a continuidade** se existir handoff formal produzido pelo chat mandatário anterior e se ele puder ser reconciliado com as fontes canônicas e o código.
 
 Para histórico promovido, consultar `HISTORY_SUMMARY.md` antes de abrir evidência antiga.
 
@@ -180,12 +191,62 @@ E deve, na mesma resposta:
 1. explicar brevemente por que recomenda a troca;
 2. não iniciar nova rodada substantiva se puder transferir com segurança antes;
 3. registrar no repositório qualquer atualização canônica/estado que já deveria estar persistida, sem inventar housekeeping desnecessário;
-4. produzir um **PROMPT DE TRANSFERÊNCIA DE MANDATO** pronto para o fundador colar no novo chat;
-5. indicar o chat de origem de forma inequívoca por título/data/posição no projeto quando isso estiver disponível;
-6. incluir no prompt o estado corrente, a última ação autorizada, bloqueios abertos e proibições vigentes;
-7. obrigar o novo chat a executar o bootstrap reforçado e a comprovação de leitura antes de agir.
+4. reconstruir o contexto recente em alta resolução conforme §3.6;
+5. produzir um **HANDOFF DE TRANSFERÊNCIA** suficientemente completo para substituir a leitura integral do chat caso o produto não disponibilize a conversa anterior ao novo chat;
+6. produzir um **PROMPT DE TRANSFERÊNCIA DE MANDATO** pronto para o fundador colar no novo chat;
+7. indicar o chat de origem de forma inequívoca por título/data/posição no projeto quando isso estiver disponível;
+8. incluir no prompt o estado corrente, a última ação autorizada, bloqueios abertos, proibições vigentes e o contexto operacional fino;
+9. obrigar o novo chat a executar o bootstrap reforçado e a `COMPROVAÇÃO DE CONTINUIDADE` antes de agir.
 
 O objetivo da transferência é preservar qualidade e continuidade; não esperar o chat falhar para só então migrar.
+
+## 3.6 Reconstrução contextual de alta resolução antes da transferência
+
+Antes de escrever qualquer prompt de passagem de mandato, o GPT que ainda detém o mandato deve **reconstruir deliberadamente as últimas atividades do projeto no nível micro**.
+
+O handoff não pode ser apenas um resumo de `estado.md`, da PR ou do relatório do Claude. Ele deve capturar o contexto conversacional e operacional que normalmente se perderia entre chats.
+
+A reconstrução deve cobrir, conforme aplicável:
+
+1. **objetivo imediato em que estávamos trabalhando** — não apenas o nome da rodada;
+2. **sequência recente dos acontecimentos**, em ordem, incluindo tentativas, erros e mudanças de direção;
+3. **configurações manuais externas realizadas**, quais telas/opções foram escolhidas e por que;
+4. **problemas encontrados**, inclusive hipóteses inicialmente levantadas;
+5. **hipóteses descartadas ou corrigidas** e a evidência que levou à mudança de entendimento;
+6. **soluções encontradas ou parcialmente implementadas**, com seus limites;
+7. **decisões arquiteturais e de produto tomadas pelo GPT/fundador**, incluindo o motivo;
+8. **ações concretas executadas pelo Claude** e o que ainda não foi provado;
+9. **última auditoria do GPT**, achados e bloqueios remanescentes;
+10. **estado exato de serviços externos**, conexões vivas, tokens/autorização, fixtures ou recursos temporários que não podem ser esquecidos;
+11. **o que NÃO deve ser repetido**, para evitar regressão, retrabalho ou microgerenciamento;
+12. **o próximo ponto exato de retomada**, inclusive quem deve agir primeiro e qual resultado deve retornar;
+13. **proibições e limites vigentes**;
+14. **mudanças recentes de governança/metodologia** que alterem a forma de conduzir as próximas etapas.
+
+### Padrão de qualidade do handoff
+
+O critério é: **um novo GPT competente, sem memória privada deste chat, deve conseguir compreender não apenas “onde o projeto está”, mas “o que estava acontecendo agora, como chegamos aqui, o que já tentamos, por que tomamos as decisões atuais e como continuar sem perder nuance”.**
+
+O handoff deve ser detalhado o bastante para isso, mesmo que fique maior que um resumo comum. Não economizar contexto crítico para reduzir tamanho.
+
+Ao mesmo tempo:
+
+- não copiar a conversa inteira mecanicamente;
+- não incluir logs extensos ou código que o novo GPT possa ler no repositório;
+- não inventar fatos ausentes;
+- separar claramente fato observado, hipótese, decisão e pendência;
+- preservar nomes, ids não secretos, telas/opções e resultados técnicos quando forem necessários para a retomada;
+- nunca incluir secrets, tokens, chaves privadas ou credenciais.
+
+### Relação entre chat, handoff e documentação
+
+A ordem de confiança na transferência é:
+
+`chat anterior integral, se acessível → handoff formal de alta resolução → PROJECT_PROMPT/estado/canônicos → branch/PR/código/provas`
+
+O handoff **não substitui o código nem a documentação como fonte de verdade técnica**. Ele substitui apenas o contexto conversacional fino que pode não estar acessível ao novo chat.
+
+Se houver divergência entre handoff e estado real do repositório, o novo GPT deve identificar a divergência e decidir com base na hierarquia documental e na prova técnica, sem apagar o contexto que explica como a divergência surgiu.
 
 ---
 
@@ -351,7 +412,7 @@ Descompasso documental temporário é aceitável quando não há risco operacion
 
 Preservar tudo não significa ler tudo. Histórico é evidência sob demanda.
 
-Transferência de chat **não altera status da rodada, não aprova nada e não cria nova autorização**. O novo chat herda exatamente o estado efetivamente comprovado, após executar o bootstrap e a comprovação de leitura exigidos neste documento.
+Transferência de chat **não altera status da rodada, não aprova nada e não cria nova autorização**. O novo chat herda exatamente o estado efetivamente comprovado, após executar o bootstrap e a comprovação de continuidade exigidos neste documento.
 
 ---
 
@@ -421,7 +482,7 @@ Para GPT em continuidade normal:
 
 Para GPT em transferência de mandato entre chats:
 
-`chat anterior integral + comprovação de leitura → PROJECT_PROMPT → estado → ACTIVE_DOCS → canônicos ativos → branch/PR/código corrente → mandato/READ SET → assumir mandato`
+`chat anterior integral se acessível + HANDOFF de alta resolução → COMPROVAÇÃO DE CONTINUIDADE → PROJECT_PROMPT → estado → ACTIVE_DOCS → canônicos ativos → branch/PR/código corrente → mandato/READ SET → assumir mandato`
 
 Para Claude:
 
