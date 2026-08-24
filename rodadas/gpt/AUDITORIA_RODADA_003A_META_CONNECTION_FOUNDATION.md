@@ -1,10 +1,10 @@
 # AUDITORIA — RODADA 003A — META CONNECTION FOUNDATION
 
 Data inicial: 2026-08-23
-Reauditoria: 2026-08-24
+Reauditorias: 2026-08-24
 PR: #11
 
-Classificação vigente: **CORREÇÃO 003A-02 PARCIALMENTE APROVADA — 003A AINDA BLOQUEADA — CORREÇÃO 003A-03 OBRIGATÓRIA**.
+Classificação vigente: **003A-03 PARCIALMENTE APROVADA — 003A AINDA BLOQUEADA — CORREÇÃO 003A-04 AUTORIZADA**.
 
 ## 1. Auditoria inicial / Correção 003A-01
 
@@ -53,14 +53,14 @@ A Correção 003A-02 foi autorizada para esses deltas.
 
 ---
 
-# REAUDITORIA — 2026-08-24
+# REAUDITORIA 1 — 2026-08-24
 
 Head auditado: `0b9e10d48cbddbbe63017ea428aa1ab797e21574`
 CI: `32742223573` — **success**.
 
 ## 3. O que passou
 
-A inspeção independente do código, PR, CI e Supabase remoto confirma:
+A inspeção independente do código, PR, CI e Supabase remoto confirmou:
 
 - B1 fechado: desconexão reconfirma membership ACTIVE antes de ler/revogar;
 - B2 fechado: callback reconfirma membership vigente antes de chamar a Meta;
@@ -88,46 +88,72 @@ Dois testes específicos provam a diferença entre:
 
 Esse delta está **AUDITADO E APROVADO**.
 
-## 5. Novo bloqueio — código Meta 190 não prova token alvo revogado
+## 5. Bloqueio encontrado — código Meta 190
 
-A reauditoria do caminho `SYSTEM_USER` encontrou uma nova violação da mesma invariante fail-closed.
+A reauditoria do caminho `SYSTEM_USER` encontrou nova violação da invariante fail-closed.
 
-`revokeSystemUserToken()` aceita `error.code === 190` como sucesso e, com isso, permite a limpeza local.
+`revokeSystemUserToken()` aceitava `error.code === 190` como sucesso e, com isso, permitia a limpeza local.
 
-Isso não é evidência suficiente. O código 190 pertence à família de falhas de validação/autenticação de access token e não identifica, por si só, que o `revoke_token` específico ficou inativo. No `oauth/revoke` existem duas credenciais relevantes (`revoke_token` e `access_token`), portanto um erro genérico de autenticação não demonstra qual delas causou a falha.
+Isso não era evidência suficiente. O código 190 pertence à família de falhas de validação/autenticação de access token e não identifica, por si só, que o `revoke_token` específico ficou inativo.
 
-Consequência possível:
+A decisão arquitetural foi exigir pós-condição observável: erro do provider nunca é prova; depois de sucesso explícito, o mesmo token deve ser reinspecionado e só `is_valid=false` libera a limpeza local.
 
-`token alvo ainda válido → oauth/revoke falha com 190 por outro motivo → código interpreta como já revogado → revoke_meta_connection apaga segredo/referência local`.
+Essa decisão originou a Correção 003A-03.
 
-Isso reproduziria exatamente a classe de risco que a 003A deve impedir: estado local dizendo “revogado” sem prova suficiente no provider.
+---
 
-A consulta à documentação Meta confirmou o mecanismo `oauth/revoke` para system-user token, mas não foi encontrada garantia oficial de que qualquer `190` nesse endpoint equivalha a "revoke_token já revogado". Exemplos públicos do próprio ecossistema mostram 190 associado a múltiplas falhas de token, portanto a inferência é insegura.
+# REAUDITORIA 2 — 2026-08-24
 
-## 6. Decisão arquitetural GPT
+Head auditado: `98db346e1a110f74627ee1c77a8593905591b688`
+CI: `32746073927` — **success** em install, lint, typecheck, Edge Functions, testes e build.
 
-A desconexão deve usar **pós-condição observável**, não interpretação genérica de código de erro:
+## 6. O que a 003A-03 fechou
 
-1. se `debug_token` antes da revogação já devolver `is_valid=false`, o token está inativo e a limpeza local pode ocorrer;
-2. se o token estiver válido, executar o mecanismo oficial aplicável;
-3. qualquer erro do provider, inclusive 190, falha fechado;
-4. após sucesso explícito da revogação, verificar novamente o mesmo token com `debug_token`;
-5. só permitir limpeza local quando a pós-verificação confirmar `is_valid=false`;
-6. falha, UNKNOWN ou token ainda válido preservam o segredo local para nova tentativa.
+A implementação foi conferida diretamente no `gateway.ts` e nos testes.
 
-Essa decisão está formalizada em:
+Passou:
 
-`rodadas/gpt/CORRECAO_003A_03_REVOGACAO_SYSTEM_USER_FAIL_CLOSED.md`.
+- `190` não é mais aceito como sucesso em `oauth/revoke`;
+- `190` também não é aceito como sucesso no caminho `/permissions`;
+- erro HTTP/rede do provider falha fechado;
+- sucesso explícito do endpoint remoto não conclui a desconexão sozinho;
+- o mesmo token é reinspecionado depois da revogação;
+- token ainda válido depois do sucesso remoto falha fechado;
+- falha na pós-inspeção falha fechado;
+- resposta de `debug_token` sem `is_valid` booleano falha fechado;
+- `is_valid=false` observado para o mesmo token permite a limpeza local;
+- erro de leitura do Vault continua impedindo Meta e limpeza local.
 
-## 7. Veredicto
+O Supabase remoto foi conferido novamente: a conexão `Teste 003A - conexao Meta` continua **ACTIVE**, `disconnected_at` nulo, referência presente e segredo correspondente ainda existente no Vault. Nenhuma revogação real ocorreu.
+
+## 7. Único bloqueio remanescente — tipo de token desconhecido ainda dispara mutação
+
+O mandato 003A-03 determinava que falha/UNKNOWN não completasse nem adivinhasse o mecanismo de revogação.
+
+O código atual, porém, decide:
+
+- `SYSTEM_USER` → `oauth/revoke`;
+- qualquer outro tipo → `/permissions`.
+
+O teste atual consolida explicitamente esse comportamento com `type: PAGE`, sob o nome `tipo desconhecido segue pelo caminho conservador de usuário`.
+
+Isso não é fail-closed. Quando `debug_token` afirma que o token está **válido**, mas o tipo não é `SYSTEM_USER` nem `USER`, o sistema não conhece a primitive correta e não deve executar uma mutação remota por tentativa.
+
+A pós-condição de invalidez permanece correta e suficiente: depois que o mesmo token foi explicitamente observado como `is_valid=false`, seu `type` já não é necessário para decidir a limpeza local. O `type` é obrigatório apenas para escolher a primitive enquanto o token ainda está válido.
+
+## 8. Veredicto vigente
 
 **NÃO APROVADA PARA E2E REAL AINDA.**
 
-- Correção de autorização/atomicidade/OAuth/conexão: executada e majoritariamente auditada;
-- correção fail-closed da leitura do Vault: **aprovada**;
-- revogação `SYSTEM_USER`: mecanismo implementado, mas ainda possui o bloqueio 190;
+- 003A-02: partes auditadas, incluindo Vault fail-closed: **APROVADAS**;
+- 003A-03: tratamento de `190` + pós-verificação: **APROVADOS**;
+- tipo de token desconhecido: **BLOQUEIO REMANESCENTE**;
 - desconexão real: **não autorizada**;
 - 003A: **não promovida**;
 - 003B: **não autorizada**.
 
-Próxima ação autorizada: Claude Code executar **somente a Correção 003A-03**, atualizar a mesma branch/PR e parar para nova reauditoria GPT.
+Próxima ação autorizada:
+
+`rodadas/gpt/CORRECAO_003A_04_TIPO_TOKEN_FAIL_CLOSED.md`
+
+Claude Code deve executar apenas essa microcorreção, atualizar a mesma branch/PR e parar em `003A-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT`.
