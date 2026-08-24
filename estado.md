@@ -21,164 +21,139 @@ Promovidas: **000–003A**.
 
 Última rodada promovida: **003A — Meta Connection Foundation**.
 
-Promoção:
+Promoção 003A:
 
-- PR #11 — **MERGED**;
+- PR #11 — MERGED;
 - merge commit: `546838db8e7ced4e9045c05feb8c7b2f0c476cc2`;
-- head reconciliado auditado: `046c2e7583e823fb18d5667973680874c387eadb`;
-- CI final: `32772710738` — verde em install, lint, typecheck, Edge Functions, testes e build.
+- CI final: `32772710738` — verde.
 
-## 3. 003A — resultado promovido
+## 3. Baseline promovido da 003A
 
 A 003A está **EXECUTADA, AUDITADA E PROMOVIDA**.
 
-Entregue e provado:
+Persistem como decisões:
 
-- Facebook Login for Business com Graph API v26.0;
-- OAuth com `state` de uso único e membership reconferida;
-- `meta_connections` e Vault como fronteira do token;
-- token ausente do browser e protegido server-side;
-- conexão real com a Meta;
-- classificação da credencial real como BISU por `client_business_id`;
-- desconexão BISU guiada por **Configurações do negócio > Apps conectados**;
-- marcador persistente de remoção externa;
-- prova contextual fail-closed após remoção;
-- `190` genérico continua NÃO sendo tratado como prova de revogação;
-- desconexão real ponta a ponta aprovada.
+- Facebook Login for Business + Graph API v26.0;
+- token Meta server-side no Vault;
+- `state` OAuth de uso único e membership reconferida;
+- credencial real classificada como BISU por `client_business_id`;
+- BISU não usa `oauth/revoke`, `/permissions` ou `/access_tokens` como revogação do produto;
+- remoção instalada ocorre em **Configurações do negócio > Apps conectados**;
+- `190` genérico não prova revogação;
+- assinatura `190/464` só vale no fluxo BISU previamente marcado com os controles promovidos;
+- desconexão real foi provada ponta a ponta e o fixture terminou `REVOKED`, sem segredo no Vault.
 
-Auditoria final:
+Supabase após a 003A: 14 migrations.
 
-`rodadas/gpt/AUDITORIA_FINAL_003A_E2E_META_CONNECTION.md`
+## 4. Rodada 003B — execução inicial auditada parcialmente
 
-Auditorias/correções intermediárias permanecem em `rodadas/gpt/` como evidência histórica.
-
-## 4. Estado remoto após o E2E
-
-A conexão real usada no gate (`9d256edf-0a89-4436-8d60-f375bc087c08`) terminou corretamente:
-
-- `status = REVOKED`;
-- `disconnected_at = 2026-08-24 20:09:44.634706+00`;
-- `external_disconnect_pending_at = null`;
-- `token_secret_reference = null`;
-- segredo correspondente ausente do Vault.
-
-Supabase:
-
-- histórico remoto = **14 migrations**;
-- `20260824170000_add_meta_external_disconnect_pending.sql` aplicada e auditada.
-
-Nenhuma conexão Meta ativa ficou aberta por esse fixture.
-
-## 5. Decisões persistentes da 003A
-
-- `debug_token.type=SYSTEM_USER` não basta para classificar BISU; usar `client_business_id`/contrato observável;
-- BISU não deve usar `oauth/revoke`, `/permissions` ou `/access_tokens` como caminho de revogação do produto;
-- falha/ambiguidade do provider preserva token e estado local;
-- a remoção instalada ocorre em **Apps conectados**, não em `Contas > Apps`;
-- a assinatura `190/464` só vale como pós-condição dentro do fluxo BISU previamente marcado e com os controles da 003A-10;
-- redaction da URL de callback/log continua pendência antes de produção.
-
-## 6. Rodada 003B — EM EXECUÇÃO
-
-Mandato técnico:
+Mandato:
 
 `rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
 
-Autorização explícita do fundador:
+Autorização:
 
 `rodadas/gpt/AUTORIZACAO_003B_EXECUCAO.md`
 
-Status da 003B:
+Branch:
 
-**CÓDIGO, MIGRATION E PROVAS DE BANCO EXECUTADOS — GATE DE CONFIGURAÇÃO EXTERNA META AGUARDANDO GPT — 003B NÃO PROMOVIDA**.
+`claude/rodada-003b-meta-asset-discovery-selection`
 
-Branch: `claude/rodada-003b-meta-asset-discovery-selection`.
+PR: **#12 draft**.
 
-Relatório: `rodadas/claude/RELATORIO_RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`.
+HEAD auditado antes da correção:
 
-Entregue e provado nesta sessão:
+`6fe1dac32912e11afab1382e0c9fdfbf6d39b920`
 
-- `instagram_accounts` e `ad_accounts` com FK composta contra `meta_connections (organization_id, id)`, grant por coluna (external ids fora do browser), RLS por membership e funções de seleção `invoker` restritas a `service_role`;
-- capacidade derivada de `granted_scopes` reais: `instagram_discovery`, `instagram_insights`, `ads_discovery`;
-- descoberta server-side de Páginas/Instagram e de contas de anúncios, com paginação por cursor reconstruído contra o host controlado — `paging.next` do provider nunca é seguido;
-- toda seleção redescobre o ativo contra a Meta antes de gravar; id arbitrário falha fechado sem escrita;
-- `190` do provider vira estado de tela, nunca mutação local — a decisão da 003A permanece intacta;
-- ausência de `ads_read` continua sendo capacidade inexistente, não conexão quebrada;
-- UI de escolha em linguagem de negócio, sem escopo, id externo ou versão de API.
+CI:
 
-Migration `20260824210000_create_meta_asset_selection.sql` aplicada após checkpoint publicado. Histórico remoto: **15 migrations**; **10 tabelas** em `public`, todas com RLS; nenhuma função `SECURITY DEFINER` nova.
+`32777340430` — verde em install, lint, typecheck, Edge Functions, testes e build.
 
-Provas: 63 testes novos, 245/245 no módulo Meta e actions, typecheck/lint limpos, prova de banco `scripts/sql/meta-assets-003b-proof.sql` **41/41 sem falhas**, advisors sem alerta novo.
+### Executado e comprovado até aqui
 
-A frase antiga do cabeçalho do mandato que dizia `AGUARDANDO AUTORIZAÇÃO DO FUNDADOR — NÃO EXECUTAR AINDA` está superada exclusivamente por esta autorização e por este `estado.md`; o restante do mandato permanece vigente.
+- migration `20260824210000_create_meta_asset_selection.sql` aplicada depois de checkpoint versionado;
+- histórico remoto = **15 migrations**;
+- `instagram_accounts` e `ad_accounts` presentes;
+- zero linhas residuais nas duas tabelas após o proof;
+- zero conexões Meta `ACTIVE` antes do novo E2E;
+- RLS habilitado nas tabelas novas;
+- `authenticated` sem INSERT/UPDATE/DELETE;
+- external ids fora dos grants SELECT de `authenticated`;
+- `select_instagram_account` e `select_ad_account` são `security invoker`, sem EXECUTE para `authenticated`/`anon` e com EXECUTE para `service_role`;
+- descoberta/seleção, capabilities e UX implementadas;
+- nenhuma configuração Meta nova nem OAuth real executados.
 
-Objetivo:
+Esses itens estão **executados**, mas a 003B ainda não está aprovada nem promovida.
 
-- descobrir e selecionar a conta profissional do Instagram que alimentará a Fase 4;
-- implementar persistência tenant-safe de `instagram_accounts`;
-- suportar descoberta/seleção opcional de `ad_accounts` quando `ads_read` tiver sido efetivamente concedido;
-- provar capacidade de leitura/Insights sem importar posts ainda.
+## 5. Auditoria pré-gate — bloqueio 003B-01
 
-### Decisão de capacidade
+Auditoria GPT encontrou dois pontos que precisam ser corrigidos **antes** de qualquer nova ação manual na Meta.
 
-- Instagram orgânico/Insights é a capacidade principal;
-- conta de anúncios é ramo opcional;
-- ausência de `ads_read` ou de Ad Account não invalida o Instagram nem bloqueia o caminho orgânico.
+Correção vigente:
 
-### Escopos pretendidos
+`rodadas/gpt/CORRECAO_003B_01_FAIL_CLOSED_METADATA_E_MEMBERSHIP.md`
 
-Para o caminho **Instagram API with Facebook Login + Facebook Login for Business + `graph.facebook.com`**:
+Status:
 
-- `pages_show_list`;
-- `pages_read_engagement`;
-- `instagram_basic`;
-- `instagram_manage_insights`;
-- `ads_read` somente como capacidade opcional/read-only de Ad Account.
+**003B-01 AUTORIZADA — GATE EXTERNO META BLOQUEADO — AGUARDANDO EXECUÇÃO DO CLAUDE**.
 
-Não solicitar inicialmente:
+### Bloqueio A — metadata IG falha aberto
 
-- `ads_management`;
-- `business_management`;
-- permissões de publicação/comentários/leads.
+`lerMetadadosInstagram` trata HTTP não-OK e falha de rede como `null`; `descobrirInstagram` então mantém o candidato e a seleção pode persistir.
 
-Se o E2E provar necessidade material de `ads_management`, Page Access Token persistente ou outra ampliação arquitetural, Claude deve parar em `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`.
+Isso viola o mandato §6: `provider 4xx/5xx/rede em fail-closed`.
 
-## 6.1 Gate aberto — configuração externa Meta
+A correção deve separar:
 
-O E2E do mandato §7 não pôde ser executado: depende de ação do GPT/fundador no painel Meta.
+- HTTP 2xx com campos opcionais ausentes → candidato válido com campos nulos;
+- HTTP 4xx/5xx/rede → falha de domínio sanitizada, sem candidato gravável e sem RPC de seleção.
 
-Falta, nesta ordem:
+### Bloqueio B — membership precisa de recheck antes da escrita
 
-1. criar a nova *business login configuration* da 003B com os escopos de §2 e ativos Pages + Instagram Accounts + Ad Accounts;
-2. informar o novo `config_id` para `META_LOGIN_CONFIG_ID` (não é segredo);
-3. autorizar o OAuth real;
-4. fundador escolhe o Instagram na tela `/conta`;
-5. `node scripts/meta-assets-003b-probe.mjs` executa as sondas read-only de IG User, Insights e contas de anúncios.
+A seleção valida membership antes da redescoberta na Meta, mas há chamadas externas antes da RPC privilegiada de persistência.
 
-Se a sonda mostrar necessidade de Page Access Token persistente ou de `ads_management`, o desfecho é `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`. Nada será ampliado por conta própria.
+A correção deve reconferir membership imediatamente antes da RPC de seleção para Instagram e Ad Account.
+
+## 6. Estado remoto atual
+
+Supabase:
+
+- 15 migrations;
+- `20260824210000` aplicada;
+- `instagram_accounts`: 0 linhas;
+- `ad_accounts`: 0 linhas;
+- conexões Meta `ACTIVE`: 0.
+
+Nenhum novo OAuth da 003B foi feito e nenhum token novo está ativo.
 
 ## 7. Próxima ação autorizada
 
-O trabalho autônomo da 003B está concluído. **Claude Code está parado no gate.**
+Claude Code deve executar **somente a Correção 003B-01**:
 
-Próximo a agir: **GPT** — conduzir o fundador na configuração externa da Meta e devolver o resultado técnico do gate (novo `config_id` e liberação do OAuth real).
+1. trazer a `main` atual para a branch 003B;
+2. corrigir fail-closed da leitura de metadata do IG User;
+3. adicionar recheck de membership imediatamente antes das RPCs de seleção;
+4. adicionar testes focados;
+5. rodar CI uma vez no HEAD final;
+6. atualizar relatório;
+7. parar em `003B-01 EXECUTADA — AGUARDANDO AUDITORIA GPT`.
 
-Claude Code só retoma a 003B ao receber esse resultado. Até lá não deve executar OAuth, alterar painel Meta, ampliar escopo nem promover a rodada.
+Depois da auditoria GPT, se passar, o gate externo da Meta poderá ser retomado.
 
 ## 8. Continua NÃO autorizado
 
-Mesmo com a 003B autorizada, continua proibido ao Claude/fundador sem novo gate GPT:
+Até a 003B-01 passar na auditoria:
 
-- criar/alterar configuração Facebook Login for Business no painel Meta por conta própria;
-- adicionar permissões por tentativa;
-- criar novo Meta App ID;
-- executar novo OAuth real antes do gate;
-- selecionar/remover/reassociar ativos manualmente no painel Meta sem instrução;
-- persistir Page Access Token sem decisão arquitetural;
-- solicitar `ads_management` ou `business_management` automaticamente;
+- criar/alterar configuração Facebook Login for Business no painel Meta;
+- trocar `META_LOGIN_CONFIG_ID`;
+- novo OAuth real;
+- selecionar/remover/reassociar ativos no painel Meta;
+- persistir Page Access Token;
+- solicitar `ads_management` ou `business_management`;
 - criar anúncios ou gerar gasto;
 - importar conteúdo do Instagram;
-- iniciar Fase 4.
+- iniciar Fase 4;
+- promover/mergear a 003B.
 
 ## 9. Pendências não bloqueantes
 
