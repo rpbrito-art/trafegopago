@@ -24,6 +24,8 @@ let intencao: Record<string, unknown> | null = null;
 let consumoVence = true;
 let conexaoViva: Record<string, unknown> | null = null;
 let tokenNoVault: string | null = "token-guardado";
+/** Tipo que o `debug_token` devolve para o token da desconexão. */
+let tipoDoToken: string = "SYSTEM_USER";
 let erroRpc: Record<string, { code: string } | null> = {};
 
 const rpcCalls: { fn: string; args: Record<string, unknown> }[] = [];
@@ -116,6 +118,7 @@ beforeEach(() => {
   consumoVence = true;
   conexaoViva = { id: CONN, external_user_id: "999" };
   tokenNoVault = "token-guardado";
+  tipoDoToken = "SYSTEM_USER";
   erroRpc = {};
   rpcCalls.length = 0;
   fetchCalls.length = 0;
@@ -138,8 +141,18 @@ beforeEach(() => {
       if (alvo.includes("/debug_token")) {
         return {
           ok: true,
-          json: async () => ({ data: { scopes: ["public_profile"], user_id: "999" } }),
+          json: async () => ({
+            data: {
+              scopes: ["public_profile"],
+              user_id: "999",
+              type: tipoDoToken,
+              is_valid: tipoDoToken !== "INVALIDO",
+            },
+          }),
         } as Response;
+      }
+      if (alvo.includes("/oauth/revoke")) {
+        return { ok: true, json: async () => ({ success: "true" }) } as Response;
       }
       if (alvo.includes("/permissions")) {
         return { ok: true, json: async () => ({ success: true }) } as Response;
@@ -323,11 +336,68 @@ describe("disconnectMeta", () => {
     const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
 
     expect(r).toEqual({ ok: true });
-    expect(fetchCalls.some((u) => u.includes("/999/permissions"))).toBe(true);
     expect(rpcUsados()).toEqual([
       "read_meta_connection_token",
       "revoke_meta_connection",
     ]);
+  });
+
+  it("token SYSTEM_USER usa oauth/revoke, não /permissions", async () => {
+    // Provado empiricamente na etapa 1 do E2E: o token emitido pelo Login for
+    // Business é `type: SYSTEM_USER`, e o endpoint de permissões é de usuário.
+    tipoDoToken = "SYSTEM_USER";
+
+    await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(true);
+    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+  });
+
+  it("token USER usa /permissions, não oauth/revoke", async () => {
+    tipoDoToken = "USER";
+
+    await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(fetchCalls.some((u) => u.includes("/999/permissions"))).toBe(true);
+    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+  });
+
+  it("tipo desconhecido segue pelo caminho conservador de usuário", async () => {
+    // Sem saber o tipo, é melhor tentar o caminho que falha fechado do que
+    // presumir system user e completar uma desconexão que não revogou.
+    tipoDoToken = "PAGE";
+
+    await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(fetchCalls.some((u) => u.includes("/999/permissions"))).toBe(true);
+  });
+
+  it("token já inválido não tenta revogar e conclui", async () => {
+    tipoDoToken = "INVALIDO";
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: true });
+    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+    expect(rpcUsados()).toContain("revoke_meta_connection");
+  });
+
+  it("oauth/revoke sem sucesso NÃO completa a desconexão", async () => {
+    tipoDoToken = "SYSTEM_USER";
+    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+      const alvo = String(url);
+      fetchCalls.push(alvo);
+      if (alvo.includes("/debug_token")) {
+        return { ok: true, json: async () => ({ data: { type: "SYSTEM_USER", is_valid: true } }) } as Response;
+      }
+      return { ok: false, json: async () => ({ error: { code: 100 } }) } as Response;
+    }));
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
   });
 
   it("NÃO revoga localmente se o provider falhar de forma indeterminada", async () => {
@@ -341,13 +411,16 @@ describe("disconnectMeta", () => {
     expect(rpcUsados()).not.toContain("revoke_meta_connection");
   });
 
-  it("token já inválido conta como revogado e permite concluir", async () => {
-    // Erro 190 = token inválido: não há mais autorização a revogar. Tratar
-    // como falha prenderia o usuário numa conexão que ele não consegue remover.
-    vi.stubGlobal("fetch", vi.fn(async () => ({
-      ok: false,
-      json: async () => ({ error: { code: 190 } }),
-    })));
+  it("erro 190 na revogação conta como já revogado", async () => {
+    // Token inválido do lado da Meta: não há mais autorização a remover.
+    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+      const alvo = String(url);
+      fetchCalls.push(alvo);
+      if (alvo.includes("/debug_token")) {
+        return { ok: true, json: async () => ({ data: { type: "SYSTEM_USER", is_valid: true } }) } as Response;
+      }
+      return { ok: false, json: async () => ({ error: { code: 190 } }) } as Response;
+    }));
 
     const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
 

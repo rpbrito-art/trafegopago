@@ -309,23 +309,83 @@ export async function disconnectMeta(input: {
 /**
  * Revoga a autorização no provider.
  *
- * `DELETE /{user-id}/permissions` remove todas as permissões concedidas ao app
- * — é a desautorização oficial da Graph API. `me` é usado quando não temos o id
- * externo, porque o token de usuário já identifica o dono.
+ * A Meta tem **dois mecanismos**, e usar o errado falha:
  *
- * Um token já inválido (`190`) significa que não há mais autorização a revogar:
- * o objetivo já está atingido, e tratar isso como falha prenderia o usuário
- * numa conexão que ele não consegue remover.
+ * - **`GET /oauth/revoke`** — para token de usuário do sistema (BISU, emitido
+ *   pelo Facebook Login for Business). Exige `client_id`, `client_secret` e o
+ *   token a revogar; a documentação impõe que o app do `revoke_token` e o do
+ *   `client_id` sejam o mesmo, o que é o nosso caso.
+ * - **`DELETE /{user-id}/permissions`** — para token de usuário comum. É o
+ *   endpoint de permissões *de usuário*, e um system user não as tem no
+ *   sentido desse endpoint.
+ *
+ * O tipo é descoberto em `debug_token` na hora da desconexão, e não lido de uma
+ * coluna: a configuração de login pode mudar no painel Meta entre a conexão e a
+ * desconexão, e o token que temos em mãos é a única fonte confiável do que ele
+ * é agora.
+ *
+ * Token já inválido (`190`) conta como revogado: não há mais autorização a
+ * remover, e tratar isso como falha prenderia o usuário numa conexão que ele
+ * não consegue desfazer.
  */
 async function revokeOnMeta(input: {
   accessToken: string;
   externalUserId: string | null;
   env: ReturnType<typeof readMetaEnv>;
 }): Promise<{ ok: boolean }> {
-  const alvo = input.externalUserId ?? "me";
-  const url = new URL(
-    `${graphApiBaseUrl(input.env.META_GRAPH_API_VERSION)}/${alvo}/permissions`,
+  const base = graphApiBaseUrl(input.env.META_GRAPH_API_VERSION);
+  const tipo = await inspectTokenType({ accessToken: input.accessToken, env: input.env });
+
+  if (tipo === "INVALID") return { ok: true };
+
+  return tipo === "SYSTEM_USER"
+    ? revokeSystemUserToken({ ...input, base })
+    : revokeUserPermissions({ ...input, base });
+}
+
+/** `oauth/revoke` — caminho do token de usuário do sistema. */
+async function revokeSystemUserToken(input: {
+  accessToken: string;
+  env: ReturnType<typeof readMetaEnv>;
+  base: string;
+}): Promise<{ ok: boolean }> {
+  const url = new URL(`${input.base}/oauth/revoke`);
+  url.searchParams.set("client_id", input.env.META_APP_ID);
+  url.searchParams.set("client_secret", input.env.META_APP_SECRET);
+  url.searchParams.set("revoke_token", input.accessToken);
+  url.searchParams.set(
+    "access_token",
+    `${input.env.META_APP_ID}|${input.env.META_APP_SECRET}`,
   );
+
+  try {
+    const resposta = await fetch(url, { method: "GET" });
+    const corpo = (await resposta.json().catch(() => null)) as {
+      success?: unknown;
+      error?: { code?: unknown };
+    } | null;
+
+    // A API devolve a string "true", não o booleano.
+    if (resposta.ok && (corpo?.success === true || corpo?.success === "true")) {
+      return { ok: true };
+    }
+
+    if (corpo?.error?.code === 190) return { ok: true };
+
+    return { ok: false };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** `DELETE /{user-id}/permissions` — caminho do token de usuário comum. */
+async function revokeUserPermissions(input: {
+  accessToken: string;
+  externalUserId: string | null;
+  base: string;
+}): Promise<{ ok: boolean }> {
+  const alvo = input.externalUserId ?? "me";
+  const url = new URL(`${input.base}/${alvo}/permissions`);
   url.searchParams.set("access_token", input.accessToken);
 
   try {
@@ -333,10 +393,9 @@ async function revokeOnMeta(input: {
 
     if (resposta.ok) {
       const corpo = (await resposta.json()) as { success?: unknown };
-      return { ok: corpo.success === true };
+      return { ok: corpo.success === true || corpo.success === "true" };
     }
 
-    // Token inválido/expirado: a autorização já não existe do lado da Meta.
     const corpo = (await resposta.json().catch(() => null)) as {
       error?: { code?: unknown };
     } | null;
@@ -345,8 +404,43 @@ async function revokeOnMeta(input: {
 
     return { ok: false };
   } catch {
-    // Rede indeterminada. Não sabemos se a revogação chegou; não fingimos.
     return { ok: false };
+  }
+}
+
+/**
+ * Que tipo de token é este, segundo a própria Meta?
+ *
+ * `UNKNOWN` quando não dá para saber — e nesse caso o chamador segue pelo
+ * caminho de usuário comum, que é o mais conservador: se falhar, a desconexão
+ * não completa, em vez de completar sem revogar.
+ */
+async function inspectTokenType(input: {
+  accessToken: string;
+  env: ReturnType<typeof readMetaEnv>;
+}): Promise<"SYSTEM_USER" | "USER" | "INVALID" | "UNKNOWN"> {
+  const url = new URL(`${graphApiBaseUrl(input.env.META_GRAPH_API_VERSION)}/debug_token`);
+  url.searchParams.set("input_token", input.accessToken);
+  url.searchParams.set(
+    "access_token",
+    `${input.env.META_APP_ID}|${input.env.META_APP_SECRET}`,
+  );
+
+  try {
+    const resposta = await fetch(url, { method: "GET" });
+    if (!resposta.ok) return "UNKNOWN";
+
+    const corpo = (await resposta.json()) as {
+      data?: { type?: unknown; is_valid?: unknown };
+    };
+
+    if (corpo.data?.is_valid === false) return "INVALID";
+    if (corpo.data?.type === "SYSTEM_USER") return "SYSTEM_USER";
+    if (corpo.data?.type === "USER") return "USER";
+
+    return "UNKNOWN";
+  } catch {
+    return "UNKNOWN";
   }
 }
 

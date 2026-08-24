@@ -5,9 +5,9 @@ Branch: `claude/rodada-003a-meta-connection-foundation`
 
 Status: **003A + CORREÇÃO 003A-02 EXECUTADAS — AGUARDANDO REAUDITORIA GPT**
 
-> ⚠️ **O gate Meta real NÃO foi concluído — bloqueio externo, não técnico.** O caminho
-> de autorização autorizado pelo mandato §2 está indisponível nesta conta. Detalhe em
-> "Bloqueio do gate". Os seis bloqueios de código da auditoria estão fechados e provados.
+> ⚠️ **Conexão real APROVADA; revogação ainda não provada ponta a ponta.** Existe uma
+> conexão `ACTIVE` real no ambiente, mantida de propósito: validar a revogação exigiria
+> desfazê-la. Ver "Gate Meta" e "Investigação 1".
 
 ## Delta da Correção 003A-02 — os seis bloqueios de código
 
@@ -32,31 +32,84 @@ para `service_role`.
 Migration `20260823203915` — histórico **13**, local == remoto, sem editar migration
 anterior.
 
-**Provas do delta:** 69 testes em `src/lib/meta` — cross-tenant recusado, membership sumida
+**Provas do delta:** 74 testes em `src/lib/meta` — cross-tenant recusado, membership sumida
 no meio do fluxo, replay após negado, corrida de consumo, ausência de `upsert`, falha de
 ativação sem sucesso e ordem segura da revogação. Lint, typecheck e build verdes.
 
-## Bloqueio do gate Meta
+## Gate Meta — etapa 1 do E2E: CONEXÃO REAL APROVADA
 
-O mandato §2 escolheu **Facebook Login for Business** por compatibilidade com Instagram
-profissional **e** Marketing API. Ao conduzir o gate:
+O caminho do mandato §2 (Facebook Login for Business) foi configurado e a conexão real
+funcionou. Antes disso a Meta recusou reivindicar o app pela empresa restrita; o app foi
+criado **sem** vínculo empresarial e o produto ficou disponível.
 
-1. a conta recusou reivindicar o app: *"Sua empresa está proibida de fazer publicidade"* —
-   restrição da Meta no portfólio empresarial;
-2. o app foi criado **sem** vínculo empresarial, e o redirect OAuth foi salvo;
-3. mas o produto **Login do Facebook para Empresas não aparece** — nem instalado, nem na
-   lista de produtos disponíveis;
-4. a documentação oficial confirma a causa: *"Your Meta app must be a business type app"*.
-   App tipo Business exige portfólio empresarial — exatamente o que está restrito.
+| prova | resultado |
+| --- | --- |
+| conexão | **ACTIVE** na organização correta (`Teste 003A - conexao Meta`) |
+| `connected_at` / expiração | 2026-08-24 01:47:57Z / 2026-10-23 (~60 dias) |
+| versão registrada | `v26.0` |
+| intenções OAuth | **1 consumida, 0 pendentes** — single-use confirmado em fluxo real |
+| token no Vault | presente, cifrado (583 bytes armazenados para 399 de token) |
+| token em log | **ausente** — zero ocorrências de `access_token=`, `EAA` ou do app secret |
+| token no browser | inalcançável — `authenticated` sem privilégio na coluna |
+| redirect final | `/conta?meta=ok`, sem eco de `code`/`state` |
 
-Portanto **não houve OAuth real**: troca `code → token`, escopos concedidos e
-conexão/desconexão ponta a ponta seguem não provados contra a Meta.
+`debug_token` real: `type: SYSTEM_USER`, `is_valid: true`, `user_id: 122103866379446065`,
+`expires_at: 2026-10-23`, `scopes: pages_show_list, pages_read_engagement, public_profile`.
 
-**Não troquei para o Login comum (`scope`) por conta própria.** Seria substituir uma decisão
-de arquitetura tomada pelo GPT, com efeito direto sobre a Marketing API na Fase 3. O mandato
-§2 manda parar e devolver a divergência — é o que faço.
+## Investigação 1 — revogação válida para SYSTEM_USER
 
-## A falha de handoff que a Correção 003A-01 fechou
+`DELETE /{user-id}/permissions` é o endpoint de permissões **de usuário**; o token emitido
+é `type: SYSTEM_USER`, cujo `user_id` é um system user. A documentação de Business
+Management APIs traz o mecanismo correto:
+
+    GET /{version}/oauth/revoke
+      ?client_id=…&client_secret=…&revoke_token=…&access_token=…   → {"success":"true"}
+
+com a exigência de que o app do `revoke_token` e o do `client_id` sejam o mesmo — o nosso
+caso. Sonda estrutural com `revoke_token` deliberadamente inválido: endpoint existe e
+responde (não é 404); **nada real foi revogado**.
+
+**Correção aplicada por delta:** a desconexão passa a inspecionar o tipo via `debug_token`
+e escolher o caminho — `oauth/revoke` para `SYSTEM_USER`, `DELETE /{user-id}/permissions`
+para `USER`. Tipo desconhecido segue pelo caminho de usuário, que falha fechado, em vez de
+presumir system user e completar sem revogar. Token já inválido conta como revogado.
+
+**Não provado ponta a ponta:** validar `oauth/revoke` exige revogar a conexão existente.
+
+## Investigação 2 — por que `ads_*` e `business_management` não vieram
+
+Minha hipótese anterior (App Review / restrição de publicidade) **estava errada**. As
+leituras contra a Graph API mostram outra coisa:
+
+| endpoint | resultado |
+| --- | --- |
+| `me` | 200 |
+| `me/accounts` | 200, **0 itens** |
+| `me/assigned_pages` | 200, **0 itens** |
+| `me/adaccounts` | 403 `(#200) Missing Permissions` |
+| `me/businesses` | 400 `(#100) Missing Permission` |
+
+**Nenhum ativo foi selecionado no diálogo OAuth.** A Meta condiciona as permissões de
+ativo à seleção correspondente: sem conta de anúncios escolhida, `ads_read`/`ads_management`
+não são concedidos; sem business vinculado, `business_management` também não. As permissões
+de página vieram, mas com zero páginas atribuídas — coerente com a etapa ter sido percorrida
+sem marcar nada.
+
+O app está em desenvolvimento (`app_type: 0`), onde o próprio administrador tem acesso às
+permissões sem App Review — o que reforça que a causa é a seleção de ativos, não revisão
+pendente nem a restrição de publicidade.
+
+**Confirmar exige refazer o diálogo selecionando ativos**, o que substituiria a conexão
+atual. Parei antes disso.
+
+## Dívida registrada — `code`/`state` no log do Next dev
+
+O logger de requisições do Next.js em desenvolvimento imprime a URL completa do callback,
+incluindo `code` e `state`. Não é código nosso, e ambos já estavam consumidos — mas em
+produção esse padrão colocaria credenciais de curta duração em log. Dívida a tratar antes de
+produção, junto da política de redaction (`SECURITY_MODEL.md` §15).
+
+## A falha de handoff que a Correção 003A-01 fechou## A falha de handoff que a Correção 003A-01 fechou
 
 Apliquei três migrations no Supabase remoto e parei no gate humano **sem publicar nada
 no Git**. O GPT encontrou o schema alterado sem branch, PR ou relatório para auditar.
@@ -104,19 +157,19 @@ Typecheck, lint, `deno check` e build verdes; suíte completa fica para a CI. Ad
 novo ERROR/WARN — o INFO novo (`meta_oauth_intents` sem policy) é o desenho server-only
 sendo reportado.
 
-## Pendência bloqueante — decisão do GPT
+## Pendência — decisão necessária
 
-O gate Meta depende de uma destas saídas, e nenhuma é do executor:
+A conexão `ACTIVE` real permanece no ambiente, com token válido até 2026-10-23. Avançar
+exige uma destas, todas fora da alçada do executor por implicarem alterar/revogar a conexão:
 
-1. regularizar o portfólio empresarial junto à Meta (apelação com documentos; prazo típico
-   de dias a semanas) e então criar app tipo Business;
-2. usar outro portfólio empresarial já habilitado;
-3. autorizar explicitamente o Login do Facebook comum (`scope`) para a 003A, registrando o
-   impacto sobre a Marketing API na Fase 3;
-4. mover o gate para uma sub-rodada própria e promover a 003A pela fundação já provada.
+1. **autorizar o E2E da etapa 2** — desconectar pelo `oauth/revoke` já implementado,
+   provando o caminho SYSTEM_USER ponta a ponta;
+2. **refazer o diálogo selecionando ativos** (páginas e contas de anúncio), para confirmar a
+   causa dos escopos ausentes e obter `ads_*`/`business_management`;
+3. revogar pelo painel da Meta (Configurações → Integrações de negócios) e então limpar o
+   estado local.
 
-Nenhum segredo foi pedido por chat; `META_APP_ID`/`META_APP_SECRET` permanecem fora do
-repositório e do `.env.local`.
+Nenhum segredo foi pedido por chat ou versionado.
 
 ## Desvio próprio registrado
 

@@ -76,33 +76,45 @@ Os **seis bloqueios de código** da auditoria foram fechados e provados:
 
 Migration `20260823203915` — histórico **13**, local == remoto, sem editar migration anterior. 69 testes em `src/lib/meta`; lint, typecheck e build verdes.
 
-### Bloqueio do gate Meta (item 7 da auditoria) — NÃO resolvido
+### Gate Meta — etapa 1 do E2E APROVADA (2026-08-24)
 
-O caminho autorizado pelo mandato §2 (**Facebook Login for Business**) está indisponível nesta conta:
+Conexão real concluída pelo fluxo completo (UI → diálogo Meta → callback):
 
-1. a Meta recusou reivindicar o app — *"Sua empresa está proibida de fazer publicidade"*;
-2. o app foi criado sem vínculo empresarial e o redirect OAuth foi salvo;
-3. o produto **Login do Facebook para Empresas não aparece**, nem instalado nem disponível;
-4. a documentação oficial confirma: *"Your Meta app must be a business type app"* — e app tipo Business exige o portfólio empresarial que está restrito.
+- **ACTIVE** na organização correta, `connected_at` 2026-08-24 01:47:57Z, expira 2026-10-23;
+- 1 intenção OAuth consumida, 0 pendentes — **single-use provado em fluxo real**;
+- token no Vault, cifrado; **ausente** de logs e inalcançável pelo browser;
+- redirect final `/conta?meta=ok`, sem eco de `code`/`state`;
+- `debug_token`: `type: SYSTEM_USER`, `user_id: 122103866379446065`, escopos `pages_show_list`, `pages_read_engagement`, `public_profile`.
 
-**Não houve OAuth real.** Troca `code → token`, escopos concedidos e conexão/desconexão ponta a ponta seguem não provados contra a Meta.
+### Investigação 1 — revogação de SYSTEM_USER
 
-O executor **não** trocou para o Login comum (`scope`) por conta própria: isso substituiria uma decisão de arquitetura do GPT com efeito direto sobre a Marketing API na Fase 3. O mandato §2 manda parar e devolver a divergência.
+`DELETE /{user-id}/permissions` é endpoint de permissões **de usuário** e não se aplica. O mecanismo documentado é `GET /{version}/oauth/revoke` com `client_id`, `client_secret`, `revoke_token` e `access_token`, exigindo que o app seja o mesmo — nosso caso. Sonda estrutural com token inválido confirmou que o endpoint existe; nada real foi revogado.
 
-### Saídas possíveis — decisão do GPT
+**Corrigido por delta:** a desconexão inspeciona o tipo via `debug_token` e escolhe o caminho (`oauth/revoke` para SYSTEM_USER, `/permissions` para USER); tipo desconhecido segue pelo caminho conservador que falha fechado. **Não provado ponta a ponta** — validar exige revogar a conexão existente.
 
-1. regularizar o portfólio empresarial junto à Meta e criar app tipo Business;
-2. usar outro portfólio já habilitado;
-3. autorizar explicitamente o Login comum (`scope`) para a 003A, registrando o impacto na Fase 3;
-4. mover o gate para sub-rodada própria e promover a 003A pela fundação já provada.
+### Investigação 2 — escopos ausentes
+
+A hipótese de App Review/restrição de publicidade **estava errada**. Leituras na Graph API: `me/assigned_pages` = 0, `me/accounts` = 0, `me/adaccounts` 403 `Missing Permissions`, `me/businesses` 400 `Missing Permission`. **Nenhum ativo foi selecionado no diálogo OAuth** — e a Meta condiciona permissões de ativo à seleção. O app está em desenvolvimento (`app_type: 0`), onde o administrador dispensa App Review, o que reforça o diagnóstico. Confirmar exige refazer o diálogo, o que substituiria a conexão atual.
+
+### Dívida de produção registrada
+
+O logger de requisições do Next.js dev imprime a URL completa do callback, com `code` e `state`. Não é código do projeto e ambos já estavam consumidos, mas em produção colocaria credenciais de curta duração em log. Tratar junto da política de redaction (`SECURITY_MODEL.md` §15).
+
+### Estado atual do ambiente
+
+Existe uma conexão **ACTIVE real**, com token válido até 2026-10-23, mantida de propósito: nenhuma limpeza local foi feita, porque a autorização pode estar viva na Meta.
 
 ## 6. Próxima ação autorizada
 
-A Correção 003A-02 está **executada** na parte que dependia do executor. PR #11 atualizada.
+A Correção 003A-02 está **executada** na parte autônoma. PR #11 atualizada.
 
-**A próxima ação é do GPT: reauditar o delta corretivo e decidir uma das saídas da §5 para o gate Meta bloqueado.**
+**A próxima ação é do GPT**, porque as três saídas restantes implicam alterar ou revogar a conexão existente:
 
-Claude não promove, não inicia 003B e não altera o caminho de autorização por conta própria.
+1. autorizar a **etapa 2 do E2E** — desconectar pelo `oauth/revoke` já implementado, provando o caminho SYSTEM_USER ponta a ponta;
+2. **refazer o diálogo selecionando ativos**, para confirmar a causa dos escopos ausentes e obter `ads_*`/`business_management`;
+3. revogar pelo painel da Meta e então limpar o estado local.
+
+Claude não promove, não inicia 003B e não revoga a conexão por conta própria.
 
 ## 7. Pendências não bloqueantes
 
