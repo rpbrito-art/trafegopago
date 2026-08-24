@@ -99,9 +99,9 @@ Resultado:
 - recusas/falhas sobem como falha de domínio sem candidato gravável;
 - membership é reconferida imediatamente antes da RPC privilegiada de seleção para Instagram e Ad Account.
 
-## 6. Gate externo da Meta — CONFIGURAÇÃO CRIADA
+## 6. Gate externo da Meta — CONFIGURAÇÃO E ATIVOS PREPARADOS
 
-Registro:
+Registro inicial:
 
 `rodadas/gpt/GATE_003B_CONFIGURACAO_META_CRIADA.md`
 
@@ -111,19 +111,23 @@ No app Meta **Trafego Pago Business Dev** (App ID `2940404272985831`) foi criada
 - Configuration ID: `38307908848822330`;
 - variação: General;
 - token: System-user access token / BISU;
-- ativos obrigatórios: Pages + Instagram Accounts;
-- permissões:
+- ativos da configuração: Pages + Instagram Accounts;
+- permissões inicialmente configuradas para Instagram/Insights:
   - `pages_show_list`;
   - `pages_read_engagement`;
   - `instagram_basic`;
   - `instagram_manage_insights`.
 
-`ads_read` ficou fora por decisão de produto/gate: nessa configuração as permissões escolhidas são obrigatórias, e mídia paga continua opcional.
-
 Configuração histórica da 003A permanece existente e não deve ser apagada antes da promoção da 003B:
 
 - `Trafego Pago Dev Login`;
 - Configuration ID `1549901823029730`.
+
+Ativos reais preparados no portfólio **Quoron**:
+
+- Página do Facebook: **Quoron**;
+- conta profissional do Instagram: **@goquoron**;
+- ambos aparecem no fluxo de seleção do Facebook Login for Business.
 
 ## 7. Gate local — AUDITADO E APROVADO
 
@@ -145,41 +149,86 @@ Auditoria independente no Supabase após esse gate:
 - `instagram_accounts`: **0 linhas**;
 - `ad_accounts`: **0 linhas**.
 
-Logo, nenhum OAuth real ocorreu por engano.
+Logo, nenhum OAuth real ocorreu por engano até aquele ponto.
 
-## 8. Próxima ação autorizada
+## 8. Correção canônica — centralidade de mídia paga
 
-Próximo a agir: **GPT + fundador**.
+Canônico vigente:
 
-OAuth real da 003B está **LIBERADO**.
+`docs/01-produto/PAID_MEDIA_CANONICAL.md`
 
-Fluxo autorizado:
+Decisão da rodada:
 
-1. abrir `http://localhost:3000/conta`;
-2. clicar em `Conectar a Meta` uma única vez;
-3. no diálogo Meta, usar a configuração nova e selecionar o portfólio/ativos de teste correspondentes ao negócio Quoron quando solicitados;
-4. selecionar a Página e a conta profissional do Instagram do negócio quando a Meta apresentar os ativos;
-5. não autorizar conta de anúncios nem permissões extras se aparecerem fora do fluxo esperado;
-6. concluir o login e retornar ao Tráfego Pago;
-7. parar antes de escolher o Instagram dentro do Tráfego Pago se houver qualquer ambiguidade/erro; devolver a tela ao GPT.
+`rodadas/gpt/DECISAO_003B_02_MIDIA_PAGA_CENTRAL_E_OAUTH_LIBERADO.md`
 
-Após o callback, o GPT audita a nova conexão `ACTIVE`, os escopos realmente concedidos e a descoberta antes de liberar a seleção final e as sondas read-only.
+O fundador corrigiu explicitamente um pressuposto documental anterior.
 
-## 9. Continua NÃO autorizado
+Regra vigente:
+
+- orgânico deve entregar valor e pode existir sozinho por períodos;
+- **mídia paga é pilar central da proposta de crescimento do produto**, não capacidade periférica;
+- todo usuário deve poder evoluir para tráfego pago quando houver motivo estratégico;
+- não investir agora não significa que a arquitetura deva esconder ou remover capacidade Ads;
+- permissão técnica para Ads não equivale a criar campanha, aprovar orçamento ou gerar gasto;
+- qualquer gasto continua exigindo aprovação humana explícita, comando de domínio, idempotência e auditoria.
+
+O gate histórico:
+
+`rodadas/gpt/GATE_003B_OAUTH_BLOQUEADO_PERMISSOES_ANUNCIOS.md`
+
+permanece apenas como evidência da hipótese anterior. A decisão de bloquear o OAuth por aparecer capacidade de anúncios está **SUPERADA**.
+
+Antes da próxima rodada substantiva depois da 003B, harmonizar diretamente as formulações conflitantes em `.gpt/PROJECT_PROMPT.md`, `GROWTH_INTELLIGENCE_CANONICAL.md`, `MVP_CANONICAL.md`, `IMPLEMENTATION_ROADMAP.md` e demais canônicos afetados. Não criar rodada apenas para housekeeping.
+
+## 9. OAuth real 003B — EM ANDAMENTO
+
+No fluxo real atual foram selecionados:
+
+- Empresa/portfólio: **Quoron**;
+- Página do Facebook: **Quoron**;
+- Conta do Instagram: **goquoron**;
+- nenhuma conta de anúncios foi selecionada como ativo nesse passo.
+
+A tela final de consentimento informa também capacidade relacionada a gerenciamento/leitura de anúncios. Após a correção canônica acima, isso **não bloqueia o fluxo** por si só.
+
+### Próxima ação autorizada
+
+Próximo a agir: **fundador**.
+
+Na tela atual de consentimento da Meta, clicar **Confirmar**.
+
+Depois:
+
+1. permitir que a Meta conclua e redirecione sozinha para `http://localhost:3000/conta`;
+2. não iniciar campanha, não escolher conta de anúncios manualmente e não gerar gasto;
+3. ao retornar ao Tráfego Pago, **não clicar ainda em `Usar esta conta`** se o botão aparecer;
+4. devolver a tela ao GPT.
+
+O GPT então audita no Supabase:
+
+- nova conexão `ACTIVE`;
+- escopos realmente concedidos;
+- presença do token no Vault sem exposição;
+- descoberta da Página/Instagram;
+- qualquer capacidade Ads efetivamente concedida;
+- antes de liberar seleção do Instagram e sondas read-only.
+
+## 10. Continua NÃO autorizado
 
 - Claude alterar painel Meta;
 - apagar a configuração histórica da 003A;
 - criar novo Meta App ID;
-- ampliar permissões por tentativa;
-- persistir Page Access Token;
-- solicitar `ads_management` ou `business_management` automaticamente;
+- ampliar permissões adicionais por tentativa fora do fluxo real apresentado;
+- persistir Page Access Token sem decisão arquitetural;
+- criar campanha manualmente por teste;
 - criar anúncios ou gerar gasto;
 - importar conteúdo do Instagram;
 - iniciar Fase 4;
-- promover/mergear a 003B antes do E2E real.
+- promover/mergear a 003B antes do E2E real, sondas e auditoria final.
 
-## 10. Pendências não bloqueantes
+## 11. Pendências não bloqueantes
 
+- harmonização direta dos canônicos antigos com `PAID_MEDIA_CANONICAL.md` antes da próxima rodada substantiva pós-003B;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
 - leaked-password protection antes de produção;
 - SMTP/domínio de produção;
