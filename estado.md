@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-10 AUDITADA E APROVADA — MIGRATION 20260824170000 APLICADA E AUDITADA NO REMOTO — BISU EXTERNO JÁ REMOVIDO — MARCADOR ONE-OFF DO E2E AINDA PENDENTE — 003A AINDA NÃO PROMOVIDA**.
+Status: **003A-10B AUDITADA E APROVADA — MARCADOR E2E PERSISTIDO — VERIFICAÇÃO FINAL HUMANA AUTORIZADA — 003A AINDA NÃO PROMOVIDA**.
 
 Mandato original:
 
@@ -40,14 +40,11 @@ Auditorias/decisões vigentes:
 - `rodadas/gpt/REAUDITORIA_003A_08_CLASSIFICACAO_FAIL_CLOSED.md`
 - `rodadas/gpt/REAUDITORIA_003A_09_POS_REMOCAO_APPS_CONECTADOS.md`
 - `rodadas/gpt/REAUDITORIA_003A_10_VERIFICACAO_BISU_POS_REMOCAO.md`
+- `rodadas/gpt/REAUDITORIA_003A_10B_MARCADOR_E2E_POS_MIGRATION.md`
 
 Correção executada/auditada:
 
 `rodadas/gpt/CORRECAO_003A_10_VERIFICACAO_BISU_POS_REMOCAO.md`
-
-Gate imediatamente autorizado:
-
-`rodadas/gpt/GATE_003A_10B_MARCADOR_E2E_POS_MIGRATION.md`
 
 Branch:
 
@@ -55,11 +52,15 @@ Branch:
 
 PR: **#11 draft**.
 
-Head auditado da 003A-10:
+Head funcional auditado da 003A-10:
 
 `12c179a6d114ede60d5f8675c4813ea03bd75ba6`
 
-CI:
+Head observado após o gate documental/one-off 003A-10B:
+
+`ceffa3f92d86622a73ea0162a02526b8273bb0f6`
+
+CI aplicável ao código funcional:
 
 `32768038482` — **verde** em install, lint, typecheck, Edge Functions, testes e build.
 
@@ -67,7 +68,7 @@ CI:
 
 A integração externa correta **já foi removida** em **Business Settings > Apps conectados**.
 
-A migration `20260824170000_add_meta_external_disconnect_pending.sql` foi aplicada no Supabase remoto e auditada pelo GPT:
+A migration `20260824170000_add_meta_external_disconnect_pending.sql` está aplicada no Supabase remoto:
 
 - histórico remoto = **14 migrations**;
 - `20260824170000` presente;
@@ -75,16 +76,20 @@ A migration `20260824170000_add_meta_external_disconnect_pending.sql` foi aplica
 - RPC `mark_meta_external_disconnect_pending` presente e protegida para `service_role`;
 - `revoke_meta_connection` recriada conforme a migration.
 
-A conexão real permanece preservada:
+O gate 003A-10B foi auditado pelo GPT. A conexão real `9d256edf-0a89-4436-8d60-f375bc087c08` está:
 
-- conexão `9d256edf-0a89-4436-8d60-f375bc087c08`;
-- status = `ACTIVE`;
-- `updated_at` = 2026-08-24 01:47:57Z;
-- `disconnected_at` = nulo;
-- referência do token = presente;
-- segredo correspondente no Vault = presente;
-- `external_user_id=122103866379446065`;
-- `external_disconnect_pending_at` = **nulo**.
+- `status = ACTIVE`;
+- `connected_at = 2026-08-24 01:47:57Z`;
+- `updated_at = 2026-08-24 19:57:57Z`;
+- `external_disconnect_pending_at = 2026-08-24 19:57:57Z`;
+- `disconnected_at = null`;
+- `token_expires_at = 2026-10-23 01:47:55Z`;
+- `external_user_id = 122103866379446065`;
+- escopos preservados: `pages_show_list`, `pages_read_engagement`, `public_profile`;
+- referência do token presente;
+- segredo correspondente no Vault presente.
+
+Há uma única conexão e um único marcador pendente no ambiente.
 
 ## 5. Sequência real do gate BISU
 
@@ -96,56 +101,43 @@ A conexão real permanece preservada:
 6. O fail-closed funcionou: nenhuma limpeza local ocorreu.
 7. A 003A-09 provou que, depois da remoção correta, o token alvo deixou de operar, embora `debug_token` não devolva `is_valid=false` nesse caso.
 8. A 003A-10 implementou marcador persistente e prova composta contextual para o comportamento real observado.
-9. A migration da 003A-10 já foi aplicada e auditada no remoto.
+9. A migration da 003A-10 foi aplicada e auditada no remoto.
+10. Como o E2E havia começado antes da coluna existir, o gate 003A-10B reconstruiu somente o marcador one-off do fluxo já comprovado. Status, token, Vault e `disconnected_at` permaneceram intactos.
 
-## 6. 003A-10 — resultado auditado
+## 6. 003A-10/10B — resultado auditado
 
-A correção foi aprovada:
+A correção e o gate foram aprovados:
 
-- marcador persistente `external_disconnect_pending_at` para sobreviver a reload/login;
-- RPC idempotente `mark_meta_external_disconnect_pending`, restrita a `service_role`;
+- marcador persistente `external_disconnect_pending_at` sobrevive a reload/login;
+- RPC idempotente restrita a `service_role`;
 - UI deriva `remocao-externa-pendente` do estado persistido;
-- caminho manual corrigido para **Configurações do negócio > Apps conectados**;
+- caminho manual correto: **Configurações do negócio > Apps conectados**;
 - BISU continua sem endpoint mutável de revogação pelo produto;
 - `is_valid=false` explícito continua sendo prova forte;
 - no fluxo BISU pendente, a prova composta pós-remoção exige marcador + app token saudável + assinatura real observada do token alvo;
 - `190` genérico, outro subcode, falha do app token, rede, 5xx ou ambiguidade continuam fail-closed;
 - verificações repetidas são idempotentes;
-- CI do HEAD está verde.
+- desde o HEAD funcional auditado da 003A-10 até o HEAD da 003A-10B houve somente alterações documentais/governança, sem novo delta funcional.
 
 A regra **não** é `190 => revogado`.
 
-## 7. Particularidade one-off do E2E atual
+## 7. Próxima ação autorizada
 
-O E2E começou antes da existência da coluna nova. Por isso a conexão real recebeu a coluna com valor nulo mesmo com a remoção externa já executada e auditada.
+Gate humano final do E2E:
 
-O GPT tentou reconstruir esse fato pelo conector Supabase:
+1. fundador deve abrir a tela de conta local do Tráfego Pago;
+2. a UI deve mostrar o estado persistido **Falta concluir na Meta** mesmo após reload/login;
+3. fundador deve clicar **uma única vez** em `Já removi — verificar`;
+4. GPT deve auditar imediatamente o Supabase;
+5. sucesso exige: `status=REVOKED`, `disconnected_at` preenchido, `token_secret_reference=null`, segredo removido do Vault e `external_disconnect_pending_at=null`;
+6. se qualquer pós-condição falhar, não promover e não repetir ações na Meta por tentativa;
+7. somente após esse gate passar a 003A pode ser promovida.
 
-- chamada da RPC foi recusada com `permission denied for function`, confirmando a ACL de `service_role`;
-- `UPDATE` direto foi recusado porque o conector opera em transação somente leitura;
-- nenhuma tentativa alterou dados.
+## 8. Continua NÃO autorizado
 
-Portanto o marcador one-off deve ser aplicado pelo Claude Code usando o caminho server-side `service_role`, exclusivamente para a conexão real do E2E.
-
-Não refazer OAuth e não remover novamente a integração na Meta.
-
-## 8. Próxima ação autorizada
-
-Claude Code deve executar somente o **Gate 003A-10B**:
-
-1. marcar a conexão `9d256edf-0a89-4436-8d60-f375bc087c08` via `mark_meta_external_disconnect_pending` usando `service_role`;
-2. não tocar em Meta, status, token, Vault ou `disconnected_at`;
-3. provar que a conexão continua `ACTIVE`, com token/segredo presentes e marcador agora não nulo;
-4. parar para auditoria GPT.
-
-Depois da reauditoria, o fundador poderá clicar uma única vez `Já removi — verificar` para a pós-condição final.
-
-## 9. Continua NÃO autorizado
-
-Até o gate acima concluir:
+Até o gate final concluir:
 
 - clicar `Desconectar`;
-- clicar `Já removi — verificar`;
 - nova remoção/reassociação no painel Meta;
 - novo OAuth;
 - seleção de ativos;
@@ -153,7 +145,7 @@ Até o gate acima concluir:
 - iniciar 003B;
 - promover/mergear 003A.
 
-## 10. Pendências não bloqueantes
+## 9. Pendências não bloqueantes
 
 - escopos `ads_*`/`business_management` e seleção detalhada de ativos ficam para 003B;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
