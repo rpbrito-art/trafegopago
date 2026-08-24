@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-09 INVESTIGADA — AGUARDANDO DECISÃO GPT — NENHUMA NOVA MUTAÇÃO EXECUTADA**.
+Status: **003A-09 AUDITADA E APROVADA COMO INVESTIGAÇÃO — BISU EXTERNO JÁ REMOVIDO — META RECUSA O TOKEN ALVO SEM DEVOLVER `is_valid=false` — CORREÇÃO 003A-10 AUTORIZADA — 003A AINDA NÃO PROMOVIDA**.
 
 Mandato original:
 
@@ -38,10 +38,11 @@ Auditorias/decisões vigentes:
 - `rodadas/gpt/DECISAO_ARQUITETURAL_003A_06_REVOGACAO_TOKEN_BUSINESS_LOGIN.md`
 - `rodadas/gpt/REAUDITORIA_003A_07_DESCONEXAO_BISU_GUIADA.md`
 - `rodadas/gpt/REAUDITORIA_003A_08_CLASSIFICACAO_FAIL_CLOSED.md`
+- `rodadas/gpt/REAUDITORIA_003A_09_POS_REMOCAO_APPS_CONECTADOS.md`
 
 Próximo mandato autorizado:
 
-`rodadas/gpt/INVESTIGACAO_003A_09_POS_REMOCAO_APPS_CONECTADOS.md`
+`rodadas/gpt/CORRECAO_003A_10_VERIFICACAO_BISU_POS_REMOCAO.md`
 
 Branch:
 
@@ -49,17 +50,19 @@ Branch:
 
 PR: **#11 draft**.
 
-Head auditado da 003A-08:
+Head auditado da investigação 003A-09:
 
-`99b9c79e59e70db0689bcc773551236584f48253`
+`25934c498dd96a72d6584de95d3af08790ae6204`
 
-CI:
+Última CI de código auditada antes da investigação documental/read-only:
 
-`32762552984` — **verde** em install, lint, typecheck, Edge Functions, testes e build.
+`32762552984` — verde em install, lint, typecheck, Edge Functions, testes e build.
 
 ## 4. Estado comprovado da conexão real
 
-Após todas as ações humanas descritas abaixo, o Supabase permanece fail-closed:
+A integração externa correta **já foi removida** em **Business Settings > Apps conectados**.
+
+O Supabase continua deliberadamente preservado até a correção do verificador:
 
 - status = `ACTIVE`;
 - `connected_at` e `updated_at` = 2026-08-24 01:47:57Z;
@@ -68,71 +71,52 @@ Após todas as ações humanas descritas abaixo, o Supabase permanece fail-close
 - segredo correspondente no Vault = presente;
 - `external_user_id=122103866379446065`.
 
-Esse estado foi reconfirmado depois da remoção correta em `Apps conectados` e depois dos cliques locais subsequentes.
-
 ## 5. Sequência real do gate BISU
 
-1. O fundador clicou `Desconectar` no Tráfego Pago local.
-2. A UI entrou corretamente em `/conta?meta=externo`, mostrou `Falta concluir na Meta` e ofereceu `Já removi — verificar`; Supabase ficou intacto.
-3. O GPT inicialmente confundiu `Contas > Apps` com a superfície de integração instalada. O app foi removido dali, mas o token continuou ativo; o app foi depois reassociado corretamente ao portfólio Quoron com App ID `2940404272985831`.
-4. A superfície correta foi localizada em **Business Settings > Apps conectados**.
-5. Nessa tela apareceu `Trafego Pago Business Dev`, App ID `2940404272985831`, adicionado em 23/08/2026, com as permissões da integração. O fundador removeu essa integração e confirmou.
-6. Antes/ao retomar a verificação local, houve novo login na conta do Tráfego Pago. O fundador relata ter clicado `Desconectar` mais de uma vez depois disso.
-7. O estado final visível foi `/conta?meta=erro`, com a conexão ainda mostrada como conectada.
-8. Auditoria no Supabase confirmou que nenhuma limpeza local ocorreu: conexão `ACTIVE`, token referenciado e segredo no Vault presentes.
+1. `Desconectar` local classificou a credencial como BISU e entrou no fluxo externo sem limpar estado.
+2. Houve um desvio manual: `Contas > Apps` foi confundido com a integração instalada; a associação foi removida e depois restaurada corretamente com App ID `2940404272985831`.
+3. A superfície correta foi localizada em **Business Settings > Apps conectados**.
+4. Nessa tela, `Trafego Pago Business Dev` (App ID `2940404272985831`) foi removido e confirmado pelo fundador.
+5. Um novo login/reload local perdeu o estado visual do fluxo e o fundador clicou `Desconectar` mais de uma vez; a UI terminou em `?meta=erro`.
+6. O fail-closed funcionou: nenhuma limpeza local ocorreu.
 
-## 6. Interpretação vigente
+## 6. Investigação 003A-09 — resultado auditado
 
-A remoção correta da integração externa foi executada. O fato de a UI terminar em `?meta=erro` não autoriza inferir se o token está válido ou inválido.
+Somente leitura, sem código funcional ou mutação externa:
 
-Hipótese a investigar: após a remoção correta, `debug_token` pode estar respondendo de forma diferente de `HTTP 200 + data.is_valid=false` (por exemplo, erro HTTP), e a implementação atual trata isso como `UNVERIFIED/PROVIDER_REVOKE_FAILED`, preservando o estado local.
+- `GET /debug_token` do token alvo → HTTP 400, `GraphMethodException`, code 100, sem `data`;
+- app token inspecionando a si mesmo → HTTP 200, `is_valid=true`, `type=APP`;
+- `GET /me` com o token alvo → HTTP 400, `OAuthException`, code 190, subcode 464;
+- token sintético inexistente usado como controle → `debug_token` HTTP 200, `is_valid=false`.
 
-Essa hipótese **não está provada** e não autoriza nova mutação.
+Conclusão: após a remoção correta, a Meta tornou o BISU alvo inutilizável, mas **não usa `debug_token.is_valid=false` como pós-condição observável nesse caso real**. A implementação atual interpreta HTTP 400 como `UNVERIFIED/PROVIDER_REVOKE_FAILED`, por isso preserva o local e mostra erro.
 
-## 7. Resultado da Investigação 003A-09 (Claude Code)
+Não reintroduzir `190 => revogado` genericamente.
 
-Executada em 2026-08-24, somente leitura, com o token real lido pela fronteira server-side.
-Nenhuma escrita na Meta ou no Supabase, nenhum endpoint mutável, nenhum clique. Script
-temporário e não versionado.
+## 7. Próxima ação autorizada
 
-Fatos:
+Claude Code deve executar somente a **Correção 003A-10 — Verificação BISU pós-remoção + continuidade do fluxo**.
 
-- `GET /debug_token` (a mesma chamada de `inspectToken`): HTTP **400**,
-  `GraphMethodException` code **100**, **sem `data`** — não há `is_valid` para ler;
-- app token inspecionando a si mesmo: HTTP 200, `is_valid: true`, `type: APP` — a falha
-  **não** é de autenticação do app;
-- `GET /me` com o token alvo: HTTP **400**, `OAuthException` code **190**, subcode **464**;
-- conexão continua `ACTIVE`, `disconnected_at` nulo, `updated_at` em `2026-08-24 01:47:57`.
+Objetivos centrais:
 
-Sonda estrutural (§3.4), contra um token que nunca existiu — nada real tocado:
+- persistir explicitamente que um BISU entrou em remoção externa, sobrevivendo a reload/login;
+- corrigir a UX para **Configurações do negócio > Apps conectados**;
+- reconhecer a pós-condição composta real apenas no contexto BISU pendente: app token saudável + assinatura alvo observada `190/464` após `debug_token` não utilizável;
+- manter 190 genérico, outros subcodes, rede/5xx/ambiguidade e ausência do marcador em fail-closed;
+- limpar Vault/estado apenas após prova contextual;
+- provar idempotência e recuperação após login.
 
-- `debug_token` com token inventado: HTTP **200**, `data` presente, **`is_valid: false`**;
-- `GET /me` com token inventado: HTTP 400, code 190, **sem** subcode.
-
-Portanto a Meta **sabe** sinalizar "token inválido" — e o faz com HTTP 200 + `is_valid:
-false`, inclusive para string inventada. O nosso token não recebe essa resposta; produz
-assinatura distinta nas duas chamadas.
-
-Causa do `?meta=erro`: `inspectToken` exige HTTP ok **e** `is_valid` booleano. HTTP 400 →
-`{ ok: false }` → `UNVERIFIED` (verificação) / `PROVIDER_REVOKE_FAILED` (desconexão) →
-estado local preservado. O fail-closed operou como projetado; o que falta é a pós-condição
-observável que o desenho espera.
-
-**DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT.** Definir se, e sob quais condições,
-algum sinal diferente de `is_valid: false` passa a valer como prova de inatividade. Tratar
-`190`, `464` ou `GraphMethodException` como prova é exatamente a inferência que a 003A-03
-removeu do código; a escolha não é do executor. Claude Code não alterou código nesta
-investigação.
+Se houver migration aditiva, Claude deve criá-la e testá-la, mas o GPT fará o gate de aplicação no Supabase antes do E2E final.
 
 ## 8. Continua NÃO autorizado
 
-Até a 003A-09 ser auditada:
+Até auditoria da 003A-10:
 
 - não clicar novamente `Desconectar`;
 - não clicar `Já removi — verificar`;
 - não remover/reassociar mais nada na Meta;
 - não refazer OAuth;
-- não chamar `oauth/revoke`, `/permissions` ou `/access_tokens`;
+- não chamar `oauth/revoke`, `/permissions` ou `/access_tokens` para BISU;
 - não limpar estado local manualmente;
 - não iniciar 003B;
 - não promover/mergear 003A.
