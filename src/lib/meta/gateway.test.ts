@@ -29,6 +29,11 @@ let tipoDoToken: string = "SYSTEM_USER";
 /** `is_valid` devolvido a cada chamada de `debug_token`, em ordem. */
 let validadeDoToken: boolean[] = [true, false];
 let chamadasDebug = 0;
+/**
+ * `client_business_id` devolvido por `GET /me` — a marca do BISU.
+ * `null` significa credencial que não é BISU.
+ */
+let negocioDoToken: string | null = "negocio-123";
 /** Desfecho do endpoint de revogação. */
 let revogacaoResponde: "sucesso" | "erro190" | "erro100" | "http500" = "sucesso";
 let erroRpc: Record<string, { code: string } | null> = {};
@@ -104,8 +109,12 @@ vi.mock("./config", async () => {
   };
 });
 
-const { completeMetaAuthorization, disconnectMeta, startMetaAuthorization } =
-  await import("./gateway");
+const {
+  checkMetaDisconnection,
+  completeMetaAuthorization,
+  disconnectMeta,
+  startMetaAuthorization,
+} = await import("./gateway");
 
 function intencaoValida(over: Record<string, unknown> = {}) {
   return {
@@ -129,6 +138,8 @@ beforeEach(() => {
   validadeDoToken = [true, false];
   chamadasDebug = 0;
   revogacaoResponde = "sucesso";
+  // Padrão: a credencial real da 003A — BISU emitido pelo Login for Business.
+  negocioDoToken = "negocio-123";
   erroRpc = {};
   rpcCalls.length = 0;
   fetchCalls.length = 0;
@@ -165,7 +176,30 @@ beforeEach(() => {
           }),
         } as Response;
       }
-      if (alvo.includes("/oauth/revoke") || alvo.includes("/permissions")) {
+      // Antes de `/me`: `/permissions` também mora sob `/me` quando não há id.
+      if (alvo.includes("/permissions")) {
+        if (revogacaoResponde === "sucesso") {
+          return { ok: true, json: async () => ({ success: "true" }) } as Response;
+        }
+        if (revogacaoResponde === "http500") {
+          return { ok: false, json: async () => ({}) } as Response;
+        }
+        const code = revogacaoResponde === "erro190" ? 190 : 100;
+        return { ok: false, json: async () => ({ error: { code } }) } as Response;
+      }
+      if (alvo.includes("/me?") && alvo.includes("client_business_id")) {
+        if (negocioDoToken === "HTTP_RUIM") {
+          return { ok: false, json: async () => ({ error: { code: 190 } }) } as Response;
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            id: "999",
+            ...(negocioDoToken ? { client_business_id: negocioDoToken } : {}),
+          }),
+        } as Response;
+      }
+      if (alvo.includes("/oauth/revoke")) {
         if (revogacaoResponde === "sucesso") {
           return { ok: true, json: async () => ({ success: "true" }) } as Response;
         }
@@ -338,173 +372,153 @@ describe("completeMetaAuthorization — persistência", () => {
 
 describe("disconnectMeta", () => {
   it("recusa desconexão de organização alheia — cross-tenant", async () => {
-    // Bloqueio 3.1: conhecer o UUID não autoriza revogar.
     membershipAtiva = false;
 
     const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_B });
 
     expect(r).toEqual({ ok: false, reason: "NO_MEMBERSHIP" });
-    expect(rpcUsados()).toHaveLength(0);
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
     expect(chamouMeta()).toBe(false);
   });
 
-  it("revoga na Meta ANTES de limpar o estado local", async () => {
-    // Bloqueio 3.6: limpar antes deixaria o app autorizado no provider e sem
-    // token para revogá-lo.
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
-
-    expect(r).toEqual({ ok: true });
-    expect(rpcUsados()).toEqual([
-      "read_meta_connection_token",
-      "revoke_meta_connection",
-    ]);
-  });
-
-  it("token SYSTEM_USER usa oauth/revoke, não /permissions", async () => {
-    // Provado empiricamente na etapa 1 do E2E: o token emitido pelo Login for
-    // Business é `type: SYSTEM_USER`, e o endpoint de permissões é de usuário.
-    tipoDoToken = "SYSTEM_USER";
-
-    await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
-
-    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(true);
-    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
-  });
-
-  it("token USER usa /permissions, não oauth/revoke", async () => {
-    tipoDoToken = "USER";
-
-    await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
-
-    expect(fetchCalls.some((u) => u.includes("/999/permissions"))).toBe(true);
-    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
-  });
-
-  it("token valido de tipo desconhecido nao revoga por tentativa", async () => {
-    // `/permissions` desautoriza um usuario; para um token `PAGE` isso nao e o
-    // mecanismo certo, e o que ele responder nao diz nada sobre o token que
-    // ficou. Sem primitive conhecida, nao ha mutacao externa a fazer.
-    tipoDoToken = "PAGE";
+  it("recusa quando não há conexão viva", async () => {
+    conexaoViva = null;
 
     const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
 
-    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
-    expect(chamouMeta()).toBe(true); // só o debug_token
-    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
-    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
-    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    expect(r).toEqual({ ok: false, reason: "NOT_FOUND" });
   });
 
-  it("token valido sem `type` na resposta tambem falha fechado", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
-      const alvo = String(url);
-      fetchCalls.push(alvo);
-      if (alvo.includes("/debug_token")) {
-        return {
-          ok: true,
-          json: async () => ({ data: { is_valid: true } }),
-        } as Response;
-      }
-      return { ok: true, json: async () => ({ success: "true" }) } as Response;
-    }));
-
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
-
-    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
-    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
-    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
-    expect(rpcUsados()).not.toContain("revoke_meta_connection");
-  });
-
-  it("pos-verificacao sem `type` ainda libera a limpeza", async () => {
-    // Depois que o token esta comprovadamente inativo, o tipo nao acrescenta
-    // nada: ele existia para escolher a primitive enquanto o token valia.
-    let n = 0;
-    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
-      const alvo = String(url);
-      fetchCalls.push(alvo);
-      if (alvo.includes("/debug_token")) {
-        n += 1;
-        return {
-          ok: true,
-          json: async () =>
-            n === 1
-              ? { data: { type: "SYSTEM_USER", is_valid: true } }
-              : { data: { is_valid: false } },
-        } as Response;
-      }
-      return { ok: true, json: async () => ({ success: "true" }) } as Response;
-    }));
+  it("conexão sem token pula a Meta e limpa o local", async () => {
+    tokenNoVault = null;
 
     const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
 
     expect(r).toEqual({ ok: true });
+    expect(chamouMeta()).toBe(false);
     expect(rpcUsados()).toContain("revoke_meta_connection");
   });
 
-  it("NÃO revoga localmente se o provider falhar de forma indeterminada", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => {
-      throw new Error("rede");
-    }));
+  // -------------------------------------------------------------- BISU
+  //
+  // A credencial real da 003A. A Meta a encerra pelo ambiente dela; não existe
+  // endpoint nosso que faça isso. Tentar um foi o que produziu a primeira
+  // desconexão real que não desconectou nada.
 
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+  describe("credencial BISU", () => {
+    it("pede ação externa em vez de tentar revogar", async () => {
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
 
-    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
-    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+      expect(r).toEqual({ ok: false, reason: "EXTERNAL_ACTION_REQUIRED" });
+    });
+
+    it("não chama nenhum endpoint mutável da Meta", async () => {
+      await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+      expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+      expect(fetchCalls.some((u) => u.includes("/access_tokens"))).toBe(false);
+    });
+
+    it("não limpa o estado local antes da remoção externa", async () => {
+      await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("classifica por client_business_id, não por debug_token.type", async () => {
+      // O mesmo `SYSTEM_USER` que o system user clássico devolve. É o campo do
+      // contrato de negócio que separa os dois — e só ele.
+      expect(tipoDoToken).toBe("SYSTEM_USER");
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "EXTERNAL_ACTION_REQUIRED" });
+      expect(
+        fetchCalls.some((u) => u.includes("client_business_id")),
+      ).toBe(true);
+    });
+
+    it("client_business_id vazio não conta como BISU", async () => {
+      negocioDoToken = "";
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      // Não é BISU e o tipo não é revogável: para sem tocar em nada.
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
   });
 
-  it("erro 190 do provider NAO prova revogacao — falha fechado", async () => {
-    // O bloqueio da reauditoria. `190` e familia generica de falha de token, e
-    // no `oauth/revoke` ha duas credenciais em jogo: o codigo nao diz sequer
-    // qual delas falhou, muito menos que o alvo ficou inativo.
-    revogacaoResponde = "erro190";
+  describe("classificação que não conclui", () => {
+    it("HTTP ruim falha fechado, sem tentar outro caminho", async () => {
+      negocioDoToken = "HTTP_RUIM";
 
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
 
-    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
-    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+      expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("falha de rede falha fechado", async () => {
+      vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+        const alvo = String(url);
+        fetchCalls.push(alvo);
+        if (alvo.includes("/debug_token")) {
+          return {
+            ok: true,
+            json: async () => ({ data: { type: "SYSTEM_USER", is_valid: true } }),
+          } as Response;
+        }
+        throw new Error("rede");
+      }));
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("corpo sem identificação nenhuma falha fechado", async () => {
+      vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+        const alvo = String(url);
+        fetchCalls.push(alvo);
+        if (alvo.includes("/debug_token")) {
+          return {
+            ok: true,
+            json: async () => ({ data: { type: "SYSTEM_USER", is_valid: true } }),
+          } as Response;
+        }
+        return { ok: true, json: async () => null } as unknown as Response;
+      }));
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
   });
 
-  it("outros erros do provider tambem falham fechado", async () => {
-    revogacaoResponde = "erro100";
+  // ------------------------------------------------------ inspeção inicial
+  //
+  // Vale para qualquer credencial: sem saber o que existe do outro lado, não
+  // se apaga nada.
 
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
-
-    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
-    expect(rpcUsados()).not.toContain("revoke_meta_connection");
-  });
-
-  it("sucesso do provider NAO basta: token ainda valido depois falha fechado", async () => {
-    // "Aceitei o pedido" nao e prova. A pos-condicao e que decide.
-    validadeDoToken = [true, true];
-
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
-
-    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
-    expect(rpcUsados()).not.toContain("revoke_meta_connection");
-  });
-
-  it("sucesso + pos-verificacao invalida libera a limpeza local", async () => {
-    validadeDoToken = [true, false];
-
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
-
-    expect(r).toEqual({ ok: true });
-    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(true);
-    expect(rpcUsados()).toContain("revoke_meta_connection");
-  });
-
-  it("token ja invalido antes: nao revoga, mas pode limpar", async () => {
+  it("token já inválido não chama a Meta, mas pode limpar", async () => {
     validadeDoToken = [false];
 
     const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
 
     expect(r).toEqual({ ok: true });
-    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("client_business_id"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
     expect(rpcUsados()).toContain("revoke_meta_connection");
   });
 
-  it("falha na inspecao inicial nao completa a desconexao", async () => {
+  it("falha na inspeção inicial não completa a desconexão", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
       fetchCalls.push(String(url));
       return { ok: false, json: async () => ({}) } as Response;
@@ -516,33 +530,7 @@ describe("disconnectMeta", () => {
     expect(rpcUsados()).not.toContain("revoke_meta_connection");
   });
 
-  it("falha na POS-verificacao nao completa a desconexao", async () => {
-    let n = 0;
-    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
-      const alvo = String(url);
-      fetchCalls.push(alvo);
-      if (alvo.includes("/debug_token")) {
-        n += 1;
-        if (n === 1) {
-          return {
-            ok: true,
-            json: async () => ({ data: { type: "SYSTEM_USER", is_valid: true } }),
-          } as Response;
-        }
-        return { ok: false, json: async () => ({}) } as Response;
-      }
-      return { ok: true, json: async () => ({ success: "true" }) } as Response;
-    }));
-
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
-
-    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
-    expect(rpcUsados()).not.toContain("revoke_meta_connection");
-  });
-
-  it("resposta ambigua de debug_token nao e lida como invalido", async () => {
-    // Sem o booleano `is_valid` nao ha afirmacao possivel — e afirmar seria
-    // exatamente o erro que esta correcao remove.
+  it("resposta ambígua de debug_token não é lida como inválido", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
       const alvo = String(url);
       fetchCalls.push(alvo);
@@ -561,11 +549,108 @@ describe("disconnectMeta", () => {
     expect(rpcUsados()).not.toContain("revoke_meta_connection");
   });
 
+  // ------------------------------------------------ token de usuário comum
+  //
+  // Caminho legado, isolado: nunca é escolhido para BISU, porque a
+  // classificação vem antes e BISU sai por `EXTERNAL_ACTION_REQUIRED`.
+
+  describe("token de usuário comum", () => {
+    beforeEach(() => {
+      tipoDoToken = "USER";
+      negocioDoToken = null;
+    });
+
+    it("usa /permissions e não oauth/revoke", async () => {
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: true });
+      expect(fetchCalls.some((u) => u.includes("/999/permissions"))).toBe(true);
+      expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+    });
+
+    it("revoga na Meta ANTES de limpar o estado local", async () => {
+      await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      const limpeza = rpcCalls.findIndex(
+        (c) => c.fn === "revoke_meta_connection",
+      );
+      expect(limpeza).toBeGreaterThanOrEqual(0);
+      expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(true);
+    });
+
+    it("erro 190 do provider NÃO prova revogação — falha fechado", async () => {
+      // `190` é família genérica de falha de token: o código não diz sequer
+      // qual credencial falhou, muito menos que o alvo ficou inativo.
+      revogacaoResponde = "erro190";
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("outros erros do provider também falham fechado", async () => {
+      revogacaoResponde = "erro100";
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("sucesso do provider NÃO basta: token ainda válido falha fechado", async () => {
+      validadeDoToken = [true, true];
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("falha na pós-verificação não completa a desconexão", async () => {
+      let n = 0;
+      vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+        const alvo = String(url);
+        fetchCalls.push(alvo);
+        if (alvo.includes("/debug_token")) {
+          n += 1;
+          if (n === 1) {
+            return {
+              ok: true,
+              json: async () => ({ data: { type: "USER", is_valid: true } }),
+            } as Response;
+          }
+          return { ok: false, json: async () => ({}) } as Response;
+        }
+        if (alvo.includes("/permissions")) {
+          return { ok: true, json: async () => ({ success: "true" }) } as Response;
+        }
+        return { ok: true, json: async () => ({ id: "999" }) } as Response;
+      }));
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("tipo desconhecido e não-BISU não revoga por tentativa", async () => {
+      tipoDoToken = "PAGE";
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+  });
+
+  // ------------------------------------------------------- leitura do Vault
+
   it("erro ao LER o token não conclui a desconexão nem limpa o local", async () => {
-    // O buraco que a reauditoria encontrou: a RPC devolve `data: null` tanto
-    // para "não há token" quanto para "falhou ao ler". Tratar os dois igual
-    // limparia o estado local deixando a autorização viva na Meta — e sem
-    // nenhuma referência para revogá-la depois.
+    // A RPC devolve `data: null` tanto para "não há token" quanto para "falhou
+    // ao ler". Tratar os dois igual limparia o estado local deixando a
+    // autorização viva na Meta — e sem referência para encerrá-la depois.
     erroRpc = { read_meta_connection_token: { code: "42501" } };
 
     const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
@@ -576,8 +661,6 @@ describe("disconnectMeta", () => {
   });
 
   it("erro de leitura é distinguido de ausência de token", async () => {
-    // Mesma resposta `null` da RPC, desfechos opostos: um preserva a conexão,
-    // o outro pode limpá-la.
     erroRpc = { read_meta_connection_token: { code: "XX000" } };
     const comErro = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
 
@@ -589,11 +672,12 @@ describe("disconnectMeta", () => {
     expect(semToken).toEqual({ ok: true });
   });
 
-  it("o log de diagnostico nomeia a etapa sem vazar segredo", async () => {
-    // A instrumentação da 003A-05 existe porque cada tentativa real é cara: sem
-    // ela, "erro" na UI não distingue rede de token ainda válido. O preço de
-    // registrar é nunca deixar o token virar log.
+  // ------------------------------------------------------------ diagnóstico
+
+  it("o log de diagnóstico nomeia a etapa sem vazar segredo", async () => {
     const espiao = vi.spyOn(console, "error").mockImplementation(() => {});
+    tipoDoToken = "USER";
+    negocioDoToken = null;
     revogacaoResponde = "erro190";
 
     await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
@@ -607,8 +691,10 @@ describe("disconnectMeta", () => {
     espiao.mockRestore();
   });
 
-  it("token ainda valido depois da revogacao e registrado como tal", async () => {
+  it("token ainda válido depois da revogação é registrado como tal", async () => {
     const espiao = vi.spyOn(console, "error").mockImplementation(() => {});
+    tipoDoToken = "USER";
+    negocioDoToken = null;
     validadeDoToken = [true, true];
 
     await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
@@ -620,21 +706,125 @@ describe("disconnectMeta", () => {
     expect(escrito).not.toContain("token-guardado");
     espiao.mockRestore();
   });
+});
 
-  it("conexão sem token pula a revogação remota e limpa o local", async () => {
-    tokenNoVault = null;
+describe("checkMetaDisconnection", () => {
+  it("token ainda válido: nada é tocado", async () => {
+    validadeDoToken = [true];
 
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "STILL_ACTIVE" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("token comprovadamente inválido: limpa o local e conclui", async () => {
+    validadeDoToken = [false];
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
 
     expect(r).toEqual({ ok: true });
-    expect(chamouMeta()).toBe(false);
     expect(rpcUsados()).toContain("revoke_meta_connection");
+  });
+
+  it("nunca chama endpoint mutável da Meta", async () => {
+    validadeDoToken = [false];
+
+    await checkMetaDisconnection({ userId: USER_A, organizationId: ORG_A });
+
+    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("/access_tokens"))).toBe(false);
+    expect(fetchCalls.every((u) => u.includes("/debug_token"))).toBe(true);
+  });
+
+  it("falha de rede não limpa o local", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+      fetchCalls.push(String(url));
+      throw new Error("rede");
+    }));
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "UNVERIFIED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("HTTP ruim não limpa o local", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+      fetchCalls.push(String(url));
+      return { ok: false, json: async () => ({}) } as Response;
+    }));
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "UNVERIFIED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("resposta ambígua não conta como inválido", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+      fetchCalls.push(String(url));
+      return {
+        ok: true,
+        json: async () => ({ data: { type: "SYSTEM_USER" } }),
+      } as Response;
+    }));
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "UNVERIFIED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("erro ao ler o token não limpa o local", async () => {
+    erroRpc = { read_meta_connection_token: { code: "42501" } };
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "TOKEN_READ_FAILED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    expect(chamouMeta()).toBe(false);
+  });
+
+  it("recusa verificação de organização alheia — cross-tenant", async () => {
+    membershipAtiva = false;
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_B,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "NO_MEMBERSHIP" });
+    expect(chamouMeta()).toBe(false);
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
   });
 
   it("recusa quando não há conexão viva", async () => {
     conexaoViva = null;
 
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
 
     expect(r).toEqual({ ok: false, reason: "NOT_FOUND" });
   });

@@ -1,9 +1,9 @@
-# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 a 003A-04 + INVESTIGAÇÕES 003A-05 e 003A-06A
+# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 a 003A-07 + INVESTIGAÇÕES 003A-05 e 003A-06A
 
 Executor: Claude Code · 2026-08-23 a 2026-08-24
 Branch: `claude/rodada-003a-meta-connection-foundation`
 
-Status: **INVESTIGAÇÃO 003A-06A CONCLUÍDA — AGUARDANDO GPT**
+Status: **003A-07 EXECUTADA — AGUARDANDO AUDITORIA GPT — NENHUM E2E REAL EXECUTADO**
 
 > ⚠️ **Conexão real APROVADA; revogação ainda não provada ponta a ponta.** Existe uma
 > conexão `ACTIVE` real no ambiente, mantida de propósito: validar a revogação exigiria
@@ -56,25 +56,18 @@ criado **sem** vínculo empresarial e o produto ficou disponível.
 `debug_token` real: `type: SYSTEM_USER`, `is_valid: true`, `user_id: 122103866379446065`,
 `expires_at: 2026-10-23`, `scopes: pages_show_list, pages_read_engagement, public_profile`.
 
-## Investigação 1 — revogação válida para SYSTEM_USER
+## Investigação 1 — a hipótese `oauth/revoke`, e por que caiu
 
-`DELETE /{user-id}/permissions` é o endpoint de permissões **de usuário**; o token emitido
-é `type: SYSTEM_USER`, cujo `user_id` é um system user. A documentação de Business
-Management APIs traz o mecanismo correto:
+Registro do rumo, porque ele explica as três correções seguintes. Como `debug_token`
+devolvia `type: SYSTEM_USER`, adotei `GET /oauth/revoke` — o mecanismo documentado para
+system user do Business Manager — e o E2E real depois provou que ele não invalidou nada.
 
-    GET /{version}/oauth/revoke
-      ?client_id=…&client_secret=…&revoke_token=…&access_token=…   → {"success":"true"}
+A causa não era o código: era a **classe da credencial**. A 003A-06A mostrou que o token
+responde `client_business_id`, e a Decisão 003A-06 fechou que se trata de BISU, cuja
+invalidação acontece no ambiente da Meta. `oauth/revoke` saiu do código na 003A-07.
 
-com a exigência de que o app do `revoke_token` e o do `client_id` sejam o mesmo — o nosso
-caso. Sonda estrutural com `revoke_token` deliberadamente inválido: endpoint existe e
-responde (não é 404); **nada real foi revogado**.
-
-**Correção aplicada por delta:** a desconexão passa a inspecionar o tipo via `debug_token`
-e escolher o caminho — `oauth/revoke` para `SYSTEM_USER`, `DELETE /{user-id}/permissions`
-para `USER`. Tipo desconhecido segue pelo caminho de usuário, que falha fechado, em vez de
-presumir system user e completar sem revogar.
-
-**Não provado ponta a ponta:** validar `oauth/revoke` exige revogar a conexão existente.
+O erro de fundo vale guardar: `debug_token.type` é um rótulo, não um contrato de ciclo de
+vida.
 
 ### Bloqueio da reauditoria — leitura do Vault falhando em aberto
 
@@ -211,6 +204,50 @@ consta o fato observado.
 O script de diagnóstico desta investigação foi **temporário e não versionado**, conforme o §4
 do mandato — que é também a correção do desvio registrado na 003A-05.
 
+## Delta da Correção 003A-07 — desconexão BISU guiada
+
+A desconexão parou de tentar encerrar por API o que a Meta só encerra no ambiente dela.
+
+`encerrarNoProvider` (antes `revokeOnMeta`) agora decide assim, com o token ainda válido:
+
+| leitura | caminho |
+| --- | --- |
+| `debug_token` diz `is_valid: false` | nada a encerrar; limpeza local liberada |
+| `client_business_id` presente | **BISU** → `EXTERNAL_ACTION_REQUIRED`, zero mutação |
+| não-BISU e `type: USER` | `DELETE /{user-id}/permissions` + pós-verificação |
+| qualquer outra combinação | falha fechado, sem endpoint mutável |
+
+`oauth/revoke` foi **removido** do código: sem chamador legítimo, ficaria só como convite a
+reintroduzir o erro. A classificação vem antes da escolha da primitive — é o que garante que
+BISU nunca alcance o caminho de usuário.
+
+**Segunda metade do fluxo:** `checkMetaDisconnection`, ação separada. Reconfere membership,
+lê o token pela mesma fronteira, chama **só** `debug_token` e apaga o segredo apenas com
+`is_valid: false` explícito. `STILL_ACTIVE` — a Meta ainda mostra o acesso de pé — é desfecho
+próprio, não erro: preserva tudo e deixa verificar de novo.
+
+**UI.** O estado conectado, ao receber o desfecho externo, troca o botão por um passo a
+passo (`Integrações → Aplicativos conectados`) e o botão *Já removi — verificar*. Sem link
+inventado: nenhum deep link dependente de id foi criado, porque não há destino provado.
+Erro genérico **não** vira instrução de remoção externa — uma falha de rede não prova nada
+sobre a classe da credencial, e mandar a pessoa mexer no painel da Meta seria chute.
+
+**Provas:** 107 testes em `src/lib/meta` + `src/components/meta` (+10). Cobrem os onze
+mínimos do mandato §5, incluindo BISU sem tocar `oauth/revoke`, `/permissions` ou
+`/access_tokens`; classificação ambígua/HTTP ruim/rede falhando fechado; verificação que não
+limpa com token vivo, com rede caída ou com resposta ambígua; e as regressões de Vault,
+cross-tenant, `state` single-use, `190` e pós-condição — todas migradas para o caminho de
+usuário, que é o único que ainda revoga por API. Um teste varre os sete desfechos da tela
+contra uma lista de termos proibidos (token, `client_business_id`, Graph, OAuth, ids).
+
+Suíte completa local: **617 testes verdes**. Lint, typecheck e build verdes.
+
+**Dívida do §6 quitada:** o script de diagnóstico não imprime mais `data.error` bruto — só
+`code`/`subcode`.
+
+**Nenhuma ação real:** a conexão segue `ACTIVE`, `disconnected_at` nulo, `updated_at` ainda
+em `01:47:57`. Nada foi clicado, removido no painel ou chamado contra a Meta.
+
 ## Investigação 2 — por que `ads_*` e `business_management` não vieram
 
 Minha hipótese anterior (App Review / restrição de publicidade) **estava errada**. As
@@ -292,17 +329,16 @@ Typecheck, lint, `deno check` e build verdes; suíte completa fica para a CI. Ad
 novo ERROR/WARN — o INFO novo (`meta_oauth_intents` sem policy) é o desenho server-only
 sendo reportado.
 
-## Pendência — decisão necessária
+## Pendência — gate humano previsto
 
-A conexão `ACTIVE` real permanece no ambiente, com token válido até 2026-10-23. Avançar
-exige uma destas, todas fora da alçada do executor por implicarem alterar/revogar a conexão:
+A conexão `ACTIVE` real permanece no ambiente, com token válido até 2026-10-23. O caminho
+BISU só fica provado ponta a ponta quando alguém remover o aplicativo em
+`Configurações do negócio → Integrações → Aplicativos conectados` e a verificação confirmar
+`is_valid: false`. Isso é gate humano em painel externo, fora da alçada do executor, e
+depende de autorização do GPT após esta auditoria.
 
-1. **autorizar o E2E da etapa 2** — desconectar pelo `oauth/revoke` já implementado,
-   provando o caminho SYSTEM_USER ponta a ponta;
-2. **refazer o diálogo selecionando ativos** (páginas e contas de anúncio), para confirmar a
-   causa dos escopos ausentes e obter `ads_*`/`business_management`;
-3. revogar pelo painel da Meta (Configurações → Integrações de negócios) e então limpar o
-   estado local.
+Continua aberto para 003B: refazer o diálogo selecionando ativos, para obter
+`ads_*`/`business_management`.
 
 Nenhum segredo foi pedido por chat ou versionado.
 
@@ -312,4 +348,4 @@ Apliquei a migration `20260823203915` **antes** de commitá-la, contrariando o c
 durável que a governança introduziu em `4144c03`. Corrigi a ordem em seguida: o commit
 `60a6bff` publicou o delta antes do gate — que é o que a 003A-01 existiu para ensinar.
 
-`INVESTIGAÇÃO 003A-06A CONCLUÍDA — AGUARDANDO GPT`
+`003A-07 EXECUTADA — AGUARDANDO AUDITORIA GPT — NENHUM E2E REAL EXECUTADO`

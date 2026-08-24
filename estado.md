@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-06A AUDITADA — TOKEN REAL CLASSIFICADO COMO BISU — DECISÃO ARQUITETURAL 003A-06 FECHADA — CORREÇÃO 003A-07 AUTORIZADA — E2E REAL AINDA BLOQUEADO**.
+Status: **003A-07 EXECUTADA — AGUARDANDO AUDITORIA GPT — NENHUM E2E REAL EXECUTADO**.
 
 Mandato original:
 
@@ -103,21 +103,47 @@ Para BISU válido da configuração atual:
 
 Portanto a desconexão BISU da 003A será um **fluxo guiado de ação externa + pós-verificação**, e não uma revogação automática por endpoint não documentado.
 
-## 7. Próxima ação autorizada
+## 7. Execução da Correção 003A-07 (Claude Code)
 
-Claude Code deve executar a **Correção 003A-07 — Desconexão BISU guiada e pós-verificada** na branch atual.
+Executada em 2026-08-24. Nenhuma ação real na Meta, nenhuma migration, nenhuma mutação
+externa.
 
-Objetivos principais:
+Contrato implementado em `encerrarNoProvider` (antes `revokeOnMeta`), com token válido:
 
-- trocar o caminho BISU atual por `EXTERNAL_ACTION_REQUIRED` ou contrato equivalente;
-- criar UX simples para explicar a remoção no ambiente Meta;
-- criar ação separada **Verificar desconexão**;
-- só limpar local após `is_valid=false`;
-- manter todo erro/ambiguidade fail-closed;
-- sanitizar a dívida `data.error` bruto do script de diagnóstico;
-- testes afetados + lint + typecheck + build + uma CI.
+- `client_business_id` presente → **BISU** → `EXTERNAL_ACTION_REQUIRED`, sem chamar endpoint
+  mutável e sem limpar estado local;
+- não-BISU com `type: USER` → `DELETE /{user-id}/permissions` + pós-verificação;
+- qualquer outra combinação, ou classificação que não conclua (HTTP ruim, rede, corpo sem
+  identificação) → falha fechado, sem tentativa alternativa;
+- `is_valid: false` na inspeção inicial continua liberando limpeza local;
+- **`oauth/revoke` removido do código** — sem chamador legítimo para BISU.
 
-**Esta autorização não permite nenhum E2E real nem ação no painel Meta.**
+Ação separada `checkMetaDisconnection` + `checkMetaDisconnectionAction`:
+
+- reconfere membership e lê o token pela mesma fronteira server-side;
+- chama **apenas** `debug_token`; nenhum endpoint mutável;
+- `is_valid: false` → `revoke_meta_connection` (limpeza atômica já existente) e conclui;
+- `is_valid: true` → `STILL_ACTIVE`, nada é tocado;
+- rede/HTTP/resposta ambígua → `UNVERIFIED`, nada é tocado, pode repetir.
+
+UI: no estado conectado, o desfecho externo troca o botão pelo passo a passo
+(`Integrações → Aplicativos conectados`) e pela ação **Já removi — verificar**. Sem deep link
+inventado. Erro genérico não vira instrução de remoção externa. Nenhum jargão, id externo,
+token ou segredo aparece na tela.
+
+Provas:
+
+- 107 testes em `src/lib/meta` + `src/components/meta` (+10), cobrindo os onze mínimos do
+  mandato §5;
+- suíte completa local: **617 testes verdes**;
+- lint, typecheck e build verdes;
+- dívida §6 quitada: o script de diagnóstico não imprime mais `data.error` bruto.
+
+Estado remoto reconferido após o delta: conexão `ACTIVE`, `disconnected_at` nulo, referência
+de token presente, `updated_at` ainda em `2026-08-24 01:47:57`.
+
+Próxima ação: **auditoria GPT**. Só depois dela pode existir gate humano para remover o
+aplicativo no ambiente Meta e provar a pós-condição real.
 
 ## 8. Continua NÃO autorizado
 

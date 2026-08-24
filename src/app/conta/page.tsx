@@ -1,6 +1,6 @@
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { BusinessSection } from "@/components/business/business-section";
-import { MetaSection } from "@/components/meta/meta-section";
+import { MetaSection, type MetaResultado } from "@/components/meta/meta-section";
 import { requireUser } from "@/lib/auth/session";
 import { getAccountBusinessState } from "@/lib/business/account";
 import { getMetaConnectionState } from "@/lib/meta/connection-state";
@@ -36,10 +36,19 @@ export default async function ContaPage({
   const state = await getAccountBusinessState();
   const metaState = await getMetaConnectionState();
 
-  // Único marcador que o callback devolve: 'ok' ou 'erro'. Nada do provider
-  // atravessa a URL.
+  // Marcadores pobres de desfecho — nada do provider atravessa a URL. Valor
+  // desconhecido é descartado em vez de chegar à tela.
+  const DESFECHOS: readonly MetaResultado[] = [
+    "ok",
+    "erro",
+    "externo",
+    "desconectado",
+    "ainda-ativo",
+    "nao-verificado",
+  ];
+
   const { meta } = await searchParams;
-  const resultadoMeta = meta === "ok" || meta === "erro" ? meta : undefined;
+  const resultadoMeta = DESFECHOS.find((d) => d === meta);
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-col gap-6 p-8">

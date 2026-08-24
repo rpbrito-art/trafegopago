@@ -176,7 +176,12 @@ async function main() {
     `   expires_at ........ ${d.expires_at ? new Date(d.expires_at * 1000).toISOString() : "ausente"}`,
   );
   console.log(`   scopes ............ ${(d.scopes ?? []).join(", ") || "nenhum"}`);
-  if (d.error) console.log(`   data.error ........ ${JSON.stringify(d.error)}`);
+  // `data.error` vem da Meta e pode citar a credencial. Só os códigos saem.
+  if (d.error) {
+    console.log(
+      `   data.error ........ code=${d.error.code ?? "?"} subcode=${d.error.subcode ?? "?"}`,
+    );
+  }
 
   console.log("\n=== leitura do caminho ===");
 
@@ -187,9 +192,9 @@ async function main() {
     console.log("(não é o que a tentativa real fez: o estado ficou intacto)");
   } else if (d.type === "SYSTEM_USER") {
     console.log("token ATIVO e SYSTEM_USER → etapas 1 e 2 passam");
-    console.log("a falha real está em oauth/revoke ou na pós-verificação");
+    console.log("a classificação (003A-06A) provou BISU: encerramento é externo");
   } else {
-    console.log(`token ATIVO com type=${d.type ?? "ausente"} → fail-closed por tipo (003A-04)`);
+    console.log(`token ATIVO com type=${d.type ?? "ausente"} → fail-closed por tipo`);
   }
 
   console.log("\nNenhuma revogação foi tentada por este script.");

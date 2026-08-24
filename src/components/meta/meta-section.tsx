@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { MetaConnectButton } from "@/components/meta/meta-connect-button";
 import { MetaDisconnectButton } from "@/components/meta/meta-disconnect-button";
+import { MetaExternalRemoval } from "@/components/meta/meta-external-removal";
 import type { MetaConnectionState } from "@/lib/meta/connection-state";
 
 /**
@@ -12,13 +13,25 @@ import type { MetaConnectionState } from "@/lib/meta/connection-state";
  * Nenhum ramo mostra escopo, versão de API, id externo ou token: quem opera o
  * produto não precisa aprender o vocabulário da Graph API para conectar.
  */
+export type MetaResultado =
+  | "ok"
+  | "erro"
+  /** A Meta precisa encerrar o acesso pelo ambiente dela. */
+  | "externo"
+  /** Verificação confirmou: o acesso caiu e a conexão foi encerrada. */
+  | "desconectado"
+  /** Verificação disse que a Meta ainda mostra o acesso de pé. */
+  | "ainda-ativo"
+  /** Não deu para conferir agora; a remoção externa continua pendente. */
+  | "nao-verificado";
+
 export function MetaSection({
   state,
   resultado,
 }: {
   state: MetaConnectionState;
-  /** Desfecho do último callback, se houver. */
-  resultado?: "ok" | "erro";
+  /** Desfecho da última ação, se houver. */
+  resultado?: MetaResultado;
 }) {
   if (state.kind === "erro-tecnico") {
     return (
@@ -55,8 +68,33 @@ export function MetaSection({
   }
 
   if (state.kind === "conectado") {
+    // A desconexão pediu a remoção no ambiente da Meta — ou a verificação ainda
+    // não confirmou. Enquanto isso a conexão segue de pé, e é isso que a tela
+    // mostra: o passo pendente, não um erro.
+    const emRemocao =
+      resultado === "externo" ||
+      resultado === "ainda-ativo" ||
+      resultado === "nao-verificado";
+
+    if (emRemocao) {
+      return (
+        <Bloco tom="atencao" titulo="Falta concluir na Meta">
+          <MetaExternalRemoval
+            organizationId={state.organizationId}
+            aviso={resultado === "externo" ? undefined : resultado}
+          />
+        </Bloco>
+      );
+    }
+
     return (
       <Bloco tom="ok" titulo="Meta conectada">
+        {resultado === "erro" ? (
+          <p role="alert" className="text-sm text-red-800">
+            Não foi possível concluir agora. Nada foi alterado — tente de novo
+            em instantes.
+          </p>
+        ) : null}
         <p className="text-sm text-neutral-700">
           Sua conta está conectada.{" "}
           {state.conectadaEm
@@ -103,6 +141,11 @@ export function MetaSection({
 
   return (
     <Bloco titulo="Conectar a Meta">
+      {resultado === "desconectado" ? (
+        <p className="text-sm text-emerald-800">
+          Pronto: a Meta confirmou a remoção e encerramos a conexão por aqui.
+        </p>
+      ) : null}
       {resultado === "erro" ? (
         <p role="alert" className="text-sm text-red-800">
           Não foi possível concluir a conexão. Tente novamente.

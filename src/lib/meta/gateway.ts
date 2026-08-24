@@ -54,6 +54,7 @@ export type CompleteResult =
     };
 
 export type DisconnectResult =
+  /** Encerrado de fato: a credencial está inativa e o local foi limpo. */
   | { ok: true }
   | {
       ok: false;
@@ -61,7 +62,32 @@ export type DisconnectResult =
         | "NOT_FOUND"
         | "NO_MEMBERSHIP"
         | "TOKEN_READ_FAILED"
+        /**
+         * A Meta só encerra esta autorização pelo ambiente dela. Não é erro: é
+         * o contrato da credencial. Nada foi mutado aqui nem lá.
+         */
+        | "EXTERNAL_ACTION_REQUIRED"
         | "PROVIDER_REVOKE_FAILED"
+        | "UNAVAILABLE";
+    };
+
+/**
+ * Resultado de conferir se a ação externa surtiu efeito.
+ *
+ * `STILL_ACTIVE` é o caso que separa este fluxo de um botão que mente: a
+ * pessoa acha que removeu, a Meta ainda mostra o acesso de pé, e nós não
+ * apagamos a única credencial que ainda serviria para provar o contrário.
+ */
+export type DisconnectCheckResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason:
+        | "NOT_FOUND"
+        | "NO_MEMBERSHIP"
+        | "TOKEN_READ_FAILED"
+        | "STILL_ACTIVE"
+        | "UNVERIFIED"
         | "UNAVAILABLE";
     };
 
@@ -304,20 +330,93 @@ export async function disconnectMeta(input: {
   }
 
   if (typeof token === "string" && token.length > 0) {
-    const revogacao = await revokeOnMeta({
+    const encerramento = await encerrarNoProvider({
       accessToken: token,
       externalUserId: conexao.external_user_id as string | null,
       env,
     });
 
+    // A Meta só encerra esta autorização pelo ambiente dela. Não é falha, e
+    // por isso não vira erro genérico: a pessoa precisa saber o que fazer, e
+    // a conexão continua exatamente como está até a remoção ser comprovada.
+    if (!encerramento.ok && encerramento.externo) {
+      return { ok: false, reason: "EXTERNAL_ACTION_REQUIRED" };
+    }
+
     // Um erro transitório deixa tudo como está para que a pessoa possa tentar
     // de novo — melhor uma desconexão que não completou do que uma que mente.
-    if (!revogacao.ok) return { ok: false, reason: "PROVIDER_REVOKE_FAILED" };
+    if (!encerramento.ok) return { ok: false, reason: "PROVIDER_REVOKE_FAILED" };
   }
 
   // Chegando aqui, a leitura funcionou e devolveu vazio: a conexão realmente não
   // tem credencial — nunca chegou a ter (`PENDING`) ou já a perdeu. Só neste
   // caso a limpeza local segue sem revogação remota.
+  const { error } = await supabase.rpc("revoke_meta_connection", {
+    p_connection_id: conexao.id,
+  });
+
+  if (error) return { ok: false, reason: "UNAVAILABLE" };
+
+  return { ok: true };
+}
+
+/**
+ * Confere se a remoção feita no ambiente da Meta surtiu efeito.
+ *
+ * É a segunda metade do encerramento BISU: a pessoa remove o aplicativo lá, e
+ * aqui perguntamos ao provider se o acesso caiu de fato. Só a resposta
+ * explícita `is_valid: false` autoriza apagar o segredo — que é a única coisa
+ * que ainda permitiria conferir ou encerrar depois.
+ *
+ * Nenhum endpoint mutável é chamado. Se a Meta ainda mostra o acesso de pé, ou
+ * se a rede falha, nada é tocado e a verificação pode ser repetida.
+ */
+export async function checkMetaDisconnection(input: {
+  userId: string;
+  organizationId: string;
+}): Promise<DisconnectCheckResult> {
+  const env = readMetaEnv();
+  const supabase = createSupabasePrivilegedClient();
+
+  if (!(await hasActiveMembership(supabase, input.userId, input.organizationId))) {
+    return { ok: false, reason: "NO_MEMBERSHIP" };
+  }
+
+  const { data: conexao } = await supabase
+    .from("meta_connections")
+    .select("id")
+    .eq("organization_id", input.organizationId)
+    .in("status", ["PENDING", "ACTIVE", "ACTION_REQUIRED"])
+    .maybeSingle();
+
+  if (!conexao) return { ok: false, reason: "NOT_FOUND" };
+
+  const { data: token, error: erroLeitura } = await supabase.rpc(
+    "read_meta_connection_token",
+    { p_connection_id: conexao.id },
+  );
+
+  // Mesmo raciocínio da desconexão: não saber ler o token é diferente de não
+  // haver token, e confundi-los apagaria a credencial sem prova nenhuma.
+  if (erroLeitura) {
+    console.error("falha ao ler token para verificacao", {
+      connectionId: conexao.id,
+      code: erroLeitura.code,
+    });
+    return { ok: false, reason: "TOKEN_READ_FAILED" };
+  }
+
+  if (typeof token === "string" && token.length > 0) {
+    const estado = await inspectToken({ accessToken: token, env });
+
+    if (!estado.ok) {
+      console.error("verificacao de desconexao inconclusiva", estado.motivo);
+      return { ok: false, reason: "UNVERIFIED" };
+    }
+
+    if (estado.isValid) return { ok: false, reason: "STILL_ACTIVE" };
+  }
+
   const { error } = await supabase.rpc("revoke_meta_connection", {
     p_connection_id: conexao.id,
   });
@@ -370,31 +469,32 @@ function pare(etapa: string, motivo: FalhaExterna): { ok: false } {
 }
 
 /**
- * Revoga a autorização no provider.
+ * Encerra a autorização no provider — quando isso é possível daqui.
  *
  * **Invariante:** o estado local só pode ser limpo quando o provider estiver
  * *comprovadamente* sem token ativo. "O provider aceitou o pedido" não é prova
- * — por isso a revogação termina numa pós-condição observável.
+ * — por isso todo caminho termina numa pós-condição observável.
  *
  * Fluxo:
  *
  * 1. inspecionar o token. `is_valid === false` já prova que não há autorização
- *    ativa: nada a revogar, limpeza liberada;
+ *    ativa: nada a encerrar, limpeza liberada;
  * 2. inspeção que falha ou é ambígua **não** vira "inválido" — falha fechado;
- * 3. revogar pelo mecanismo do tipo (`oauth/revoke` para SYSTEM_USER,
- *    `DELETE /{user-id}/permissions` para USER);
- * 4. **reinspecionar o mesmo token.** Só `is_valid === false` libera a limpeza.
+ * 3. classificar a credencial (somente leitura). BISU é encerrado no ambiente
+ *    da Meta, não por API: devolvemos `externo` e não tocamos em nada;
+ * 4. token de usuário comum segue por `DELETE /{user-id}/permissions`;
+ * 5. qualquer outra combinação para aqui, sem endpoint mutável;
+ * 6. **reinspecionar o mesmo token.** Só `is_valid === false` libera a limpeza.
  *
- * Erro do provider — inclusive `190` — nunca é tratado como prova de revogação.
- * `190` é uma família genérica de falhas de token, e no `oauth/revoke` há duas
- * credenciais em jogo (`revoke_token` e `access_token`): a presença do código
- * não diz sequer qual delas falhou, muito menos que o alvo ficou inativo.
+ * Erro do provider — inclusive `190` — nunca é tratado como prova de encerramento.
+ * `190` é uma família genérica de falhas de token: a presença do código não diz
+ * sequer qual credencial falhou, muito menos que o alvo ficou inativo.
  */
-async function revokeOnMeta(input: {
+async function encerrarNoProvider(input: {
   accessToken: string;
   externalUserId: string | null;
   env: ReturnType<typeof readMetaEnv>;
-}): Promise<{ ok: boolean }> {
+}): Promise<{ ok: boolean; externo?: boolean }> {
   const base = graphApiBaseUrl(input.env.META_GRAPH_API_VERSION);
 
   const antes = await inspectToken({
@@ -405,24 +505,30 @@ async function revokeOnMeta(input: {
   // Não conseguimos verificar: não sabemos o que existe do outro lado.
   if (!antes.ok) return pare("INSPECAO_INICIAL", antes.motivo);
 
-  // Já inativo — única forma segura de pular a revogação.
+  // Já inativo — única forma segura de pular o encerramento remoto.
   if (antes.isValid === false) return { ok: true };
 
-  // O token está ativo, então alguém precisa ser desautorizado — e cada tipo
-  // tem sua primitive. Não há terceira opção que possamos adivinhar: chamar
-  // `/permissions` para um tipo que não é `USER` é uma mutação externa por
-  // tentativa, e o resultado dela não prova nada sobre o token que ficou.
-  const revogacao =
-    antes.type === "SYSTEM_USER"
-      ? await revokeSystemUserToken({ ...input, base })
-      : antes.type === "USER"
-        ? await revokeUserPermissions({ ...input, base })
-        : null;
+  // O token está ativo. Antes de escolher qualquer primitive, descobrir o que
+  // ele é de fato — `debug_token.type` sozinho não distingue BISU de system
+  // user clássico, e essa confusão já custou uma tentativa real.
+  const classe = await classificarCredencial({
+    accessToken: input.accessToken,
+    base,
+  });
 
-  // Tipo fora do que sabemos revogar: para antes de qualquer endpoint.
-  if (revogacao === null) {
+  if (!classe.ok) return pare("CLASSIFICACAO", classe.motivo);
+
+  // BISU: a Meta encerra pelo ambiente dela. Nada é chamado, nada é limpo.
+  if (classe.bisu) {
+    return { ok: false, externo: true };
+  }
+
+  // Token de usuário comum: caminho documentado, isolado do BISU.
+  if (antes.type !== "USER") {
     return pare("TIPO_NAO_REVOGAVEL", { causa: antes.type ?? "AUSENTE" });
   }
+
+  const revogacao = await revokeUserPermissions({ ...input, base });
 
   // Erro do provider não completa nada.
   if (!revogacao.ok) return pare("REVOGACAO", revogacao.motivo);
@@ -448,24 +554,26 @@ async function revokeOnMeta(input: {
 }
 
 /**
- * `oauth/revoke` — caminho do token de usuário do sistema.
+ * A credencial é um BISU?
  *
- * Devolve `ok` apenas para sucesso explícito. Qualquer erro, `190` incluído,
- * é falha: quem decide se o token morreu é a pós-verificação, não este retorno.
+ * Business Integration System User: o token que o Facebook Login for Business
+ * emite quando a configuração pede token de usuário do sistema. `debug_token`
+ * chama isso de `SYSTEM_USER`, o mesmo rótulo do system user clássico do
+ * Business Manager — e os dois não têm o mesmo ciclo de vida. O que distingue
+ * é o contrato de gerenciamento BISU responder `client_business_id`.
+ *
+ * Foi essa confusão que fez a primeira tentativa real de desconexão chamar
+ * `oauth/revoke` e não revogar nada (Investigações 003A-05 e 003A-06A).
+ *
+ * Somente leitura.
  */
-async function revokeSystemUserToken(input: {
+async function classificarCredencial(input: {
   accessToken: string;
-  env: ReturnType<typeof readMetaEnv>;
   base: string;
-}): Promise<Revogacao> {
-  const url = new URL(`${input.base}/oauth/revoke`);
-  url.searchParams.set("client_id", input.env.META_APP_ID);
-  url.searchParams.set("client_secret", input.env.META_APP_SECRET);
-  url.searchParams.set("revoke_token", input.accessToken);
-  url.searchParams.set(
-    "access_token",
-    `${input.env.META_APP_ID}|${input.env.META_APP_SECRET}`,
-  );
+}): Promise<{ ok: true; bisu: boolean } | { ok: false; motivo: FalhaExterna }> {
+  const url = new URL(`${input.base}/me`);
+  url.searchParams.set("fields", "client_business_id");
+  url.searchParams.set("access_token", input.accessToken);
 
   try {
     const resposta = await fetch(url, { method: "GET" });
@@ -475,13 +583,21 @@ async function revokeSystemUserToken(input: {
     }
 
     const corpo = (await resposta.json().catch(() => null)) as {
-      success?: unknown;
+      client_business_id?: unknown;
+      id?: unknown;
     } | null;
 
-    // A API devolve a string "true", não o booleano.
-    if (corpo?.success === true || corpo?.success === "true") return { ok: true };
+    // Corpo que não identifica sequer a própria credencial não classifica nada.
+    if (!corpo || typeof corpo !== "object") {
+      return { ok: false, motivo: { http: resposta.status, causa: "CORPO_VAZIO" } };
+    }
 
-    return { ok: false, motivo: { http: resposta.status, causa: "SEM_SUCCESS" } };
+    const negocio = corpo.client_business_id;
+
+    return {
+      ok: true,
+      bisu: typeof negocio === "string" && negocio.length > 0,
+    };
   } catch {
     return { ok: false, motivo: { causa: "REDE" } };
   }
