@@ -3,11 +3,11 @@
 Executor: Claude Code · 2026-08-23 a 2026-08-24
 Branch: `claude/rodada-003a-meta-connection-foundation`
 
-Status: **003A-10B EXECUTADA — MARCADOR E2E PERSISTIDO — AGUARDANDO AUDITORIA GPT**
+Status: **003A RECONCILIADA — AGUARDANDO PROMOÇÃO GPT**
 
-> ⚠️ **Conexão real APROVADA; revogação ainda não provada ponta a ponta.** Existe uma
-> conexão `ACTIVE` real no ambiente, mantida de propósito: validar a revogação exigiria
-> desfazê-la. Ver "Gate Meta" e "Investigação 1".
+> ✅ **Conexão e desconexão provadas ponta a ponta.** A conexão real foi feita, a
+> integração foi removida no ambiente da Meta e a verificação confirmou a remoção — a
+> conexão terminou `REVOKED`, sem token e sem segredo no Vault.
 
 ## Delta da Correção 003A-02 — os seis bloqueios de código
 
@@ -402,6 +402,34 @@ Confirmei por leitura independente que o segredo continua no Vault e que a tabel
 única conexão, com um único marcador — nada além do alvo foi tocado. Nenhum endpoint Meta,
 nenhum clique, nenhuma limpeza.
 
+## E2E final e reconciliação
+
+O fundador clicou **uma vez** `Já removi — verificar`. A auditoria independente no Supabase
+registrou o desfecho:
+
+| campo | valor |
+| --- | --- |
+| `status` | **`REVOKED`** |
+| `disconnected_at` | 2026-08-24 20:09:44Z |
+| `external_disconnect_pending_at` | null — o marcador foi encerrado junto |
+| `token_secret_reference` | null |
+| segredo no Vault | **ausente** |
+
+Fecha o ciclo que começou com uma desconexão que não desconectava nada. O caminho que
+funcionou não foi "aceitar o erro da Meta": foi descobrir que a credencial era BISU
+(003A-06A), que a Meta deixa de responder `is_valid: false` depois da remoção (003A-09), e
+condicionar a assinatura `190/464` a quatro travas — marcador persistido, app token auditado,
+código **e** subcode exatos, e `/me` que responde como veredicto oposto (003A-10). A regra
+insegura `190 => revogado`, removida na 003A-03, continua fora.
+
+**Reconciliação final:** `main` trazida para a branch. Único conflito em `estado.md`,
+resolvido preservando o estado final e a auditoria da `main`; `estado.md` da branch ficou
+idêntico ao da `main`. O commit de merge **não altera nenhum arquivo** de `src/`,
+`supabase/` ou `scripts/` — a divergência era documental, criada pelos gates escreverem na
+`main` enquanto a branch também atualizava documentação.
+
+Nada foi tocado na Meta nem no Supabase nesta etapa.
+
 ## Investigação 2 — por que `ads_*` e `business_management` não vieram
 
 Minha hipótese anterior (App Review / restrição de publicidade) **estava errada**. As
@@ -502,4 +530,4 @@ Apliquei a migration `20260823203915` **antes** de commitá-la, contrariando o c
 durável que a governança introduziu em `4144c03`. Corrigi a ordem em seguida: o commit
 `60a6bff` publicou o delta antes do gate — que é o que a 003A-01 existiu para ensinar.
 
-`003A-10B EXECUTADA — MARCADOR E2E PERSISTIDO — AGUARDANDO AUDITORIA GPT — NENHUMA LIMPEZA EXECUTADA`
+`003A RECONCILIADA — AGUARDANDO PROMOÇÃO GPT`
