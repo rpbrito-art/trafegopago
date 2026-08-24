@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **E2E REAL DE DESCONEXÃO EXECUTADO UMA VEZ E FALHOU FECHADO — INVESTIGAÇÃO 003A-05 AUTORIZADA**.
+Status: **INVESTIGAÇÃO 003A-05 AUDITADA — TOKEN META CONTINUA VÁLIDO — DECISÃO ARQUITETURAL 003A-06 EM PESQUISA GPT — NOVO E2E BLOQUEADO**.
 
 Mandato original:
 
@@ -32,11 +32,12 @@ Mandato original:
 
 Auditoria/reauditorias:
 
-`rodadas/gpt/AUDITORIA_RODADA_003A_META_CONNECTION_FOUNDATION.md`
+- `rodadas/gpt/AUDITORIA_RODADA_003A_META_CONNECTION_FOUNDATION.md`
+- `rodadas/gpt/REAUDITORIA_003A_05_INVESTIGACAO_DESCONEXAO.md`
 
-Investigação vigente:
+Decisão arquitetural vigente:
 
-`rodadas/gpt/INVESTIGACAO_003A_05_E2E_DESCONEXAO_FALHOU.md`
+`rodadas/gpt/DECISAO_ARQUITETURAL_003A_06_REVOGACAO_TOKEN_BUSINESS_LOGIN.md`
 
 Branch:
 
@@ -44,21 +45,21 @@ Branch:
 
 PR: **#11 draft**.
 
-Último head de código auditado antes do gate real:
+Head auditado da investigação:
 
-`8332bec58d14c0e6687f02340cfd5c545b34942d`
+`9060da1741e6a117751035ab902ee33a2b9939ef`
 
-CI correspondente:
+CI:
 
-`32751232306` — **verde** em install, lint, typecheck, Edge Functions, testes e build.
+`32753513167` — **verde** em install, lint, typecheck, Edge Functions, testes e build.
 
 Relatório:
 
 `rodadas/claude/RELATORIO_RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
-## 4. Resultado auditado antes do gate
+## 4. Resultado auditado antes do gate real
 
-A auditoria independente confirmou como fechados:
+Estão auditados como fechados:
 
 - autorização cross-tenant na desconexão;
 - membership reconferida no callback;
@@ -71,46 +72,78 @@ A auditoria independente confirmou como fechados:
 - erro Meta `190` não tratado como prova de revogação;
 - pós-verificação do mesmo token antes da limpeza local;
 - erro de rede/HTTP/resposta ambígua preservando estado local;
-- token válido `SYSTEM_USER` usando apenas `oauth/revoke`;
-- token válido `USER` usando apenas `/permissions`;
+- token válido `SYSTEM_USER` usando somente o mecanismo configurado para esse tipo;
+- token válido `USER` usando somente `/permissions`;
 - token válido de tipo desconhecido/ausente falhando fechado sem tentativa de revogação.
 
-## 5. Gate real de desconexão — resultado observado
+## 5. Gate real de desconexão — primeira tentativa
 
 Em 2026-08-24 o fundador acionou **uma única vez** `Desconectar` pela UI local da conexão `Teste 003A - conexao Meta`.
 
 Resultado visível:
 
 - redirect para `/conta?meta=erro`;
-- a UI continuou mostrando **Meta conectada**.
+- UI continuou mostrando **Meta conectada**.
 
-Auditoria GPT imediatamente após a tentativa confirmou no Supabase remoto:
+Auditoria imediatamente após a tentativa confirmou:
 
-- conexão = **ACTIVE**;
+- conexão = `ACTIVE`;
 - `disconnected_at` = nulo;
 - referência de segredo = presente;
-- segredo correspondente = ainda presente no Vault;
-- `external_user_id` e escopos = preservados.
+- segredo correspondente = presente no Vault;
+- dados da conexão preservados.
 
-Portanto o fail-closed funcionou: **a tentativa real falhou sem produzir limpeza local enganosa**.
+O fail-closed funcionou: a falha não produziu limpeza local enganosa.
 
-Ainda não está determinado se a falha ocorreu na inspeção inicial, no `oauth/revoke`, na pós-verificação ou em outro ponto do runtime.
+## 6. Investigação 003A-05 — resultado auditado
 
-## 6. Próxima ação autorizada
+A investigação read-only foi concluída e auditada no head `9060da1741e6a117751035ab902ee33a2b9939ef`.
 
-Claude Code deve executar **somente a investigação**:
+Confirmado:
 
-`rodadas/gpt/INVESTIGACAO_003A_05_E2E_DESCONEXAO_FALHOU.md`
+- conexão continua `ACTIVE`;
+- `updated_at` continua no instante original da conexão;
+- leitura do token no Vault funciona;
+- `debug_token` responde HTTP 200;
+- token continua `is_valid=true`;
+- `type=SYSTEM_USER`;
+- expiração = 2026-10-23;
+- token pertence ao app atualmente configurado.
 
-Objetivo principal: determinar, sem nova mutação externa, se o token Meta está atualmente válido ou inválido e em qual etapa a tentativa anterior falhou.
+Portanto a primeira tentativa **não revogou o token na Meta**.
 
-Está permitido apenas diagnóstico/read-only conforme o mandato, inclusive `debug_token` somente leitura sem expor credenciais.
+Foram descartadas como causa:
 
-**Não está autorizado:**
+- leitura do Vault;
+- inspeção inicial;
+- tipo desconhecido.
+
+Restam duas hipóteses factuais para a primeira tentativa:
+
+1. o mecanismo remoto de revogação respondeu erro/sem sucesso; ou
+2. respondeu sucesso, mas o token continuou válido e a pós-verificação bloqueou a limpeza.
+
+A instrumentação diagnóstica publicada pelo Claude foi auditada como segura e aditiva, mas sua publicação extrapolou o texto da autorização, que previa instrumentação temporária/local. O desvio ficou registrado e não altera o status da rodada.
+
+## 7. Bloqueio arquitetural vigente
+
+O ponto ainda não provado é **qual mecanismo oficial de revogação se aplica ao token real emitido pelo Facebook Login for Business com configuração de System-user Access Token**.
+
+Não assumir que esse token possui o mesmo ciclo de vida ou mecanismo de revogação de um System User Access Token clássico gerado diretamente no Business Manager apenas porque `debug_token` devolve `SYSTEM_USER`.
+
+O GPT deve resolver a Decisão Arquitetural 003A-06 antes de qualquer nova mutação externa.
+
+## 8. Próxima ação autorizada
+
+**Nenhuma ação manual do fundador e nenhuma nova execução destrutiva do Claude estão autorizadas neste momento.**
+
+GPT deve pesquisar/confirmar o contrato oficial vigente de revogação da credencial usada pelo Facebook Login for Business e então definir o próximo delta.
+
+Até lá, NÃO:
 
 - clicar `Desconectar` novamente;
 - chamar `oauth/revoke` novamente;
-- chamar `/permissions`;
+- testar outro endpoint de revogação;
 - revogar pelo painel Meta;
 - limpar estado local;
 - refazer OAuth;
@@ -118,10 +151,11 @@ Está permitido apenas diagnóstico/read-only conforme o mandato, inclusive `deb
 - iniciar 003B;
 - promover 003A.
 
-## 7. Pendências não bloqueantes
+## 9. Pendências não bloqueantes
 
 - escopos `ads_*`/`business_management` e seleção detalhada de ativos ficam para 003B;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
+- sanitizar/remover `data.error` bruto do script de diagnóstico antes da promoção, no próximo delta substantivo da 003A;
 - leaked-password protection antes de produção;
 - SMTP/domínio de produção;
 - default ACL residual de `supabase_admin` enquanto inerte;
