@@ -13,112 +13,101 @@ Estado incorporado = `main + este arquivo + promoção real`.
 
 ## 2. Estado incorporado
 
-Promovidas: **000–002C**.
+Promovidas: **000–003A**.
 
 - Fase 1 — Supabase, Auth e Tenancy: **ENCERRADA**.
 - Fase 2 — Operations, Audit, Queues e Segurança Base: **ENCERRADA**.
+- Fase 3 — Meta Connection Foundation: **EM ANDAMENTO**.
 
-Última rodada promovida: **002C — Webhook Inbox + Observabilidade Base**.
+Última rodada promovida: **003A — Meta Connection Foundation**.
 
-## 3. Rodada corrente
+Promoção:
 
-**003A — META CONNECTION FOUNDATION**
+- PR #11 — **MERGED**;
+- merge commit: `546838db8e7ced4e9045c05feb8c7b2f0c476cc2`;
+- head reconciliado auditado: `046c2e7583e823fb18d5667973680874c387eadb`;
+- CI final: `32772710738` — verde em install, lint, typecheck, Edge Functions, testes e build.
 
-Status: **E2E REAL DE CONEXÃO E DESCONEXÃO BISU APROVADO — CÓDIGO/CI APROVADOS — PR #11 EXIGE APENAS RECONCILIAÇÃO DOCUMENTAL COM A MAIN ANTES DA PROMOÇÃO — 003A AINDA NÃO PROMOVIDA**.
+## 3. 003A — resultado promovido
 
-Mandato original:
+A 003A está **EXECUTADA, AUDITADA E PROMOVIDA**.
 
-`rodadas/gpt/RODADA_003A_META_CONNECTION_FOUNDATION.md`
+Entregue e provado:
+
+- Facebook Login for Business com Graph API v26.0;
+- OAuth com `state` de uso único e membership reconferida;
+- `meta_connections` e Vault como fronteira do token;
+- token ausente do browser e protegido server-side;
+- conexão real com a Meta;
+- classificação da credencial real como BISU por `client_business_id`;
+- desconexão BISU guiada por **Configurações do negócio > Apps conectados**;
+- marcador persistente de remoção externa;
+- prova contextual fail-closed após remoção;
+- `190` genérico continua NÃO sendo tratado como prova de revogação;
+- desconexão real ponta a ponta aprovada.
 
 Auditoria final:
 
 `rodadas/gpt/AUDITORIA_FINAL_003A_E2E_META_CONNECTION.md`
 
-Branch:
+Auditorias/correções intermediárias permanecem em `rodadas/gpt/` como evidência histórica.
 
-`claude/rodada-003a-meta-connection-foundation`
+## 4. Estado remoto após o E2E
 
-PR: **#11 draft**.
-
-Head funcional auditado da 003A-10:
-
-`12c179a6d114ede60d5f8675c4813ea03bd75ba6`
-
-HEAD observado após 003A-10B:
-
-`ceffa3f92d86622a73ea0162a02526b8273bb0f6`
-
-CI desse HEAD:
-
-`32771309205` — **verde**.
-
-## 4. E2E real — resultado final
-
-A conexão real via Facebook Login for Business foi comprovada anteriormente, incluindo token no Vault, callback seguro, uso único do `state`, membership e classificação BISU por `client_business_id`.
-
-A integração instalada correta foi removida em **Configurações do negócio > Apps conectados**.
-
-A 003A-09 provou a assinatura real pós-remoção do BISU; a 003A-10 implementou prova composta contextual e marcador persistente; a migration `20260824170000_add_meta_external_disconnect_pending.sql` foi aplicada e auditada; o Gate 003A-10B reconstruiu o marcador one-off do E2E que havia começado antes da coluna existir.
-
-Após o fundador clicar uma única vez `Já removi — verificar`, a UI informou que a Meta confirmou a remoção.
-
-Auditoria independente no Supabase da conexão `9d256edf-0a89-4436-8d60-f375bc087c08` confirmou:
+A conexão real usada no gate (`9d256edf-0a89-4436-8d60-f375bc087c08`) terminou corretamente:
 
 - `status = REVOKED`;
 - `disconnected_at = 2026-08-24 20:09:44.634706+00`;
 - `external_disconnect_pending_at = null`;
 - `token_secret_reference = null`;
-- segredo correspondente ausente do Vault;
-- `updated_at = 2026-08-24 20:09:44.634706+00`.
+- segredo correspondente ausente do Vault.
 
-**Conclusão: desconexão BISU provada ponta a ponta.**
+Supabase:
 
-A regra continua NÃO sendo `190 => revogado`: a assinatura 190/464 só é aceita dentro do fluxo BISU previamente marcado, com app token saudável e demais travas da 003A-10.
+- histórico remoto = **14 migrations**;
+- `20260824170000_add_meta_external_disconnect_pending.sql` aplicada e auditada.
 
-## 5. Migration / remoto
+Nenhuma conexão Meta ativa ficou aberta por esse fixture.
 
-Histórico remoto: **14 migrations**.
+## 5. Decisões persistentes da 003A
 
-`20260824170000` aplicada e auditada:
+- `debug_token.type=SYSTEM_USER` não basta para classificar BISU; usar `client_business_id`/contrato observável;
+- BISU não deve usar `oauth/revoke`, `/permissions` ou `/access_tokens` como caminho de revogação do produto;
+- falha/ambiguidade do provider preserva token e estado local;
+- a remoção instalada ocorre em **Apps conectados**, não em `Contas > Apps`;
+- a assinatura `190/464` só vale como pós-condição dentro do fluxo BISU previamente marcado e com os controles da 003A-10;
+- redaction da URL de callback/log continua pendência antes de produção.
 
-- `external_disconnect_pending_at` presente;
-- `mark_meta_external_disconnect_pending` presente e restrita a `service_role`;
-- `revoke_meta_connection` atualizada para limpar marcador, referência e segredo no encerramento.
+## 6. Próxima etapa
 
-## 6. Situação da PR
+A Fase 3 ainda não está encerrada porque o roadmap inclui seleção/descoberta de Instagram e conta de anúncios.
 
-A PR #11 ficou `mergeable=false` somente porque o GPT atualizou `estado.md`/auditorias diretamente na `main` durante os gates finais enquanto a branch também atualizava documentação.
+Próxima rodada substantiva esperada: **003B — seleção/descoberta de ativos Meta e permissões necessárias para a leitura real**.
 
-Não há bloqueio funcional identificado.
+### Estado da 003B
 
-Não forçar merge nem descartar documentação. Fazer uma reconciliação normal da branch com a `main` atual, sem nova mudança funcional.
+- **planejada em alto nível pelo roadmap**;
+- **ainda não possui mandato executivo nesta linha de estado**;
+- **não está autorizada para execução pelo Claude Code**.
 
-## 7. Próxima ação autorizada
+Próxima ação autorizada: **GPT planejar a 003B**, revalidando documentação Meta vigente e definindo o mandato/READ SET antes de qualquer execução.
 
-Claude Code deve executar **somente a reconciliação final para promoção**:
+## 7. Continua NÃO autorizado
 
-1. trazer a `main` atual para `claude/rodada-003a-meta-connection-foundation` e resolver conflitos documentais preservando o estado final deste arquivo e a auditoria final;
-2. não alterar comportamento funcional da 003A;
-3. não tocar na Meta nem no Supabase;
-4. executar CI da branch reconciliada;
-5. atualizar relatório apenas com o fato da reconciliação;
-6. parar em `003A RECONCILIADA — AGUARDANDO PROMOÇÃO GPT`.
+Até existir novo mandato explícito:
 
-Depois, GPT audita o diff final/CI e promove a PR #11.
+- Claude iniciar 003B por conta própria;
+- novo OAuth apenas por tentativa;
+- nova remoção/reassociação no painel Meta sem objetivo de rodada;
+- criar anúncios ou gerar gasto;
+- importar conteúdo do Instagram antes da capacidade correspondente;
+- iniciar Fase 4 antes do fechamento necessário da Fase 3.
 
-## 8. Continua NÃO autorizado
+## 8. Pendências não bloqueantes
 
-Até a promoção:
-
-- novo OAuth;
-- nova remoção/reassociação no painel Meta;
-- novo clique de desconexão/verificação para este fixture;
-- seleção de ativos;
-- iniciar 003B;
-- Claude autoaprovar ou autopromover.
-
-## 9. Próxima fase após promoção
-
-A próxima etapa substantiva esperada é **003B**, voltada à seleção/descoberta de ativos e permissões necessárias para a leitura real, respeitando o roadmap da Fase 3 antes da Fase 4.
-
-Pendências não bloqueantes permanecem registradas nos canônicos/roadmap, incluindo redaction de callback/log antes de produção, proteção de senha vazada, SMTP/domínio, ACL residual inerte e App Review/Business Verification quando aplicável.
+- escopos `ads_*`/`business_management` e seleção detalhada de ativos entram na análise da 003B;
+- logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
+- leaked-password protection antes de produção;
+- SMTP/domínio de produção;
+- default ACL residual de `supabase_admin` enquanto inerte;
+- App Review/Business Verification quando aplicável à fase comercial.
