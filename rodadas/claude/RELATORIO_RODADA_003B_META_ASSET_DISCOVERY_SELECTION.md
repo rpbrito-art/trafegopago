@@ -7,7 +7,7 @@ Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
 Correção aplicada: `rodadas/gpt/CORRECAO_003B_01_FAIL_CLOSED_METADATA_E_MEMBERSHIP.md`
 
-Status: **003B-01 EXECUTADA — AGUARDANDO AUDITORIA GPT — GATE EXTERNO META CONTINUA BLOQUEADO**.
+Status: **003B — CONFIGURAÇÃO LOCAL PRONTA — AGUARDANDO OAUTH REAL CONDUZIDO PELO GPT**.
 
 ## 1. Preflight
 
@@ -70,26 +70,27 @@ Dois bloqueios da auditoria pré-gate, corrigidos sem tocar em migration, schema
 | prova | fonte/comando | resultado |
 | --- | --- | --- |
 | metadata 400/190, 403/10, 403/200, 500, rede, corpo ilegível → fail-closed sem RPC | `vitest run src/lib/meta/assets.test.ts` | 39/39 |
-| 2xx com campos ausentes → candidato válido com nulos | idem | passa |
-| conta ilegível derruba a lista inteira | idem | passa |
+| 2xx com campos ausentes → candidato válido com nulos; conta ilegível derruba a lista inteira | idem | passa |
 | log da recusa sem token e sem URL | idem | passa |
-| membership removida durante a redescoberta → nenhuma RPC (IG e Ads) | idem | passa |
-| caminho normal grava, com exatamente duas checagens de membership | idem | passa |
+| membership removida durante a redescoberta → nenhuma RPC (IG e Ads); caminho normal grava com duas checagens | idem | passa |
 
 Nada de banco mudou: a prova SQL de §4 continua válida e não foi repetida.
 
 ## 6. Gate
 
-**GATE EXTERNO META BLOQUEADO ATÉ A AUDITORIA DA 003B-01.**
+**003B-01 aprovada pelo GPT. Gate externo executado. Configuração local pronta.**
 
-Tudo o que podia ser executado autonomamente está executado. O E2E do mandato §7 depende de duas ações que pertencem ao GPT/fundador no painel Meta:
+O GPT conduziu o fundador e criou `Quoron Instagram Dev Login` (Configuration ID `38307908848822330`, variação General, token BISU, ativos Pages + Instagram Accounts) com `pages_show_list`, `pages_read_engagement`, `instagram_basic` e `instagram_manage_insights`.
 
-1. criar a nova *business login configuration* da 003B (`Quoron Instagram Dev Login`) com os escopos de §2 — `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_manage_insights` e `ads_read` opcional — e ativos Pages + Instagram Accounts + Ad Accounts;
-2. informar o novo `config_id` (não é segredo) para `META_LOGIN_CONFIG_ID`, e então autorizar o OAuth real.
+**`ads_read` ficou de fora por decisão do gate**: toda permissão marcada nessa tela é obrigatória no login, e exigi-la contradiria o contrato de que mídia paga é capacidade, não obrigação. Nenhum código muda por isso — `ads_discovery` simplesmente será falsa, e a UI omite o ramo pago em silêncio, que é o comportamento já provado em teste.
 
-Depois disso, a sequência pronta para rodar é: OAuth real → tela `/conta` mostra os candidatos → fundador escolhe o Instagram → `node scripts/meta-assets-003b-probe.mjs` executa as sondas read-only de IG User, Insights e ad accounts.
+Gate local executado nesta sessão: `META_LOGIN_CONFIG_ID` atualizado de `1549901823029730` (003A) para `38307908848822330` no `.env.local` — arquivo não versionado, coberto pelo `.gitignore`. O `next dev` foi reiniciado e subiu lendo `.env.local` (`Ready in 2.4s`); `/conta` responde normalmente. Nenhum segredo foi impresso e o backup temporário do arquivo foi removido.
 
-A sonda já sinaliza os dois gates arquiteturais previstos: se o token da conexão não ler o IG User (necessidade de Page Access Token) ou se Insights exigir `ads_management`, o desfecho é `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`, sem ampliar permissão nem persistir segredo novo.
+A confirmação de que o diálogo usa o ID novo acontece na própria URL de autorização, montada num único lugar a partir dessa variável — ou seja, no OAuth real, que é o passo do GPT.
+
+Sequência restante: OAuth real conduzido pelo GPT → `/conta` lista os candidatos → fundador escolhe o Instagram → `node scripts/meta-assets-003b-probe.mjs` roda as sondas read-only de IG User e Insights.
+
+A sonda sinaliza os dois gates arquiteturais previstos: se o token da conexão não ler o IG User (Page Access Token) ou se Insights exigir `ads_management`, o desfecho é `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`, sem ampliar permissão nem persistir segredo novo.
 
 ## 7. Fora de escopo — confirmado
 

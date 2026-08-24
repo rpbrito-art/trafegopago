@@ -125,7 +125,7 @@ Supabase:
 
 Nenhum novo OAuth da 003B foi feito e nenhum token novo está ativo.
 
-## 7. Gate externo da Meta — CONFIGURAÇÃO CRIADA
+## 7. Gate externo da Meta — CONFIGURAÇÃO CRIADA E APLICADA LOCALMENTE
 
 Registro:
 
@@ -154,19 +154,28 @@ Configuração histórica da 003A permanece existente:
 
 Ela não deve ser usada pela 003B e **não deve ser apagada antes da promoção da 003B**; fica como referência histórica/rollback.
 
+### 7.1 Gate local — EXECUTADO
+
+- `META_LOGIN_CONFIG_ID` atualizado de `1549901823029730` (003A) para `38307908848822330` no `.env.local`, arquivo não versionado e coberto pelo `.gitignore`;
+- nenhum outro nome do ambiente foi tocado; nenhum segredo foi impresso; o backup temporário do arquivo foi removido após a troca;
+- o `next dev` estava rodando desde antes da troca (PID 22720) e foi reiniciado para eliminar a dúvida de env em memória. Subiu lendo `.env.local` (`Ready in 2.4s`) e `/conta` responde normalmente;
+- a confirmação de que o diálogo usa o ID novo ocorre na própria URL de autorização, montada num único lugar a partir dessa variável — ou seja, no OAuth real.
+
+Consequência da decisão do gate de não incluir `ads_read`: `ads_discovery` será falsa e a UI omitirá o ramo de anúncios em silêncio. É o comportamento já implementado e provado em teste; **nenhum código muda por isso**.
+
 ## 8. Próxima ação autorizada
 
-Próximo a agir: **Claude Code**.
+Status: **003B — CONFIGURAÇÃO LOCAL PRONTA — AGUARDANDO OAUTH REAL CONDUZIDO PELO GPT**.
 
-Pode executar somente o gate local:
+Próximo a agir: **GPT** — conduzir o fundador no novo OAuth real com a configuração `38307908848822330` e na seleção do Instagram.
 
-1. trazer a `main` atual para a branch 003B se necessário;
-2. atualizar no arquivo local não versionado `.env.local` apenas `META_LOGIN_CONFIG_ID=38307908848822330`;
-3. confirmar sem imprimir segredos que o novo ID foi reconhecido;
-4. iniciar/reiniciar o servidor local se necessário;
-5. parar antes do OAuth real em `003B — CONFIGURAÇÃO LOCAL PRONTA — AGUARDANDO OAUTH REAL CONDUZIDO PELO GPT`.
+Depois do OAuth e da seleção, Claude Code retoma para:
 
-Depois disso, o GPT conduzirá o fundador no novo OAuth real e na seleção do Instagram.
+1. provar no banco a linha correta em `instagram_accounts` e o isolamento;
+2. executar `node scripts/meta-assets-003b-probe.mjs` — sondas read-only de IG User e Insights;
+3. reportar o resultado, parando em `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT` se a sonda indicar Page Access Token ou `ads_management`.
+
+Claude Code não executa o OAuth em nome do fundador.
 
 ## 9. Continua NÃO autorizado
 
