@@ -45,7 +45,7 @@ Persistem como decisões:
 
 Supabase após a 003A: 14 migrations.
 
-## 4. Rodada 003B — execução inicial auditada parcialmente
+## 4. Rodada 003B — EM EXECUÇÃO
 
 Mandato:
 
@@ -61,64 +61,57 @@ Branch:
 
 PR: **#12 draft**.
 
-HEAD auditado antes da correção:
+HEAD atual auditado:
 
-`6fe1dac32912e11afab1382e0c9fdfbf6d39b920`
+`77f7c8288208b5b97fe0367ef48c6ad08b1329dd`
 
 CI:
 
-`32777340430` — verde em install, lint, typecheck, Edge Functions, testes e build.
+`32779213462` — verde em install, lint, typecheck, Edge Functions, testes e build.
 
-### Executado e comprovado até aqui
+### Executado e comprovado
 
 - migration `20260824210000_create_meta_asset_selection.sql` aplicada depois de checkpoint versionado;
 - histórico remoto = **15 migrations**;
 - `instagram_accounts` e `ad_accounts` presentes;
-- zero linhas residuais nas duas tabelas após o proof;
+- zero linhas residuais nas duas tabelas antes do E2E;
 - zero conexões Meta `ACTIVE` antes do novo E2E;
 - RLS habilitado nas tabelas novas;
 - `authenticated` sem INSERT/UPDATE/DELETE;
 - external ids fora dos grants SELECT de `authenticated`;
 - `select_instagram_account` e `select_ad_account` são `security invoker`, sem EXECUTE para `authenticated`/`anon` e com EXECUTE para `service_role`;
-- descoberta/seleção, capabilities e UX implementadas;
-- nenhuma configuração Meta nova nem OAuth real executados.
+- descoberta/seleção, capabilities e UX implementadas.
 
-Esses itens estão **executados**, mas a 003B ainda não está aprovada nem promovida.
+Esses itens estão **executados**, mas a 003B ainda não está promovida.
 
-## 5. Auditoria pré-gate — bloqueio 003B-01
+## 5. Correção 003B-01 — AUDITADA E APROVADA
 
-Auditoria GPT encontrou dois pontos que precisam ser corrigidos **antes** de qualquer nova ação manual na Meta.
-
-Correção vigente:
+Correção:
 
 `rodadas/gpt/CORRECAO_003B_01_FAIL_CLOSED_METADATA_E_MEMBERSHIP.md`
 
+Auditoria:
+
+`rodadas/gpt/AUDITORIA_003B_01_FAIL_CLOSED_METADATA_E_MEMBERSHIP.md`
+
 Status:
 
-**003B-01 EXECUTADA — AGUARDANDO AUDITORIA GPT — GATE EXTERNO META CONTINUA BLOQUEADO**.
+**003B-01 EXECUTADA, AUDITADA E APROVADA**.
 
-HEAD da correção: ver PR #12.
+### Resultado A — metadata IG fail-closed
 
-Nada de banco mudou nesta correção: nenhuma migration nova, nenhum schema alterado, nenhuma configuração Meta tocada. A prova SQL `41/41` do HEAD anterior continua válida e não foi repetida.
+`lerMetadadosInstagram` distingue:
 
-### Bloqueio A — metadata IG falhava aberto — **CORRIGIDO**
+- 2xx com campos opcionais ausentes → candidato válido com campos nulos;
+- 4xx/5xx, rede quebrada ou corpo ilegível → falha de domínio sanitizada, sem candidato gravável e sem RPC de seleção.
 
-`lerMetadadosInstagram` passa a distinguir os dois casos:
+Uma conta ilegível derruba a descoberta inteira; não há lista parcial que esconda o problema.
 
-- HTTP 2xx com campos opcionais ausentes → candidato válido com campos nulos;
-- HTTP 4xx/5xx, rede quebrada ou corpo ilegível → falha de domínio sanitizada pela mesma taxonomia do resto da fronteira (`classificarRecusa`, agora em um único lugar), sem candidato gravável e sem RPC de seleção.
+### Resultado B — membership temporal
 
-Uma conta ilegível derruba a descoberta inteira em vez de gerar lista parcial: esconder que existe conta que o token não alcança apagaria o fato que precisa subir ao gate arquitetural do mandato §4.1.
+`selectInstagramAccount` e `selectAdAccount` reconferem membership imediatamente antes da RPC privilegiada, depois das chamadas externas.
 
-Provado: metadata 400/190, 403/10, 403/200, 500, rede e corpo ilegível falham fechado sem RPC; 2xx com campos ausentes mantém o candidato; o log da recusa não carrega token nem URL.
-
-### Bloqueio B — membership precisava de recheck antes da escrita — **CORRIGIDO**
-
-`selectInstagramAccount` e `selectAdAccount` reconferem membership imediatamente antes da RPC de seleção, depois do intervalo gasto na Meta. A gravação usa `service_role`, então RLS não a barra — a segunda checagem é o que impede quem saiu da organização durante a redescoberta de fixar qual conta o produto vai ler.
-
-Provado: membership removida durante a redescoberta não gera RPC nem para Instagram nem para Ad Account; o caminho normal continua gravando, com exatamente duas checagens.
-
-Provas do delta: `vitest run src/lib/meta/assets.test.ts` 39/39; regressão do módulo Meta e actions 255/255; typecheck e lint limpos.
+Se a membership cair durante a redescoberta, nenhuma seleção é persistida.
 
 ## 6. Estado remoto atual
 
@@ -126,36 +119,71 @@ Supabase:
 
 - 15 migrations;
 - `20260824210000` aplicada;
-- `instagram_accounts`: 0 linhas;
-- `ad_accounts`: 0 linhas;
-- conexões Meta `ACTIVE`: 0.
+- `instagram_accounts`: 0 linhas antes do E2E;
+- `ad_accounts`: 0 linhas antes do E2E;
+- conexões Meta `ACTIVE`: 0 antes do E2E.
 
 Nenhum novo OAuth da 003B foi feito e nenhum token novo está ativo.
 
-## 7. Próxima ação autorizada
+## 7. Gate externo da Meta — CONFIGURAÇÃO CRIADA
 
-A Correção 003B-01 está executada e publicada na branch. **Claude Code está parado.**
+Registro:
 
-Próximo a agir: **GPT** — auditar o delta da 003B-01 no PR #12.
+`rodadas/gpt/GATE_003B_CONFIGURACAO_META_CRIADA.md`
 
-Se a auditoria passar, o gate externo da Meta pode ser retomado nos termos da §6.1 do relatório. Até lá, nada de OAuth, painel Meta, escopo novo ou promoção.
+No app Meta **Trafego Pago Business Dev** (App ID `2940404272985831`) foi criada a nova configuração da 003B:
 
-## 8. Continua NÃO autorizado
+- nome: `Quoron Instagram Dev Login`;
+- Configuration ID: `38307908848822330`;
+- variação: General;
+- token: System-user access token / BISU;
+- ativos obrigatórios: Pages + Instagram Accounts;
+- configuração de anúncios não foi tornada obrigatória;
+- permissões da configuração orgânica/Insights:
+  - `pages_show_list`;
+  - `pages_read_engagement`;
+  - `instagram_basic`;
+  - `instagram_manage_insights`.
 
-Até a 003B-01 passar na auditoria:
+Decisão refinada no gate: **`ads_read` não entra nesta configuração orgânica**, porque toda permissão selecionada nessa tela é obrigatória no login. Obrigar `ads_read` violaria o contrato de produto de que mídia paga é opcional. A capacidade de anúncios será autorizada separadamente quando houver necessidade real.
 
-- criar/alterar configuração Facebook Login for Business no painel Meta;
-- trocar `META_LOGIN_CONFIG_ID`;
-- novo OAuth real;
-- selecionar/remover/reassociar ativos no painel Meta;
+Configuração histórica da 003A permanece existente:
+
+- `Trafego Pago Dev Login`;
+- Configuration ID `1549901823029730`.
+
+Ela não deve ser usada pela 003B e **não deve ser apagada antes da promoção da 003B**; fica como referência histórica/rollback.
+
+## 8. Próxima ação autorizada
+
+Próximo a agir: **Claude Code**.
+
+Pode executar somente o gate local:
+
+1. trazer a `main` atual para a branch 003B se necessário;
+2. atualizar no arquivo local não versionado `.env.local` apenas `META_LOGIN_CONFIG_ID=38307908848822330`;
+3. confirmar sem imprimir segredos que o novo ID foi reconhecido;
+4. iniciar/reiniciar o servidor local se necessário;
+5. parar antes do OAuth real em `003B — CONFIGURAÇÃO LOCAL PRONTA — AGUARDANDO OAUTH REAL CONDUZIDO PELO GPT`.
+
+Depois disso, o GPT conduzirá o fundador no novo OAuth real e na seleção do Instagram.
+
+## 9. Continua NÃO autorizado
+
+Até o próximo gate:
+
+- Claude alterar novamente o painel Meta;
+- apagar a configuração histórica da 003A;
+- criar novo Meta App ID;
+- ampliar permissões por tentativa;
 - persistir Page Access Token;
-- solicitar `ads_management` ou `business_management`;
+- solicitar `ads_management` ou `business_management` automaticamente;
 - criar anúncios ou gerar gasto;
 - importar conteúdo do Instagram;
 - iniciar Fase 4;
-- promover/mergear a 003B.
+- promover/mergear a 003B antes do E2E real.
 
-## 9. Pendências não bloqueantes
+## 10. Pendências não bloqueantes
 
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
 - leaked-password protection antes de produção;
