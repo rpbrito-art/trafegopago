@@ -1,9 +1,9 @@
-# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 a 003A-08 + INVESTIGAÇÕES 003A-05 e 003A-06A
+# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 a 003A-08 + INVESTIGAÇÕES 003A-05, 003A-06A e 003A-09
 
 Executor: Claude Code · 2026-08-23 a 2026-08-24
 Branch: `claude/rodada-003a-meta-connection-foundation`
 
-Status: **003A-08 EXECUTADA — AGUARDANDO AUDITORIA GPT — E2E REAL AINDA NÃO EXECUTADO**
+Status: **003A-09 INVESTIGADA — AGUARDANDO DECISÃO GPT — NENHUMA NOVA MUTAÇÃO EXECUTADA**
 
 > ⚠️ **Conexão real APROVADA; revogação ainda não provada ponta a ponta.** Existe uma
 > conexão `ACTIVE` real no ambiente, mantida de propósito: validar a revogação exigiria
@@ -277,6 +277,45 @@ remover a exigência de identidade derruba 5 testes.
 Suíte completa local: **625 verdes**. Lint, typecheck e build verdes. Nenhuma migration,
 nenhum E2E real; a conexão segue `ACTIVE` com `updated_at` em `01:47:57`.
 
+## Investigação 003A-09 — o que a Meta responde depois da remoção correta
+
+Somente leitura, com o token real lido pela fronteira server-side. Nenhuma escrita, nenhum
+endpoint mutável, nenhum clique. Script temporário, não versionado.
+
+| chamada | resultado |
+| --- | --- |
+| `GET /debug_token` (a mesma de `inspectToken`) | HTTP **400**, `GraphMethodException` code **100**, **sem `data`** |
+| app token inspecionando a si mesmo | HTTP 200, `is_valid: true`, `type: APP` |
+| `GET /me` com o token alvo | HTTP **400**, `OAuthException` code **190**, subcode **464** |
+
+O app token continua aceito, então a falha **não** é de autenticação do nosso app: a
+diferença está no `input_token`.
+
+**A sonda que responde ao §3.4.** Para saber se esse erro significa "token inválido",
+comparei com um token que nunca existiu:
+
+| | token lixo | nosso token |
+| --- | --- | --- |
+| `debug_token` | HTTP 200, `data` presente, `is_valid: false` | HTTP 400, sem `data`, code 100 |
+| `GET /me` | HTTP 400, code 190, **sem** subcode | HTTP 400, code 190, subcode **464** |
+
+Ou seja: a Meta **sabe** dizer "esse token não vale" — ela faz isso com HTTP 200 e
+`is_valid: false`, até para uma string inventada. O nosso token não recebe essa resposta. Ele
+produz uma assinatura diferente nas duas chamadas.
+
+**Por que a UI terminou em `?meta=erro`:** `inspectToken` exige HTTP ok **e** `is_valid`
+booleano. HTTP 400 devolve `{ ok: false }` → `UNVERIFIED` na verificação e
+`PROVIDER_REVOKE_FAILED` na desconexão → `?meta=erro`, estado local preservado. O fail-closed
+funcionou como projetado; o que não existe é a pós-condição que o desenho espera observar.
+
+**Não concluo daqui se o token está ativo.** Tratar `190`, `464` ou `GraphMethodException`
+como prova de inatividade é exatamente a inferência que a 003A-03 removeu do código, e a
+escolha de qual sinal passa a valer como pós-condição é decisão arquitetural — do GPT, não
+do executor.
+
+Estado remoto reconferido durante a investigação: `ACTIVE`, `disconnected_at` nulo,
+`updated_at` ainda em `01:47:57`.
+
 ## Investigação 2 — por que `ads_*` e `business_management` não vieram
 
 Minha hipótese anterior (App Review / restrição de publicidade) **estava errada**. As
@@ -377,4 +416,4 @@ Apliquei a migration `20260823203915` **antes** de commitá-la, contrariando o c
 durável que a governança introduziu em `4144c03`. Corrigi a ordem em seguida: o commit
 `60a6bff` publicou o delta antes do gate — que é o que a 003A-01 existiu para ensinar.
 
-`003A-08 EXECUTADA — AGUARDANDO AUDITORIA GPT — E2E REAL AINDA NÃO EXECUTADO`
+`003A-09 INVESTIGADA — AGUARDANDO DECISÃO GPT — NENHUMA NOVA MUTAÇÃO EXECUTADA`

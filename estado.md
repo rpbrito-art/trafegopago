@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-08 AUDITADA E APROVADA — INTEGRAÇÃO BISU CORRETA REMOVIDA EM `APPS CONECTADOS` — VERIFICAÇÃO LOCAL TERMINOU EM `?meta=erro` — ESTADO LOCAL PRESERVADO — INVESTIGAÇÃO 003A-09 AUTORIZADA SOMENTE LEITURA**.
+Status: **003A-09 INVESTIGADA — AGUARDANDO DECISÃO GPT — NENHUMA NOVA MUTAÇÃO EXECUTADA**.
 
 Mandato original:
 
@@ -89,13 +89,40 @@ Hipótese a investigar: após a remoção correta, `debug_token` pode estar resp
 
 Essa hipótese **não está provada** e não autoriza nova mutação.
 
-## 7. Próxima ação autorizada
+## 7. Resultado da Investigação 003A-09 (Claude Code)
 
-Claude Code deve executar somente a **Investigação 003A-09 — Pós-remoção em Apps conectados**, em modo de leitura.
+Executada em 2026-08-24, somente leitura, com o token real lido pela fronteira server-side.
+Nenhuma escrita na Meta ou no Supabase, nenhum endpoint mutável, nenhum clique. Script
+temporário e não versionado.
 
-Objetivo: provar qual é a resposta atual de `debug_token` para o mesmo token e por que o gateway retorna erro, sem imprimir segredo e sem alterar Meta, Supabase ou código.
+Fatos:
 
-Depois, Claude deve parar para decisão/auditoria GPT.
+- `GET /debug_token` (a mesma chamada de `inspectToken`): HTTP **400**,
+  `GraphMethodException` code **100**, **sem `data`** — não há `is_valid` para ler;
+- app token inspecionando a si mesmo: HTTP 200, `is_valid: true`, `type: APP` — a falha
+  **não** é de autenticação do app;
+- `GET /me` com o token alvo: HTTP **400**, `OAuthException` code **190**, subcode **464**;
+- conexão continua `ACTIVE`, `disconnected_at` nulo, `updated_at` em `2026-08-24 01:47:57`.
+
+Sonda estrutural (§3.4), contra um token que nunca existiu — nada real tocado:
+
+- `debug_token` com token inventado: HTTP **200**, `data` presente, **`is_valid: false`**;
+- `GET /me` com token inventado: HTTP 400, code 190, **sem** subcode.
+
+Portanto a Meta **sabe** sinalizar "token inválido" — e o faz com HTTP 200 + `is_valid:
+false`, inclusive para string inventada. O nosso token não recebe essa resposta; produz
+assinatura distinta nas duas chamadas.
+
+Causa do `?meta=erro`: `inspectToken` exige HTTP ok **e** `is_valid` booleano. HTTP 400 →
+`{ ok: false }` → `UNVERIFIED` (verificação) / `PROVIDER_REVOKE_FAILED` (desconexão) →
+estado local preservado. O fail-closed operou como projetado; o que falta é a pós-condição
+observável que o desenho espera.
+
+**DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT.** Definir se, e sob quais condições,
+algum sinal diferente de `is_valid: false` passa a valer como prova de inatividade. Tratar
+`190`, `464` ou `GraphMethodException` como prova é exatamente a inferência que a 003A-03
+removeu do código; a escolha não é do executor. Claude Code não alterou código nesta
+investigação.
 
 ## 8. Continua NÃO autorizado
 
