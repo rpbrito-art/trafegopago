@@ -11,6 +11,7 @@ Este arquivo é carregado automaticamente pelo Claude Code e contém as regras p
 - autorização executável: mandato/correção em `rodadas/gpt/` apontado por `estado.md`;
 - código/migrations/CI/Supabase = prova real;
 - Claude executa; GPT audita e promove;
+- fronteira arquitetura ↔ execução segue `docs/00-governanca/ARCHITECTURE_EXECUTION_BOUNDARY.md`;
 - configuração manual em sistema externo segue `docs/00-governanca/EXTERNAL_CONFIGURATION_GATE.md`.
 
 ## Bootstrap normal do `/proxima`
@@ -59,6 +60,22 @@ Se o estado remoto precisar ser alterado antes de existir artefato versionável 
 - não mergear `main`, não force-push, não reescrever histórico;
 - nunca expor secrets/PII desnecessária;
 - não autoaprovar nem autopromover.
+
+## Fronteira de decisão arquitetural
+
+**Claude investiga para provar fatos. GPT pesquisa para tomar decisões.**
+
+Claude pode e deve investigar o código, reproduzir defeitos, medir impacto, executar provas, inspecionar runtime/provider e coletar evidência factual.
+
+Claude **não deve** escolher sozinho entre arquiteturas, trocar mecanismo OAuth/token/provider, definir semântica de revogação, ampliar/reduzir permissões materiais, interpretar documentação externa ambígua como decisão de projeto ou adotar solução provisória estrutural para “fazer funcionar”.
+
+Se o mandato não resolver uma decisão material, declarar:
+
+`DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`
+
+e entregar fato observado, evidência, lacuna do mandato, alternativas identificadas e impactos factuais conhecidos — **sem escolher a alternativa**.
+
+Consulta externa de documentação pelo Claude é permitida apenas como apoio factual a uma arquitetura já definida, por exemplo para confirmar sintaxe, parâmetro, versão ou comportamento operacional específico. Pesquisa substantiva para decidir **como a integração deve funcionar** pertence ao GPT.
 
 ## Provas por delta
 
