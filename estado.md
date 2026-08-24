@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-06A AUDITADA — TOKEN REAL CLASSIFICADO COMO BISU — DECISÃO ARQUITETURAL 003A-06 FECHADA — CORREÇÃO 003A-07 AUTORIZADA — E2E REAL AINDA BLOQUEADO**.
+Status: **003A-07 REAUDITADA — ARQUITETURA BISU GUIADA APROVADA — 1 BLOQUEIO FAIL-CLOSED REMANESCENTE — CORREÇÃO 003A-08 AUTORIZADA — E2E REAL BLOQUEADO**.
 
 Mandato original:
 
@@ -36,10 +36,11 @@ Auditorias/decisões vigentes:
 - `rodadas/gpt/REAUDITORIA_003A_05_INVESTIGACAO_DESCONEXAO.md`
 - `rodadas/gpt/REAUDITORIA_003A_06A_CLASSIFICACAO_BISU.md`
 - `rodadas/gpt/DECISAO_ARQUITETURAL_003A_06_REVOGACAO_TOKEN_BUSINESS_LOGIN.md`
+- `rodadas/gpt/REAUDITORIA_003A_07_DESCONEXAO_BISU_GUIADA.md`
 
 Próximo mandato autorizado:
 
-`rodadas/gpt/CORRECAO_003A_07_DESCONEXAO_BISU_GUIADA.md`
+`rodadas/gpt/CORRECAO_003A_08_CLASSIFICACAO_NAO_BISU_FAIL_CLOSED.md`
 
 Branch:
 
@@ -47,9 +48,13 @@ Branch:
 
 PR: **#11 draft**.
 
-Head auditado da investigação 003A-06A:
+Head auditado da 003A-07:
 
-`3e1a253cc1f70ec987f44fd4a3a6b5c0e75cc2c6`
+`df172e007ecb1bafb89b9d1392fe58ba7d677332`
+
+CI:
+
+`32761502278` — **verde** em install, lint, typecheck, Edge Functions, testes e build.
 
 Relatório:
 
@@ -64,67 +69,71 @@ A conexão `Teste 003A - conexao Meta` permanece preservada:
 - `disconnected_at` = nulo;
 - referência do token = presente;
 - segredo correspondente no Vault = presente;
-- token continua `is_valid=true`;
-- `debug_token.type=SYSTEM_USER`;
-- expiração = 2026-10-23;
+- token previamente reconfirmado como `is_valid=true`;
+- credencial real classificada como BISU por `client_business_id`;
 - `external_user_id=122103866379446065`.
 
-A primeira tentativa de desconexão real falhou fechado e **não revogou o token**.
+Nenhum E2E real foi executado após a primeira tentativa que falhou fechado.
 
-## 5. Investigação 003A-06A — resultado auditado
+## 5. Decisão arquitetural BISU — FECHADA
 
-A prova read-only autorizada retornou:
-
-`GET /v26.0/me?fields=client_business_id` → HTTP 200
-
-com:
-
-- `client_business_id=5301659283195806`, presente e não vazio;
-- `id=122103866379446065`;
-- `id` coincide com o `external_user_id` persistido.
-
-Nenhuma escrita foi executada na Meta ou no Supabase. O script usado foi temporário e não versionado.
-
-**Conclusão factual:** a credencial real usada pela conexão da 003A é tratada como **Business Integration System User Access Token (BISU)** do Facebook Login for Business.
-
-## 6. Decisão arquitetural 003A-06 — FECHADA
-
-Para BISU válido da configuração atual:
+Para a credencial BISU do Facebook Login for Business:
 
 - não usar `oauth/revoke`;
 - não usar `/permissions` como fallback;
 - não usar `DELETE /{system-user-id}/access_tokens`;
-- não inferir mecanismo apenas por `debug_token.type=SYSTEM_USER`;
 - identificar BISU por contrato read-only com `client_business_id`;
 - orientar o usuário a remover o aplicativo em `Business Settings > Integrations > Connected apps`;
 - manter token/estado local enquanto a Meta ainda puder considerá-lo válido;
 - depois da ação externa, reinspecionar o mesmo token;
 - somente `is_valid=false` autoriza apagar o segredo e marcar `REVOKED` localmente.
 
-Portanto a desconexão BISU da 003A será um **fluxo guiado de ação externa + pós-verificação**, e não uma revogação automática por endpoint não documentado.
+## 6. Reauditoria 003A-07 — resultado
+
+A implementação passou nos pontos principais:
+
+- BISU válido retorna `EXTERNAL_ACTION_REQUIRED` sem mutação externa/local;
+- `oauth/revoke` foi removido do caminho BISU;
+- `/permissions` ficou isolado ao caminho USER;
+- existe ação separada `checkMetaDisconnection`;
+- verificação usa somente inspeção read-only;
+- token ainda válido não limpa estado;
+- falha/ambiguidade de inspeção não limpa estado;
+- somente invalidez explícita permite limpeza local;
+- UI orienta `Integrações > Aplicativos conectados` e oferece `Já removi — verificar`;
+- script diagnóstico teve `data.error` bruto sanitizado;
+- CI do HEAD está verde.
+
+### Bloqueio remanescente
+
+`classificarCredencial()` ainda pode tratar um corpo HTTP 200 incompleto como `bisu=false`. Com `debug_token.type=USER`, isso pode liberar `/permissions` sem uma classificação realmente concluída.
+
+Exemplo estrutural proibido:
+
+`/me` responde `{}` → interpretado como não-BISU → `type=USER` → mutação externa.
+
+Isso viola a regra fail-closed para ausência/erro/ambiguidade.
 
 ## 7. Próxima ação autorizada
 
-Claude Code deve executar a **Correção 003A-07 — Desconexão BISU guiada e pós-verificada** na branch atual.
+Claude Code deve executar somente a **Correção 003A-08 — Classificação não-BISU fail-closed**.
 
-Objetivos principais:
+Objetivos:
 
-- trocar o caminho BISU atual por `EXTERNAL_ACTION_REQUIRED` ou contrato equivalente;
-- criar UX simples para explicar a remoção no ambiente Meta;
-- criar ação separada **Verificar desconexão**;
-- só limpar local após `is_valid=false`;
-- manter todo erro/ambiguidade fail-closed;
-- sanitizar a dívida `data.error` bruto do script de diagnóstico;
+- exigir `id` válido na resposta de `/me`;
+- tratar `client_business_id` presente porém vazio/inválido como ambiguidade;
+- validar coerência da identidade com `external_user_id` quando disponível;
+- impedir qualquer `/permissions` em corpo vazio, identidade divergente ou classificação ambígua;
+- preservar o caminho BISU guiado e o USER legítimo;
 - testes afetados + lint + typecheck + build + uma CI.
-
-**Esta autorização não permite nenhum E2E real nem ação no painel Meta.**
 
 ## 8. Continua NÃO autorizado
 
-Até auditoria da 003A-07:
+Até auditoria da 003A-08:
 
 - clicar `Desconectar` real;
 - remover o app em Connected apps;
+- clicar `Já removi — verificar` como gate real;
 - chamar `oauth/revoke` com o token real;
 - chamar `/permissions` ou `/access_tokens` para o BISU;
 - qualquer outro endpoint Meta mutável;
