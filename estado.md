@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
+Status: **E2E REAL DE DESCONEXÃO EXECUTADO UMA VEZ E FALHOU FECHADO — INVESTIGAÇÃO 003A-05 AUTORIZADA**.
 
 Mandato original:
 
@@ -34,9 +34,9 @@ Auditoria/reauditorias:
 
 `rodadas/gpt/AUDITORIA_RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
-Correção vigente:
+Investigação vigente:
 
-`rodadas/gpt/CORRECAO_003A_04_TIPO_TOKEN_FAIL_CLOSED.md`
+`rodadas/gpt/INVESTIGACAO_003A_05_E2E_DESCONEXAO_FALHOU.md`
 
 Branch:
 
@@ -44,86 +44,81 @@ Branch:
 
 PR: **#11 draft**.
 
+Último head de código auditado antes do gate real:
+
+`8332bec58d14c0e6687f02340cfd5c545b34942d`
+
+CI correspondente:
+
+`32751232306` — **verde** em install, lint, typecheck, Edge Functions, testes e build.
+
 Relatório:
 
 `rodadas/claude/RELATORIO_RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
-## 4. Resultado auditado até a 003A-03
+## 4. Resultado auditado antes do gate
 
-Head reaudited: `98db346e1a110f74627ee1c77a8593905591b688`.
+A auditoria independente confirmou como fechados:
 
-CI `32746073927`: **verde** em install, lint, typecheck, Edge Functions, testes e build.
-
-A reauditoria independente confirmou como fechados:
-
-- membership na desconexão;
-- membership novamente no callback;
-- state negado single-use;
-- remoção do upsert incompatível;
+- autorização cross-tenant na desconexão;
+- membership reconferida no callback;
+- `state` negado single-use;
+- remoção do upsert incompatível com índice parcial;
 - ativação atômica com Vault + `ACTIVE`;
 - conexão Meta real da organização de teste;
-- token fora do browser e preservado no Vault;
-- erro de leitura de `read_meta_connection_token` falhando fechado;
-- erro `190` do provider não sendo tratado como revogação;
-- pós-verificação do mesmo token via `debug_token` antes da limpeza local;
-- falha de rede/HTTP/resposta ambígua na verificação preservando estado local.
+- token fora do browser;
+- falha de leitura do Vault não confundida com ausência de token;
+- erro Meta `190` não tratado como prova de revogação;
+- pós-verificação do mesmo token antes da limpeza local;
+- erro de rede/HTTP/resposta ambígua preservando estado local;
+- token válido `SYSTEM_USER` usando apenas `oauth/revoke`;
+- token válido `USER` usando apenas `/permissions`;
+- token válido de tipo desconhecido/ausente falhando fechado sem tentativa de revogação.
 
-## 5. Estado remoto confirmado em 2026-08-24
+## 5. Gate real de desconexão — resultado observado
 
-Supabase remoto:
+Em 2026-08-24 o fundador acionou **uma única vez** `Desconectar` pela UI local da conexão `Teste 003A - conexao Meta`.
 
-- migration history = **13**;
-- última migration = `20260823203915`;
-- conexão `Teste 003A - conexao Meta` = **ACTIVE**;
-- `connected_at` = 2026-08-24 01:47:57Z;
-- expiração = 2026-10-23;
-- token type observado no E2E de conexão = `SYSTEM_USER`;
-- referência de segredo presente;
-- segredo correspondente ainda existe no Vault;
-- `disconnected_at` continua nulo.
+Resultado visível:
 
-A conexão real foi preservada deliberadamente para o E2E final. **Não revogar nem substituir antes de nova autorização GPT.**
+- redirect para `/conta?meta=erro`;
+- a UI continuou mostrando **Meta conectada**.
 
-## 6. Bloqueio vigente — tipo de token desconhecido
+Auditoria GPT imediatamente após a tentativa confirmou no Supabase remoto:
 
-O código da 003A-03 ainda escolhe `/permissions` para qualquer tipo que não seja `SYSTEM_USER`.
+- conexão = **ACTIVE**;
+- `disconnected_at` = nulo;
+- referência de segredo = presente;
+- segredo correspondente = ainda presente no Vault;
+- `external_user_id` e escopos = preservados.
 
-Isso significa que um token válido retornado pela Meta como `PAGE`, outro tipo inesperado ou sem tipo pode provocar uma tentativa de revogação por um mecanismo que o sistema não sabe ser correto.
+Portanto o fail-closed funcionou: **a tentativa real falhou sem produzir limpeza local enganosa**.
 
-A Correção 003A-04 exige:
+Ainda não está determinado se a falha ocorreu na inspeção inicial, no `oauth/revoke`, na pós-verificação ou em outro ponto do runtime.
 
-- token válido + `SYSTEM_USER` → `oauth/revoke`;
-- token válido + `USER` → `/permissions`;
-- token válido + tipo diferente/ausente → falhar fechado, sem mutação remota e sem limpeza local;
-- `is_valid=false` do mesmo token continua sendo prova suficiente de inatividade para permitir limpeza local.
+## 6. Próxima ação autorizada
 
-## 7. Execução da Correção 003A-04 (Claude Code)
+Claude Code deve executar **somente a investigação**:
 
-Executada em 2026-08-24. Fatos:
+`rodadas/gpt/INVESTIGACAO_003A_05_E2E_DESCONEXAO_FALHOU.md`
 
-- com o token **válido**, `revokeOnMeta` só reconhece dois caminhos: `SYSTEM_USER` →
-  `oauth/revoke` e `USER` → `/permissions`. Não há mais default;
-- tipo diferente desses dois, ou `type` ausente, retorna `PROVIDER_REVOKE_FAILED` **antes**
-  de qualquer endpoint de revogação e sem tocar o estado local;
-- `is_valid === false` na inspeção inicial continua sendo prova suficiente de inatividade e
-  libera a limpeza local, independentemente de `type`;
-- a pós-verificação exige apenas `is_valid === false` do mesmo token; `type` ausente na
-  resposta posterior não bloqueia (refinamento do mandato §3.7);
-- 83 testes em `src/lib/meta` verdes, cobrindo as seis provas do mandato §4; regra nova
-  verificada por mutação (restaurar o default `/permissions` derruba 2 testes);
-- testes de `190`, pós-verificação, erro de leitura do Vault e falha de inspeção seguem
-  passando;
-- lint e typecheck verdes; nenhuma migration tocada; histórico segue **13**.
+Objetivo principal: determinar, sem nova mutação externa, se o token Meta está atualmente válido ou inválido e em qual etapa a tentativa anterior falhou.
 
-Sem mutação externa nesta correção:
+Está permitido apenas diagnóstico/read-only conforme o mandato, inclusive `debug_token` somente leitura sem expor credenciais.
 
-- **desconexão Meta real NÃO executada**;
-- OAuth não refeito, ativos não selecionados, painel Meta não tocado;
-- conexão real conferida: `ACTIVE`, `disconnected_at` null, referência de token presente.
+**Não está autorizado:**
 
-Próxima ação: **reauditoria GPT**. Claude Code não promove 003A nem inicia 003B.
+- clicar `Desconectar` novamente;
+- chamar `oauth/revoke` novamente;
+- chamar `/permissions`;
+- revogar pelo painel Meta;
+- limpar estado local;
+- refazer OAuth;
+- selecionar ativos;
+- iniciar 003B;
+- promover 003A.
 
-## 8. Pendências não bloqueantes
+## 7. Pendências não bloqueantes
 
 - escopos `ads_*`/`business_management` e seleção detalhada de ativos ficam para 003B;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
