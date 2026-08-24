@@ -24,30 +24,15 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-10B EXECUTADA — MARCADOR E2E PERSISTIDO — AGUARDANDO AUDITORIA GPT — NENHUMA LIMPEZA EXECUTADA**.
+Status: **E2E REAL DE CONEXÃO E DESCONEXÃO BISU APROVADO — CÓDIGO/CI APROVADOS — PR #11 EXIGE APENAS RECONCILIAÇÃO DOCUMENTAL COM A MAIN ANTES DA PROMOÇÃO — 003A AINDA NÃO PROMOVIDA**.
 
 Mandato original:
 
 `rodadas/gpt/RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
-Auditorias/decisões vigentes:
+Auditoria final:
 
-- `rodadas/gpt/AUDITORIA_RODADA_003A_META_CONNECTION_FOUNDATION.md`
-- `rodadas/gpt/REAUDITORIA_003A_05_INVESTIGACAO_DESCONEXAO.md`
-- `rodadas/gpt/REAUDITORIA_003A_06A_CLASSIFICACAO_BISU.md`
-- `rodadas/gpt/DECISAO_ARQUITETURAL_003A_06_REVOGACAO_TOKEN_BUSINESS_LOGIN.md`
-- `rodadas/gpt/REAUDITORIA_003A_07_DESCONEXAO_BISU_GUIADA.md`
-- `rodadas/gpt/REAUDITORIA_003A_08_CLASSIFICACAO_FAIL_CLOSED.md`
-- `rodadas/gpt/REAUDITORIA_003A_09_POS_REMOCAO_APPS_CONECTADOS.md`
-- `rodadas/gpt/REAUDITORIA_003A_10_VERIFICACAO_BISU_POS_REMOCAO.md`
-
-Correção executada/auditada:
-
-`rodadas/gpt/CORRECAO_003A_10_VERIFICACAO_BISU_POS_REMOCAO.md`
-
-Gate imediatamente autorizado:
-
-`rodadas/gpt/GATE_003A_10B_MARCADOR_E2E_POS_MIGRATION.md`
+`rodadas/gpt/AUDITORIA_FINAL_003A_E2E_META_CONNECTION.md`
 
 Branch:
 
@@ -55,116 +40,85 @@ Branch:
 
 PR: **#11 draft**.
 
-Head auditado da 003A-10:
+Head funcional auditado da 003A-10:
 
 `12c179a6d114ede60d5f8675c4813ea03bd75ba6`
 
-CI:
+HEAD observado após 003A-10B:
 
-`32768038482` — **verde** em install, lint, typecheck, Edge Functions, testes e build.
+`ceffa3f92d86622a73ea0162a02526b8273bb0f6`
 
-## 4. Estado comprovado da conexão real
+CI desse HEAD:
 
-A integração externa correta **já foi removida** em **Business Settings > Apps conectados**.
+`32771309205` — **verde**.
 
-A migration `20260824170000_add_meta_external_disconnect_pending.sql` foi aplicada no Supabase remoto e auditada pelo GPT:
+## 4. E2E real — resultado final
 
-- histórico remoto = **14 migrations**;
-- `20260824170000` presente;
-- coluna `external_disconnect_pending_at` presente;
-- RPC `mark_meta_external_disconnect_pending` presente e protegida para `service_role`;
-- `revoke_meta_connection` recriada conforme a migration.
+A conexão real via Facebook Login for Business foi comprovada anteriormente, incluindo token no Vault, callback seguro, uso único do `state`, membership e classificação BISU por `client_business_id`.
 
-A conexão real permanece preservada:
+A integração instalada correta foi removida em **Configurações do negócio > Apps conectados**.
 
-- conexão `9d256edf-0a89-4436-8d60-f375bc087c08`;
-- status = `ACTIVE`;
-- `updated_at` = 2026-08-24 01:47:57Z;
-- `disconnected_at` = nulo;
-- referência do token = presente;
-- segredo correspondente no Vault = presente;
-- `external_user_id=122103866379446065`;
-- `external_disconnect_pending_at` = **nulo**.
+A 003A-09 provou a assinatura real pós-remoção do BISU; a 003A-10 implementou prova composta contextual e marcador persistente; a migration `20260824170000_add_meta_external_disconnect_pending.sql` foi aplicada e auditada; o Gate 003A-10B reconstruiu o marcador one-off do E2E que havia começado antes da coluna existir.
 
-## 5. Sequência real do gate BISU
+Após o fundador clicar uma única vez `Já removi — verificar`, a UI informou que a Meta confirmou a remoção.
 
-1. `Desconectar` local classificou a credencial como BISU e entrou no fluxo externo sem limpar estado.
-2. Houve um desvio manual: `Contas > Apps` foi confundido com a integração instalada; a associação foi removida e depois restaurada corretamente com App ID `2940404272985831`.
-3. A superfície correta foi localizada em **Business Settings > Apps conectados**.
-4. Nessa tela, `Trafego Pago Business Dev` (App ID `2940404272985831`) foi removido e confirmado pelo fundador.
-5. Um novo login/reload local perdeu o estado visual antigo do fluxo e houve cliques adicionais; a UI terminou em `?meta=erro`.
-6. O fail-closed funcionou: nenhuma limpeza local ocorreu.
-7. A 003A-09 provou que, depois da remoção correta, o token alvo deixou de operar, embora `debug_token` não devolva `is_valid=false` nesse caso.
-8. A 003A-10 implementou marcador persistente e prova composta contextual para o comportamento real observado.
-9. A migration da 003A-10 já foi aplicada e auditada no remoto.
+Auditoria independente no Supabase da conexão `9d256edf-0a89-4436-8d60-f375bc087c08` confirmou:
 
-## 6. 003A-10 — resultado auditado
+- `status = REVOKED`;
+- `disconnected_at = 2026-08-24 20:09:44.634706+00`;
+- `external_disconnect_pending_at = null`;
+- `token_secret_reference = null`;
+- segredo correspondente ausente do Vault;
+- `updated_at = 2026-08-24 20:09:44.634706+00`.
 
-A correção foi aprovada:
+**Conclusão: desconexão BISU provada ponta a ponta.**
 
-- marcador persistente `external_disconnect_pending_at` para sobreviver a reload/login;
-- RPC idempotente `mark_meta_external_disconnect_pending`, restrita a `service_role`;
-- UI deriva `remocao-externa-pendente` do estado persistido;
-- caminho manual corrigido para **Configurações do negócio > Apps conectados**;
-- BISU continua sem endpoint mutável de revogação pelo produto;
-- `is_valid=false` explícito continua sendo prova forte;
-- no fluxo BISU pendente, a prova composta pós-remoção exige marcador + app token saudável + assinatura real observada do token alvo;
-- `190` genérico, outro subcode, falha do app token, rede, 5xx ou ambiguidade continuam fail-closed;
-- verificações repetidas são idempotentes;
-- CI do HEAD está verde.
+A regra continua NÃO sendo `190 => revogado`: a assinatura 190/464 só é aceita dentro do fluxo BISU previamente marcado, com app token saudável e demais travas da 003A-10.
 
-A regra **não** é `190 => revogado`.
+## 5. Migration / remoto
 
-## 7. Execução do Gate 003A-10B (Claude Code)
+Histórico remoto: **14 migrations**.
 
-Executado em 2026-08-24. Uma única escrita, no alvo fixo do mandato, pelo caminho
-`service_role` local: `mark_meta_external_disconnect_pending('9d256edf-0a89-4436-8d60-f375bc087c08')`
-→ HTTP 204.
+`20260824170000` aplicada e auditada:
 
-Provado por leitura, antes e depois:
+- `external_disconnect_pending_at` presente;
+- `mark_meta_external_disconnect_pending` presente e restrita a `service_role`;
+- `revoke_meta_connection` atualizada para limpar marcador, referência e segredo no encerramento.
 
-- `status` = `ACTIVE` (inalterado);
-- `external_disconnect_pending_at` = **2026-08-24 19:57:57.550577+00** (era nulo);
-- `disconnected_at` = nulo (inalterado);
-- `connected_at`, `token_expires_at`, `external_user_id` e escopos **inalterados**;
-- `token_secret_reference` presente e segredo correspondente ainda existente no Vault,
-  conferido por leitura independente contra `vault.secrets`;
-- a tabela tem uma única conexão e um único marcador — nada além do alvo foi tocado.
+## 6. Situação da PR
 
-Não executado: nenhum endpoint Meta, nenhum clique na UI, nenhuma `revoke_meta_connection`,
-nenhuma reaplicação de migration, nenhuma alteração de token ou Vault.
+A PR #11 ficou `mergeable=false` somente porque o GPT atualizou `estado.md`/auditorias diretamente na `main` durante os gates finais enquanto a branch também atualizava documentação.
 
-Próxima ação: **auditoria GPT**.
+Não há bloqueio funcional identificado.
 
-## 8. Próxima ação autorizada
+Não forçar merge nem descartar documentação. Fazer uma reconciliação normal da branch com a `main` atual, sem nova mudança funcional.
 
-Claude Code deve executar somente o **Gate 003A-10B**:
+## 7. Próxima ação autorizada
 
-1. marcar a conexão `9d256edf-0a89-4436-8d60-f375bc087c08` via `mark_meta_external_disconnect_pending` usando `service_role`;
-2. não tocar em Meta, status, token, Vault ou `disconnected_at`;
-3. provar que a conexão continua `ACTIVE`, com token/segredo presentes e marcador agora não nulo;
-4. parar para auditoria GPT.
+Claude Code deve executar **somente a reconciliação final para promoção**:
 
-Depois da reauditoria, o fundador poderá clicar uma única vez `Já removi — verificar` para a pós-condição final.
+1. trazer a `main` atual para `claude/rodada-003a-meta-connection-foundation` e resolver conflitos documentais preservando o estado final deste arquivo e a auditoria final;
+2. não alterar comportamento funcional da 003A;
+3. não tocar na Meta nem no Supabase;
+4. executar CI da branch reconciliada;
+5. atualizar relatório apenas com o fato da reconciliação;
+6. parar em `003A RECONCILIADA — AGUARDANDO PROMOÇÃO GPT`.
 
-## 9. Continua NÃO autorizado
+Depois, GPT audita o diff final/CI e promove a PR #11.
 
-Até o gate acima concluir:
+## 8. Continua NÃO autorizado
 
-- clicar `Desconectar`;
-- clicar `Já removi — verificar`;
-- nova remoção/reassociação no painel Meta;
+Até a promoção:
+
 - novo OAuth;
+- nova remoção/reassociação no painel Meta;
+- novo clique de desconexão/verificação para este fixture;
 - seleção de ativos;
-- limpeza manual do segredo;
 - iniciar 003B;
-- promover/mergear 003A.
+- Claude autoaprovar ou autopromover.
 
-## 10. Pendências não bloqueantes
+## 9. Próxima fase após promoção
 
-- escopos `ads_*`/`business_management` e seleção detalhada de ativos ficam para 003B;
-- logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
-- leaked-password protection antes de produção;
-- SMTP/domínio de produção;
-- default ACL residual de `supabase_admin` enquanto inerte;
-- App Review/Business Verification para fase comercial quando aplicável.
+A próxima etapa substantiva esperada é **003B**, voltada à seleção/descoberta de ativos e permissões necessárias para a leitura real, respeitando o roadmap da Fase 3 antes da Fase 4.
+
+Pendências não bloqueantes permanecem registradas nos canônicos/roadmap, incluindo redaction de callback/log antes de produção, proteção de senha vazada, SMTP/domínio, ACL residual inerte e App Review/Business Verification quando aplicável.
