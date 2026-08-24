@@ -1,6 +1,6 @@
 # HISTORY SUMMARY — TRÁFEGO PAGO
 
-Atualizado: 2026-08-23
+Atualizado: 2026-08-24
 
 Resume somente estado auditado/promovido e decisões estruturais persistentes. Evidência completa permanece em `rodadas/` e no Git.
 
@@ -79,6 +79,39 @@ PR #9 — merge `c0af987ebe68cd0eafd80efef6a0e63e4c7d7042`.
 
 Auditoria: `rodadas/gpt/AUDITORIA_RODADA_002C_WEBHOOK_INBOX_OBSERVABILIDADE.md` — PR #10.
 
+## Fase 3 — Meta Connection Foundation
+
+**EM ANDAMENTO. 003A PROMOVIDA em 2026-08-24 pela PR #11.**
+
+### 003A — conexão Meta segura + desconexão BISU real
+
+Entregue e provado:
+
+- Facebook Login for Business com Graph API v26.0;
+- `meta_connections` e intenções OAuth de uso único;
+- token somente no Supabase Vault, sem exposição no browser;
+- callback seguro e reconferência de membership;
+- conexão real de conta de teste;
+- classificação do token real como BISU por `client_business_id`;
+- fluxo de desconexão BISU guiado por **Configurações do negócio > Apps conectados**;
+- estado persistente de remoção externa, sobrevivendo a reload/login;
+- prova fail-closed: erro genérico `190` não prova revogação;
+- assinatura pós-remoção `190/464` só é aceita no contexto BISU previamente marcado, com app token saudável e controles adicionais;
+- desconexão real ponta a ponta: linha `REVOKED`, `disconnected_at` gravado, referência do token nula e segredo removido do Vault;
+- migration `20260824170000` aplicada; histórico remoto com 14 migrations;
+- CI final `32772710738` verde no head reconciliado `046c2e7583e823fb18d5667973680874c387eadb`;
+- merge da PR #11: `546838db8e7ced4e9045c05feb8c7b2f0c476cc2`.
+
+Decisões persistentes:
+
+- `debug_token.type=SYSTEM_USER` não distingue BISU de system user clássico; classificação usa contrato observável (`client_business_id`);
+- BISU não é revogado pelo produto via `oauth/revoke`, `/permissions` ou `/access_tokens`;
+- enquanto a remoção externa não estiver comprovada, token/estado local são preservados;
+- a superfície correta da Meta para remover a integração instalada é **Apps conectados**, não `Contas > Apps`;
+- logger de desenvolvimento do Next ainda pode registrar URL de callback com `code`/`state`; tratar redaction antes de produção.
+
+A Fase 3 ainda não está encerrada porque o roadmap também exige seleção/descoberta de Instagram e conta de anúncios. A próxima rodada substantiva esperada é 003B.
+
 ## Governança de eficiência
 
 Decisão persistente de 2026-08-23:
@@ -93,11 +126,9 @@ Decisão persistente de 2026-08-23:
 - CI de branch passa a rodar pelo PR, evitando duplicação `push + pull_request` do mesmo commit;
 - relatório normal ≤100 linhas; microcorreção ≤60.
 
-## Próxima macrofase
+## Próxima macrocapacidade
 
-**Fase 3 — Meta Connection Foundation.**
-
-A primeira rodada planejada é 003A, ainda não autorizada.
+Continuar a **Fase 3** com seleção/descoberta dos ativos Meta necessários. Depois do fechamento da Fase 3, a próxima macrofase é **Fase 4 — Instagram Content Read**.
 
 ## Pendências transversais
 
@@ -106,4 +137,5 @@ A primeira rodada planejada é 003A, ainda não autorizada.
 - default ACL residual de `supabase_admin` enquanto inerte;
 - gestão avançada de membros e multi-org posteriores;
 - rate limiting conforme exposição real;
+- redaction de callback/log antes de produção;
 - App Review/Business Verification ficam para hardening/comercialização quando aplicável.
