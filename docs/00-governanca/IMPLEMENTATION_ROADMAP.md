@@ -12,6 +12,8 @@ Antes de iniciar cada fase que toque Meta, produto ou experiência, revalidar:
 2. documentação externa vigente (Meta/Instagram/Supabase mudam com frequência);
 3. se a fase ainda faz sentido na ordem prevista, dado o que já foi aprendido.
 
+**Regra adicional obrigatória:** qualquer rodada que toque Leads, Lead Ads, Micro-CRM, Conversões, Hoje, Notificações ou jornada comercial deve incluir `docs/01-produto/LEAD_NURTURING_CANONICAL.md` no READ SET antes de definir o escopo. Uma implementação de Micro-CRM não pode ser encerrada apenas com captura de lead + mudança manual de status; deve respeitar priorização, próxima ação, follow-up e reativação previstas no canônico.
+
 Reordenação ampla exige decisão documentada; ajuste de escopo dentro de uma fase, não.
 
 ## Fase 0 — Bootstrap técnico
@@ -188,7 +190,9 @@ Entregas:
 
 Gate: alteração de orçamento acima do aprovado é bloqueada server-side.
 
-## Fase 12 — Lead Ads e Micro-CRM
+## Fase 12 — Lead Ads, Micro-CRM e Nutrição
+
+**Canônico obrigatório desta fase:** `docs/01-produto/LEAD_NURTURING_CANONICAL.md`.
 
 Entregas:
 
@@ -197,10 +201,22 @@ Entregas:
 - inbox/dedupe;
 - lead fetch;
 - `leads`/`lead_events`;
-- pipeline;
-- linhagem anúncio→lead.
+- pipeline comercial;
+- separação explícita entre estágio e temperatura/prioridade;
+- score auditável quando aplicável;
+- responsável pelo lead;
+- próxima ação/tarefa;
+- follow-up e lembretes;
+- adiamento com retorno futuro;
+- identificação de lead parado/abandonado;
+- reativação sem destruir histórico;
+- Next Best Action com motivo/evidência quando houver dados suficientes;
+- linhagem anúncio→criativo/campanha/conteúdo→lead→qualificação/oportunidade;
+- UX simples que não obrigue o pequeno negócio a “operar um CRM” complexo.
 
-Gate: webhook duplicado cria um lead; duas orgs isoladas; PII não vaza em logs.
+Automação de WhatsApp/e-mail **não é requisito para a fase entregar valor**; o baseline pode ser assistido/manual. Qualquer automação futura de mensagem exige integração oficial, segurança, consentimento/base legal e decisão própria.
+
+Gate: além de webhook sem duplicação, isolamento entre organizações e PII protegida, provar que um lead que exige acompanhamento recebe próxima ação auditável; follow-up pode ser concluído/adiado/retomado; lead sem ação pode ser sinalizado; score/temperatura não é inventado por IA; reativação preserva histórico; origem comercial continua rastreável.
 
 ## Fase 13 — Conversões
 
@@ -210,7 +226,8 @@ Entregas:
 - `conversions`;
 - valores;
 - conversion sync Meta quando configurado;
-- distinção de atribuição.
+- distinção de atribuição;
+- preservação da história comercial gerada pelo Micro-CRM.
 
 Gate: entrega à Meta não é apresentada como atribuição confirmada sem evidência.
 
@@ -223,7 +240,8 @@ Entregas:
 - formulário público seguro;
 - respostas;
 - classificação por IA;
-- motivos estruturados.
+- motivos estruturados;
+- retroalimentação das hipóteses de qualificação/nutrição quando houver evidência suficiente.
 
 Gate: token não expõe lead; resposta original preservada; classificação não sobrescreve fonte.
 
@@ -231,7 +249,7 @@ Gate: token não expõe lead; resposta original preservada; classificação não
 
 Entregas:
 
-- cruzamento de conteúdo, Ads, leads, conversões e surveys;
+- cruzamento de conteúdo, Ads, leads, qualificação, histórico de acompanhamento, conversões e surveys;
 - `observation/interpretation/hypothesis/recommended_test`;
 - evidence refs;
 - tela Insights.
@@ -240,17 +258,25 @@ Gate: toda afirmação relevante aponta para evidência disponível e limitaçõ
 
 ## Fase 16 — Hoje, Notificações e UX de operação
 
+**Canônico obrigatório para a dimensão comercial:** `docs/01-produto/LEAD_NURTURING_CANONICAL.md`.
+
 Entregas:
 
 - painel orientado a ação;
 - approvals pendentes;
 - erros de integração;
 - experimentos concluídos;
-- leads prioritários;
+- fila comercial inteligente para leads que exigem ação;
+- novo lead ainda não contatado;
+- lead quente/prioritário sem resposta;
+- follow-up vencido;
+- oportunidade sem ação;
+- retorno agendado;
+- lead elegível para reativação;
 - insights recentes;
 - notificações in-app e e-mail mínimo.
 
-Gate: ações críticas alcançáveis sem navegar por relatórios complexos.
+Gate: ações críticas alcançáveis sem navegar por relatórios complexos; quando o Micro-CRM estiver ativo, o usuário consegue saber **quem precisa de atenção, por quê e qual é a próxima ação** sem montar manualmente uma rotina comercial complexa.
 
 ## Fase 17 — Hardening comercial
 
