@@ -34,6 +34,11 @@ let chamadasDebug = 0;
  * `null` significa credencial que não é BISU.
  */
 let negocioDoToken: string | null = "negocio-123";
+/**
+ * Corpo cru de `GET /me`, quando o teste precisa de um que a montagem
+ * padrão não produz — `{}`, `id` ausente, tipo inválido.
+ */
+let corpoDoMe: Record<string, unknown> | null | "PADRAO" = "PADRAO";
 /** Desfecho do endpoint de revogação. */
 let revogacaoResponde: "sucesso" | "erro190" | "erro100" | "http500" = "sucesso";
 let erroRpc: Record<string, { code: string } | null> = {};
@@ -140,6 +145,7 @@ beforeEach(() => {
   revogacaoResponde = "sucesso";
   // Padrão: a credencial real da 003A — BISU emitido pelo Login for Business.
   negocioDoToken = "negocio-123";
+  corpoDoMe = "PADRAO";
   erroRpc = {};
   rpcCalls.length = 0;
   fetchCalls.length = 0;
@@ -191,11 +197,17 @@ beforeEach(() => {
         if (negocioDoToken === "HTTP_RUIM") {
           return { ok: false, json: async () => ({ error: { code: 190 } }) } as Response;
         }
+        if (corpoDoMe !== "PADRAO") {
+          return { ok: true, json: async () => corpoDoMe } as Response;
+        }
         return {
           ok: true,
           json: async () => ({
             id: "999",
-            ...(negocioDoToken ? { client_business_id: negocioDoToken } : {}),
+            // `null` seria "presente e inválido"; ausência é omissão mesmo.
+            ...(negocioDoToken !== null
+              ? { client_business_id: negocioDoToken }
+              : {}),
           }),
         } as Response;
       }
@@ -448,6 +460,107 @@ describe("disconnectMeta", () => {
       expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
       expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
       expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+  });
+
+  describe("classificação sem identidade positiva", () => {
+    // "Não é BISU" libera mutação externa. Um HTTP 200 vazio não afirma isso —
+    // afirma que não sabemos o que a credencial é.
+    beforeEach(() => {
+      tipoDoToken = "USER";
+    });
+
+    it("corpo {} falha fechado", async () => {
+      corpoDoMe = {};
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("corpo sem `id` falha fechado", async () => {
+      corpoDoMe = { name: "Alguém" };
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("`id` vazio falha fechado", async () => {
+      corpoDoMe = { id: "" };
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+    });
+
+    it("identidade divergente do external_user_id falha fechado", async () => {
+      // Revogar permissões de outra conta é pior do que não revogar nada.
+      corpoDoMe = { id: "outra-conta" };
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("client_business_id vazio falha fechado mesmo com type USER", async () => {
+      corpoDoMe = { id: "999", client_business_id: "" };
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("client_business_id de tipo inválido falha fechado", async () => {
+      for (const valor of [null, 123, {}, []]) {
+        corpoDoMe = { id: "999", client_business_id: valor };
+        fetchCalls.length = 0;
+        rpcCalls.length = 0;
+        // A sequência de `is_valid` é consumida por chamada: sem reiniciar, a
+        // segunda volta do laço já leria o token como inativo.
+        chamadasDebug = 0;
+
+        const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+        expect(r, JSON.stringify(valor)).toEqual({
+          ok: false,
+          reason: "PROVIDER_REVOKE_FAILED",
+        });
+        expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+        expect(rpcUsados()).not.toContain("revoke_meta_connection");
+      }
+    });
+
+    it("a etapa que barrou é registrada como classificação", async () => {
+      const espiao = vi.spyOn(console, "error").mockImplementation(() => {});
+      corpoDoMe = {};
+
+      await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      const escrito = JSON.stringify(espiao.mock.calls);
+      expect(escrito).toContain("CLASSIFICACAO");
+      expect(escrito).not.toContain("token-guardado");
+      espiao.mockRestore();
+    });
+
+    it("identidade coerente e sem client_business_id segue para USER", async () => {
+      // O contraponto: endurecer não pode fechar o caminho legítimo.
+      corpoDoMe = { id: "999" };
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: true });
+      expect(fetchCalls.some((u) => u.includes("/999/permissions"))).toBe(true);
+      expect(rpcUsados()).toContain("revoke_meta_connection");
     });
   });
 

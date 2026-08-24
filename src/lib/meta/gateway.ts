@@ -513,6 +513,7 @@ async function encerrarNoProvider(input: {
   // user clássico, e essa confusão já custou uma tentativa real.
   const classe = await classificarCredencial({
     accessToken: input.accessToken,
+    externalUserId: input.externalUserId,
     base,
   });
 
@@ -565,10 +566,18 @@ async function encerrarNoProvider(input: {
  * Foi essa confusão que fez a primeira tentativa real de desconexão chamar
  * `oauth/revoke` e não revogar nada (Investigações 003A-05 e 003A-06A).
  *
+ * **"Não é BISU" é uma afirmação, e afirmação exige prova.** Um HTTP 200 com
+ * corpo `{}` não diz que a credencial não é BISU — diz que não sabemos o que
+ * ela é. Como o único caminho que sobra depois daqui executa uma mutação
+ * externa, a resposta precisa identificar positivamente a credencial: `id`
+ * presente, coerente com o que persistimos, e `client_business_id` ausente de
+ * verdade, não vazio nem de tipo estranho.
+ *
  * Somente leitura.
  */
 async function classificarCredencial(input: {
   accessToken: string;
+  externalUserId: string | null;
   base: string;
 }): Promise<{ ok: true; bisu: boolean } | { ok: false; motivo: FalhaExterna }> {
   const url = new URL(`${input.base}/me`);
@@ -582,22 +591,51 @@ async function classificarCredencial(input: {
       return { ok: false, motivo: await descreverFalha(resposta) };
     }
 
-    const corpo = (await resposta.json().catch(() => null)) as {
-      client_business_id?: unknown;
-      id?: unknown;
-    } | null;
+    const corpo = (await resposta.json().catch(() => null)) as Record<
+      string,
+      unknown
+    > | null;
 
-    // Corpo que não identifica sequer a própria credencial não classifica nada.
     if (!corpo || typeof corpo !== "object") {
       return { ok: false, motivo: { http: resposta.status, causa: "CORPO_VAZIO" } };
     }
 
-    const negocio = corpo.client_business_id;
+    // Presente: só é BISU se vier como identificador de verdade. Vazio, nulo
+    // ou de outro tipo é resposta que não sabemos ler — não é "não é BISU".
+    if ("client_business_id" in corpo) {
+      const negocio = corpo.client_business_id;
 
-    return {
-      ok: true,
-      bisu: typeof negocio === "string" && negocio.length > 0,
-    };
+      if (typeof negocio === "string" && negocio.length > 0) {
+        return { ok: true, bisu: true };
+      }
+
+      return {
+        ok: false,
+        motivo: { http: resposta.status, causa: "NEGOCIO_INVALIDO" },
+      };
+    }
+
+    // Daqui em diante a conclusão seria "não é BISU", que libera mutação. Ela
+    // precisa de identidade positiva.
+    const id = corpo.id;
+
+    if (typeof id !== "string" || id.length === 0) {
+      return {
+        ok: false,
+        motivo: { http: resposta.status, causa: "SEM_IDENTIDADE" },
+      };
+    }
+
+    // E a identidade tem que ser a nossa. Revogar permissões de outra conta
+    // seria pior do que não revogar nada.
+    if (input.externalUserId && input.externalUserId !== id) {
+      return {
+        ok: false,
+        motivo: { http: resposta.status, causa: "IDENTIDADE_DIVERGENTE" },
+      };
+    }
+
+    return { ok: true, bisu: false };
   } catch {
     return { ok: false, motivo: { causa: "REDE" } };
   }

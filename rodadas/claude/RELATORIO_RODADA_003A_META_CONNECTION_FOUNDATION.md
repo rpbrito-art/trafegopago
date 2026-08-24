@@ -1,9 +1,9 @@
-# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 a 003A-07 + INVESTIGAÇÕES 003A-05 e 003A-06A
+# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 a 003A-08 + INVESTIGAÇÕES 003A-05 e 003A-06A
 
 Executor: Claude Code · 2026-08-23 a 2026-08-24
 Branch: `claude/rodada-003a-meta-connection-foundation`
 
-Status: **003A-07 EXECUTADA — AGUARDANDO AUDITORIA GPT — NENHUM E2E REAL EXECUTADO**
+Status: **003A-08 EXECUTADA — AGUARDANDO AUDITORIA GPT — E2E REAL AINDA NÃO EXECUTADO**
 
 > ⚠️ **Conexão real APROVADA; revogação ainda não provada ponta a ponta.** Existe uma
 > conexão `ACTIVE` real no ambiente, mantida de propósito: validar a revogação exigiria
@@ -248,6 +248,35 @@ Suíte completa local: **617 testes verdes**. Lint, typecheck e build verdes.
 **Nenhuma ação real:** a conexão segue `ACTIVE`, `disconnected_at` nulo, `updated_at` ainda
 em `01:47:57`. Nada foi clicado, removido no painel ou chamado contra a Meta.
 
+## Delta da Correção 003A-08 — "não é BISU" também precisa de prova
+
+A reauditoria achou o furo restante: `classificarCredencial` aceitava qualquer objeto HTTP
+200 como classificável. Um corpo `{}` virava `bisu: false` — e, com `type: USER`, abria
+caminho para `DELETE /{user-id}/permissions`. O teste com `null` não pegava isso.
+
+O erro de raciocínio era tratar as duas conclusões como simétricas. Não são: "é BISU" leva a
+um desfecho inerte, "não é BISU" autoriza mutação externa. Só a segunda precisa de prova
+positiva, e agora tem:
+
+| resposta de `/me` | conclusão |
+| --- | --- |
+| `client_business_id` string não vazia | **BISU** |
+| `client_business_id` presente mas vazio, nulo ou de outro tipo | ambíguo → falha fechado |
+| campo ausente, `id` string não vazia e igual ao `external_user_id` | não-BISU, caminho USER |
+| corpo `{}`, sem `id`, `id` vazio ou identidade divergente | falha fechado |
+
+A checagem de identidade fecha um caso que ninguém tinha nomeado: uma resposta apontando
+para outra conta liberaria `/permissions` contra ela. Revogar permissões da conta errada é
+pior do que não revogar nada.
+
+**Provas:** 115 testes em `src/lib/meta` + `src/components/meta` (+8). Cobrem os oito do
+mandato §5, incluindo os quatro tipos inválidos de `client_business_id` e o contraponto — o
+caminho USER legítimo continua completando com `/permissions` + pós-verificação. Por mutação:
+remover a exigência de identidade derruba 5 testes.
+
+Suíte completa local: **625 verdes**. Lint, typecheck e build verdes. Nenhuma migration,
+nenhum E2E real; a conexão segue `ACTIVE` com `updated_at` em `01:47:57`.
+
 ## Investigação 2 — por que `ads_*` e `business_management` não vieram
 
 Minha hipótese anterior (App Review / restrição de publicidade) **estava errada**. As
@@ -348,4 +377,4 @@ Apliquei a migration `20260823203915` **antes** de commitá-la, contrariando o c
 durável que a governança introduziu em `4144c03`. Corrigi a ordem em seguida: o commit
 `60a6bff` publicou o delta antes do gate — que é o que a 003A-01 existiu para ensinar.
 
-`003A-07 EXECUTADA — AGUARDANDO AUDITORIA GPT — NENHUM E2E REAL EXECUTADO`
+`003A-08 EXECUTADA — AGUARDANDO AUDITORIA GPT — E2E REAL AINDA NÃO EXECUTADO`

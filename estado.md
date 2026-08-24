@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-07 REAUDITADA — ARQUITETURA BISU GUIADA APROVADA — 1 BLOQUEIO FAIL-CLOSED REMANESCENTE — CORREÇÃO 003A-08 AUTORIZADA — E2E REAL BLOQUEADO**.
+Status: **003A-08 EXECUTADA — AGUARDANDO AUDITORIA GPT — E2E REAL AINDA NÃO EXECUTADO**.
 
 Mandato original:
 
@@ -114,18 +114,34 @@ Exemplo estrutural proibido:
 
 Isso viola a regra fail-closed para ausência/erro/ambiguidade.
 
-## 7. Próxima ação autorizada
+## 7. Execução da Correção 003A-08 (Claude Code)
 
-Claude Code deve executar somente a **Correção 003A-08 — Classificação não-BISU fail-closed**.
+Executada em 2026-08-24. Nenhum E2E real, nenhuma ação no painel Meta, nenhuma migration.
 
-Objetivos:
+`classificarCredencial` passa a exigir prova positiva antes de concluir "não é BISU" — a
+única conclusão que abre caminho para mutação externa:
 
-- exigir `id` válido na resposta de `/me`;
-- tratar `client_business_id` presente porém vazio/inválido como ambiguidade;
-- validar coerência da identidade com `external_user_id` quando disponível;
-- impedir qualquer `/permissions` em corpo vazio, identidade divergente ou classificação ambígua;
-- preservar o caminho BISU guiado e o USER legítimo;
-- testes afetados + lint + typecheck + build + uma CI.
+- `client_business_id` string não vazia → **BISU** (inerte, `EXTERNAL_ACTION_REQUIRED`);
+- `client_business_id` presente porém vazio, nulo ou de outro tipo → ambíguo, falha fechado;
+- campo ausente + `id` string não vazia + coincidência com `external_user_id` persistido →
+  não-BISU, caminho USER liberado;
+- corpo `{}`, corpo sem `id`, `id` vazio ou identidade divergente → falha fechado, sem
+  `/permissions`, sem outro endpoint mutável e sem limpeza local.
+
+`oauth/revoke` e `/access_tokens` continuam ausentes do código.
+
+Provas:
+
+- 115 testes em `src/lib/meta` + `src/components/meta` (+8), cobrindo os oito do mandato §5;
+- regra nova verificada por mutação: remover a exigência de identidade derruba 5 testes;
+- suíte completa local: **625 testes verdes**;
+- lint, typecheck e build verdes.
+
+Estado remoto reconferido após o delta: conexão `ACTIVE`, `disconnected_at` nulo,
+`updated_at` ainda em `2026-08-24 01:47:57`.
+
+Próxima ação: **auditoria GPT**. Só depois dela pode existir gate humano para remover o
+aplicativo no ambiente Meta e provar a pós-condição real.
 
 ## 8. Continua NÃO autorizado
 
