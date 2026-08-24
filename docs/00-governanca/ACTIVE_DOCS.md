@@ -1,7 +1,7 @@
 # ACTIVE DOCS — TRÁFEGO PAGO
 
 Status: índice canônico estável.
-Atualizado: 2026-08-23.
+Atualizado: 2026-08-24.
 
 ## Regra
 
@@ -14,6 +14,7 @@ Claude Code não lê este arquivo por padrão em toda rodada; o mandato vigente 
 ## Governança ativa
 
 - `.gpt/PROJECT_PROMPT.md` — método GPT ↔ Claude, papéis, segurança e eficiência.
+- `docs/00-governanca/EXTERNAL_CONFIGURATION_GATE.md` — GPT conduz toda configuração manual em sistema externo; Claude entrega requisitos técnicos e aguarda o resultado do gate.
 - `docs/00-governanca/DOCUMENTATION_LIFECYCLE.md` — ciclo de vida, frequência de atualização e regras de leitura.
 - `docs/00-governanca/IMPLEMENTATION_ROADMAP.md` — ordem macro das capacidades.
 - `docs/00-governanca/PROJECT_CHARTER.md` — mandato e invariantes de produto/arquitetura.
