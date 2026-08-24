@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **INVESTIGAÇÃO 003A-05 AUDITADA — TOKEN META CONTINUA VÁLIDO — DECISÃO ARQUITETURAL 003A-06 EM PESQUISA GPT — NOVO E2E BLOQUEADO**.
+Status: **INVESTIGAÇÃO 003A-05 AUDITADA — TOKEN META CONTINUA VÁLIDO — DECISÃO ARQUITETURAL 003A-06 AVANÇOU — INVESTIGAÇÃO READ-ONLY 003A-06A AUTORIZADA — NOVO E2E BLOQUEADO**.
 
 Mandato original:
 
@@ -39,17 +39,21 @@ Decisão arquitetural vigente:
 
 `rodadas/gpt/DECISAO_ARQUITETURAL_003A_06_REVOGACAO_TOKEN_BUSINESS_LOGIN.md`
 
+Investigação factual autorizada:
+
+`rodadas/gpt/INVESTIGACAO_003A_06A_CLASSIFICAR_TOKEN_BISU.md`
+
 Branch:
 
 `claude/rodada-003a-meta-connection-foundation`
 
 PR: **#11 draft**.
 
-Head auditado da investigação:
+Head auditado da investigação anterior:
 
 `9060da1741e6a117751035ab902ee33a2b9939ef`
 
-CI:
+CI correspondente:
 
 `32753513167` — **verde** em install, lint, typecheck, Edge Functions, testes e build.
 
@@ -72,9 +76,10 @@ Estão auditados como fechados:
 - erro Meta `190` não tratado como prova de revogação;
 - pós-verificação do mesmo token antes da limpeza local;
 - erro de rede/HTTP/resposta ambígua preservando estado local;
-- token válido `SYSTEM_USER` usando somente o mecanismo configurado para esse tipo;
 - token válido `USER` usando somente `/permissions`;
 - token válido de tipo desconhecido/ausente falhando fechado sem tentativa de revogação.
+
+O caminho de revogação do token obtido por Facebook Login for Business permanece **não promovido** enquanto a classe concreta da credencial e seu contrato de invalidação não forem fechados pela 003A-06.
 
 ## 5. Gate real de desconexão — primeira tentativa
 
@@ -118,40 +123,55 @@ Foram descartadas como causa:
 - inspeção inicial;
 - tipo desconhecido.
 
-Restam duas hipóteses factuais para a primeira tentativa:
-
-1. o mecanismo remoto de revogação respondeu erro/sem sucesso; ou
-2. respondeu sucesso, mas o token continuou válido e a pós-verificação bloqueou a limpeza.
-
 A instrumentação diagnóstica publicada pelo Claude foi auditada como segura e aditiva, mas sua publicação extrapolou o texto da autorização, que previa instrumentação temporária/local. O desvio ficou registrado e não altera o status da rodada.
 
-## 7. Bloqueio arquitetural vigente
+## 7. Pesquisa arquitetural 003A-06 — resultado atual
 
-O ponto ainda não provado é **qual mecanismo oficial de revogação se aplica ao token real emitido pelo Facebook Login for Business com configuração de System-user Access Token**.
+A pesquisa GPT encontrou no contrato de Facebook Login for Business que:
 
-Não assumir que esse token possui o mesmo ciclo de vida ou mecanismo de revogação de um System User Access Token clássico gerado diretamente no Business Manager apenas porque `debug_token` devolve `SYSTEM_USER`.
+- o produto emite **Business Integration System User access token (BISU)** quando a configuração usa `System-user access token`, ou User Access Token quando configurado dessa forma;
+- BISU é associado ao business portfolio do cliente e usa Authorization Code para acesso contínuo;
+- o contrato BISU expõe `client_business_id` via `GET /me?fields=client_business_id`;
+- a API BISU documentada permite gerar/buscar tokens via `/<CLIENT_BUSINESS_ID>/system_user_access_tokens`;
+- a invalidação documentada para BISU é a remoção do app em `Business Manager > Settings > Business Settings > Integrations > Connected apps`;
+- a referência BISU consultada não documenta `oauth/revoke` como mecanismo de invalidação;
+- o `DELETE /<APP_SCOPED_SYSTEM_USER_ID>/access_tokens` documentado em outro contexto invalida todos os tokens de um System User clássico e não está autorizado como substituto para BISU.
 
-O GPT deve resolver a Decisão Arquitetural 003A-06 antes de qualquer nova mutação externa.
+Hipótese líder, ainda não final: se o token real for comprovado como BISU, `Desconectar` deverá virar fluxo guiado de remoção da integração no ambiente Meta + pós-verificação `is_valid=false` + só então limpeza do Vault e `REVOKED` local.
 
 ## 8. Próxima ação autorizada
 
-**Nenhuma ação manual do fundador e nenhuma nova execução destrutiva do Claude estão autorizadas neste momento.**
+Claude Code deve executar **somente a Investigação 003A-06A**, em leitura:
 
-GPT deve pesquisar/confirmar o contrato oficial vigente de revogação da credencial usada pelo Facebook Login for Business e então definir o próximo delta.
+`GET /v26.0/me?fields=client_business_id`
 
-Até lá, NÃO:
+usando server-side o token real já guardado, sem expor credenciais.
+
+Deve relatar apenas:
+
+- HTTP status;
+- existência/valor de `client_business_id`;
+- `id` retornado;
+- se `id` coincide com `external_user_id` persistido;
+- confirmação de que nenhuma escrita/mutação foi executada.
+
+Não precisa criar código permanente nem executar CI se nenhum arquivo de código mudar.
+
+## 9. Continua NÃO autorizado
 
 - clicar `Desconectar` novamente;
 - chamar `oauth/revoke` novamente;
-- testar outro endpoint de revogação;
-- revogar pelo painel Meta;
+- `DELETE /permissions` para essa credencial;
+- `DELETE /{system-user-id}/access_tokens`;
+- qualquer outro endpoint Meta mutável;
+- revogar pelo painel Meta antes do gate GPT;
 - limpar estado local;
 - refazer OAuth;
 - selecionar ativos;
 - iniciar 003B;
 - promover 003A.
 
-## 9. Pendências não bloqueantes
+## 10. Pendências não bloqueantes
 
 - escopos `ads_*`/`business_management` e seleção detalhada de ativos ficam para 003B;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
