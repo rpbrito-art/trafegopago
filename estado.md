@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-08 AUDITADA E APROVADA — GATE HUMANO BISU EM EXECUÇÃO — PASSO LOCAL APROVADO — PRÓXIMO PASSO: IDENTIFICAR O APP CORRETO EM CONNECTED APPS — 003A AINDA NÃO PROMOVIDA**.
+Status: **003A-08 AUDITADA E APROVADA — GATE HUMANO BISU EM EXECUÇÃO — REMOÇÃO EM `CONTAS > APPS` NÃO REVOGOU O BISU — REPARO DA ASSOCIAÇÃO DO APP AO PORTFÓLIO AUTORIZADO — NOVA VERIFICAÇÃO/REVOGAÇÃO BLOQUEADA**.
 
 Mandato original:
 
@@ -53,20 +53,15 @@ CI:
 
 `32762552984` — **verde** em install, lint, typecheck, Edge Functions, testes e build.
 
-Relatório:
-
-`rodadas/claude/RELATORIO_RODADA_003A_META_CONNECTION_FOUNDATION.md`
-
 ## 4. Estado comprovado da conexão real durante o gate
 
-A conexão `Teste 003A - conexao Meta` permanece preservada:
+A conexão `Teste 003A - conexao Meta` permanece preservada localmente:
 
 - status = `ACTIVE`;
 - `connected_at` e `updated_at` = 2026-08-24 01:47:57Z;
 - `disconnected_at` = nulo;
 - referência do token = presente;
 - segredo correspondente no Vault = presente;
-- token previamente reconfirmado como `is_valid=true`;
 - credencial real classificada como BISU por `client_business_id`;
 - `external_user_id=122103866379446065`.
 
@@ -74,69 +69,70 @@ Em 2026-08-24, após a aprovação da 003A-08, o fundador clicou `Desconectar` u
 
 - URL `/conta?meta=externo`;
 - UI mostrou `Falta concluir na Meta`;
-- instrução `Integrações > Aplicativos conectados`;
 - botão `Já removi — verificar`;
-- Supabase permaneceu intacto: `ACTIVE`, `disconnected_at` nulo, referência e segredo no Vault presentes.
+- Supabase permaneceu intacto.
 
 Portanto o primeiro passo do gate humano passou: o produto entrou no fluxo guiado sem executar mutação externa nem limpeza local.
 
-## 5. Decisão arquitetural BISU — FECHADA
+## 5. Desvio do gate externo — `Contas > Apps`
+
+Na interface atual do Business Settings do portfólio **Quoron**, o caminho textual `Integrações > Aplicativos conectados` não estava disponível no menu mostrado ao fundador.
+
+O GPT orientou o fundador a abrir `Contas > Apps`. A tela exibiu:
+
+- app `Trafego Pago Business Dev`;
+- App ID `2940404272985831`;
+- texto `Propriedade de: Quoron`;
+- controles `Atribuir pessoas`, `Atribuir parceiro` e `Conectar ativos`;
+- botão `Remover`.
+
+Esses sinais caracterizam a gestão do **app como ativo associado/pertencente ao portfólio**, e não comprovam por si a integração BISU instalada pelo Facebook Login for Business.
+
+O fundador removeu o app dessa tela e confirmou a remoção. Depois disso:
+
+- `Contas > Apps` passou a mostrar `Nenhum aplicativo adicionado`;
+- o fundador voltou ao Tráfego Pago e clicou `Já removi — verificar`;
+- o produto retornou `/conta?meta=ainda-ativo`;
+- portanto a Meta continuou informando o mesmo token como válido;
+- o Supabase permaneceu `ACTIVE`, com referência e segredo no Vault presentes.
+
+**Conclusão operacional:** a remoção realizada em `Contas > Apps` não revogou o BISU. Ela não deve ser repetida nem tratada como prova de desconexão.
+
+O GPT reconheceu erro de condução manual ao tratar uma instrução documental de invalidação como caminho literal de UI sem distinguir a lista de app-asset do portfólio da integração instalada.
+
+## 6. Decisão arquitetural BISU — permanece vigente
 
 Para a credencial BISU do Facebook Login for Business:
 
 - não usar `oauth/revoke`;
 - não usar `/permissions` como fallback;
 - não usar `DELETE /{system-user-id}/access_tokens`;
-- identificar BISU por contrato read-only com `client_business_id`;
-- orientar o usuário a remover o aplicativo em `Business Settings > Integrations > Connected apps`;
 - manter token/estado local enquanto a Meta ainda puder considerá-lo válido;
-- depois da ação externa, reinspecionar o mesmo token;
 - somente `is_valid=false` autoriza apagar o segredo e marcar `REVOKED` localmente.
 
-## 6. Reauditoria 003A-08 — resultado
-
-A correção do último bloqueio fail-closed foi aprovada:
-
-- corpo `{}` ou sem `id` válido não é classificado como não-BISU;
-- `client_business_id` vazio, nulo ou de tipo inválido falha fechado;
-- identidade divergente do `external_user_id` persistido falha fechado;
-- nesses cenários `/permissions` não é chamado e o estado local não é limpo;
-- USER legítimo com identidade coerente e `client_business_id` ausente preserva o caminho documentado + pós-verificação;
-- BISU legítimo continua exigindo ação externa sem mutação automática;
-- `oauth/revoke` e `/access_tokens` não foram reintroduzidos;
-- CI do HEAD está verde.
-
-Não existe bloqueio de código material conhecido restante antes do gate humano.
+A prova atual confirma que o fail-closed do produto funcionou: mesmo após uma remoção externa que não invalidou o token, o sistema recusou limpar o estado local.
 
 ## 7. Próxima ação autorizada
 
-O GPT continua conduzindo o **E2E REAL DE DESCONEXÃO BISU**, uma ação manual por vez.
+O GPT continua conduzindo o gate externo, uma ação manual por vez.
 
-Próximo passo autorizado:
+**Ação imediatamente autorizada:** restaurar a associação do app `Trafego Pago Business Dev` (App ID `2940404272985831`) ao portfólio Quoron em `Configurações do negócio > Contas > Apps`, usando o fluxo de adicionar/conectar um App ID já existente.
 
-1. abrir as configurações do negócio Meta;
-2. navegar até `Integrações > Aplicativos conectados`;
-3. identificar visualmente o aplicativo correspondente à integração atual;
-4. **não remover ainda** até o GPT confirmar o alvo a partir da tela mostrada pelo fundador.
+O fundador deve primeiro abrir o diálogo `Adicionar` e mostrar as opções antes de confirmar qualquer associação, para que o GPT escolha o comando correto na UI atual.
 
-Depois da confirmação do alvo pelo GPT:
-
-- remover o aplicativo correto;
-- voltar ao Tráfego Pago local;
-- clicar `Já removi — verificar`;
-- GPT audita a pós-condição real: token inválido, segredo removido, conexão `REVOKED`, `disconnected_at` preenchido.
-
-A promoção da 003A só pode ocorrer depois desse gate real passar integralmente.
+Depois do reparo, o GPT deve localizar e comprovar a superfície correta da integração instalada pelo Facebook Login for Business antes de nova remoção.
 
 ## 8. Continua NÃO autorizado
 
-Até o GPT confirmar visualmente o aplicativo correto em Connected apps:
+Até o reparo e a identificação correta da integração:
 
-- não remover nenhum aplicativo da Meta;
-- não clicar `Já removi — verificar`;
+- não clicar novamente `Já removi — verificar`;
+- não remover outro app/ativo;
+- não criar um novo App ID;
+- não refazer OAuth;
 - não chamar `oauth/revoke`;
 - não chamar `/permissions` ou `/access_tokens` para o BISU;
-- não refazer OAuth;
+- não limpar estado local;
 - não selecionar ativos;
 - não iniciar 003B;
 - não promover/mergear 003A.
