@@ -24,19 +24,19 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **BLOQUEADA EM REAUDITORIA — CORREÇÃO 003A-03 AUTORIZADA**.
+Status: **BLOQUEADA EM REAUDITORIA — CORREÇÃO 003A-04 AUTORIZADA**.
 
 Mandato original:
 
 `rodadas/gpt/RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
-Auditoria/reAuditoria:
+Auditoria/reauditorias:
 
 `rodadas/gpt/AUDITORIA_RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
 Correção vigente:
 
-`rodadas/gpt/CORRECAO_003A_03_REVOGACAO_SYSTEM_USER_FAIL_CLOSED.md`
+`rodadas/gpt/CORRECAO_003A_04_TIPO_TOKEN_FAIL_CLOSED.md`
 
 Branch:
 
@@ -48,11 +48,11 @@ Relatório:
 
 `rodadas/claude/RELATORIO_RODADA_003A_META_CONNECTION_FOUNDATION.md`
 
-## 4. Resultado auditado da 003A-02
+## 4. Resultado auditado até a 003A-03
 
-Head reaudited: `0b9e10d48cbddbbe63017ea428aa1ab797e21574`.
+Head reaudited: `98db346e1a110f74627ee1c77a8593905591b688`.
 
-CI `32742223573`: **verde** em install, lint, typecheck, Edge Functions, testes e build.
+CI `32746073927`: **verde** em install, lint, typecheck, Edge Functions, testes e build.
 
 A reauditoria independente confirmou como fechados:
 
@@ -63,9 +63,10 @@ A reauditoria independente confirmou como fechados:
 - ativação atômica com Vault + `ACTIVE`;
 - conexão Meta real da organização de teste;
 - token fora do browser e preservado no Vault;
-- correção fail-closed de erro em `read_meta_connection_token`.
-
-O bloqueio da leitura do Vault está **AUDITADO E APROVADO**: erro de leitura retorna `TOKEN_READ_FAILED`, sem Meta e sem limpeza local.
+- erro de leitura de `read_meta_connection_token` falhando fechado;
+- erro `190` do provider não sendo tratado como revogação;
+- pós-verificação do mesmo token via `debug_token` antes da limpeza local;
+- falha de rede/HTTP/resposta ambígua na verificação preservando estado local.
 
 ## 5. Estado remoto confirmado em 2026-08-24
 
@@ -76,38 +77,40 @@ Supabase remoto:
 - conexão `Teste 003A - conexao Meta` = **ACTIVE**;
 - `connected_at` = 2026-08-24 01:47:57Z;
 - expiração = 2026-10-23;
-- token type observado anteriormente = `SYSTEM_USER`;
+- token type observado no E2E de conexão = `SYSTEM_USER`;
 - referência de segredo presente;
 - segredo correspondente ainda existe no Vault;
 - `disconnected_at` continua nulo.
 
 A conexão real foi preservada deliberadamente para o E2E final. **Não revogar nem substituir antes de nova autorização GPT.**
 
-## 6. Bloqueio vigente — revogação SYSTEM_USER
+## 6. Bloqueio vigente — tipo de token desconhecido
 
-O código atual usa o mecanismo oficial `oauth/revoke`, mas ainda trata qualquer `error.code === 190` como se provasse que o token alvo já estivesse revogado.
+O código da 003A-03 ainda escolhe `/permissions` para qualquer tipo que não seja `SYSTEM_USER`.
 
-Essa inferência não é segura: `190` é uma família genérica de falhas de autenticação/token e não prova, sozinho, que o `revoke_token` específico ficou inativo.
+Isso significa que um token válido retornado pela Meta como `PAGE`, outro tipo inesperado ou sem tipo pode provocar uma tentativa de revogação por um mecanismo que o sistema não sabe ser correto.
 
-Risco:
+A Correção 003A-04 exige:
 
-`provider falha com 190 por outra causa → código aceita como revogado → estado/segredo local são apagados → token Meta pode continuar ativo`.
-
-A Correção 003A-03 exige fail-closed e pós-verificação do mesmo token via `debug_token` antes da limpeza local.
+- token válido + `SYSTEM_USER` → `oauth/revoke`;
+- token válido + `USER` → `/permissions`;
+- token válido + tipo diferente/ausente → falhar fechado, sem mutação remota e sem limpeza local;
+- `is_valid=false` do mesmo token continua sendo prova suficiente de inatividade para permitir limpeza local.
 
 ## 7. Próxima ação autorizada
 
 Claude Code deve executar **somente**:
 
-`rodadas/gpt/CORRECAO_003A_03_REVOGACAO_SYSTEM_USER_FAIL_CLOSED.md`
+`rodadas/gpt/CORRECAO_003A_04_TIPO_TOKEN_FAIL_CLOSED.md`
 
 Fluxo:
 
 1. reconciliar a branch com a `main` atual;
-2. corrigir o tratamento do 190 e exigir pós-condição `is_valid=false`;
-3. executar apenas provas afetadas + CI final;
-4. atualizar relatório/PR/estado da branch;
-5. parar em `AGUARDANDO REAUDITORIA GPT`.
+2. corrigir apenas o tratamento de tipo desconhecido;
+3. ajustar os testes afetados;
+4. rodar provas afetadas + CI final uma vez;
+5. atualizar relatório/PR/estado da branch;
+6. parar em `003A-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT`.
 
 **NÃO executar ainda a desconexão Meta real.**
 
