@@ -80,8 +80,7 @@ CI:
 - `authenticated` sem INSERT/UPDATE/DELETE;
 - external ids fora dos grants SELECT de `authenticated`;
 - `select_instagram_account` e `select_ad_account` são `security invoker`, sem EXECUTE para `authenticated`/`anon` e com EXECUTE para `service_role`;
-- descoberta/seleção, capabilities e UX implementadas;
-- nenhuma configuração Meta nova nem OAuth real executados ainda.
+- descoberta/seleção, capabilities e UX implementadas.
 
 Esses itens estão **executados**, mas a 003B ainda não está promovida.
 
@@ -97,7 +96,7 @@ Auditoria:
 
 Status:
 
-**003B-01 EXECUTADA, AUDITADA E APROVADA — GATE EXTERNO META LIBERADO — 003B AINDA NÃO PROMOVIDA**.
+**003B-01 EXECUTADA, AUDITADA E APROVADA**.
 
 ### Resultado A — metadata IG fail-closed
 
@@ -126,36 +125,55 @@ Supabase:
 
 Nenhum novo OAuth da 003B foi feito e nenhum token novo está ativo.
 
-## 7. Gate externo da Meta — PRÓXIMA AÇÃO AUTORIZADA
+## 7. Gate externo da Meta — CONFIGURAÇÃO CRIADA
 
-Próximo a agir: **GPT + fundador**.
+Registro:
 
-Objetivo do gate:
+`rodadas/gpt/GATE_003B_CONFIGURACAO_META_CRIADA.md`
 
-1. criar uma nova Business Login Configuration para a 003B, preservando a configuração histórica da 003A;
-2. usar o mesmo App ID real `2940404272985831`;
-3. nome sugerido: `Quoron Instagram Dev Login`;
-4. configuração pretendida: General + System-user access token/BISU + 60 dias;
-5. tipos de ativos: Pages + Instagram Accounts + Ad Accounts;
-6. permissões iniciais:
-   - `pages_show_list`;
-   - `pages_read_engagement`;
-   - `instagram_basic`;
-   - `instagram_manage_insights`;
-   - `ads_read` opcional/read-only.
-7. NÃO solicitar inicialmente:
-   - `ads_management`;
-   - `business_management`;
-   - publicação/comentários/leads.
-8. após criar, obter o novo `config_id` e atualizar `META_LOGIN_CONFIG_ID` localmente antes do OAuth real.
+No app Meta **Trafego Pago Business Dev** (App ID `2940404272985831`) foi criada a nova configuração da 003B:
 
-Se `instagram_basic` ou `instagram_manage_insights` não aparecerem disponíveis, não criar novo App ID nem adicionar permissões por tentativa; GPT deve reavaliar o use case/produto atual do mesmo app.
+- nome: `Quoron Instagram Dev Login`;
+- Configuration ID: `38307908848822330`;
+- variação: General;
+- token: System-user access token / BISU;
+- ativos obrigatórios: Pages + Instagram Accounts;
+- configuração de anúncios não foi tornada obrigatória;
+- permissões da configuração orgânica/Insights:
+  - `pages_show_list`;
+  - `pages_read_engagement`;
+  - `instagram_basic`;
+  - `instagram_manage_insights`.
 
-## 8. Continua NÃO autorizado
+Decisão refinada no gate: **`ads_read` não entra nesta configuração orgânica**, porque toda permissão selecionada nessa tela é obrigatória no login. Obrigar `ads_read` violaria o contrato de produto de que mídia paga é opcional. A capacidade de anúncios será autorizada separadamente quando houver necessidade real.
 
-Até o gate avançar sob instrução do GPT:
+Configuração histórica da 003A permanece existente:
 
-- Claude alterar painel Meta;
+- `Trafego Pago Dev Login`;
+- Configuration ID `1549901823029730`.
+
+Ela não deve ser usada pela 003B e **não deve ser apagada antes da promoção da 003B**; fica como referência histórica/rollback.
+
+## 8. Próxima ação autorizada
+
+Próximo a agir: **Claude Code**.
+
+Pode executar somente o gate local:
+
+1. trazer a `main` atual para a branch 003B se necessário;
+2. atualizar no arquivo local não versionado `.env.local` apenas `META_LOGIN_CONFIG_ID=38307908848822330`;
+3. confirmar sem imprimir segredos que o novo ID foi reconhecido;
+4. iniciar/reiniciar o servidor local se necessário;
+5. parar antes do OAuth real em `003B — CONFIGURAÇÃO LOCAL PRONTA — AGUARDANDO OAUTH REAL CONDUZIDO PELO GPT`.
+
+Depois disso, o GPT conduzirá o fundador no novo OAuth real e na seleção do Instagram.
+
+## 9. Continua NÃO autorizado
+
+Até o próximo gate:
+
+- Claude alterar novamente o painel Meta;
+- apagar a configuração histórica da 003A;
 - criar novo Meta App ID;
 - ampliar permissões por tentativa;
 - persistir Page Access Token;
@@ -165,7 +183,7 @@ Até o gate avançar sob instrução do GPT:
 - iniciar Fase 4;
 - promover/mergear a 003B antes do E2E real.
 
-## 9. Pendências não bloqueantes
+## 10. Pendências não bloqueantes
 
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
 - leaked-password protection antes de produção;
