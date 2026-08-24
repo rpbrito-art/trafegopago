@@ -54,7 +54,18 @@ export function assertNoLeakedPrivilegedEnv(raw: RawEnv): void {
  * Fixa a convenção de nomes e alimenta `.env.example`. Cada valor ganha schema
  * efetivo na rodada que realmente passa a consumi-lo.
  */
-export const SERVER_ONLY_ENV_NAMES = ["SUPABASE_SECRET_KEY"] as const;
+export const SERVER_ONLY_ENV_NAMES = [
+  "SUPABASE_SECRET_KEY",
+  // Integração Meta (Rodada 003A). O schema efetivo vive em
+  // `src/lib/meta/config.ts`, junto do resto da configuração da integração;
+  // aqui ficam só os nomes, para que a convenção e o teste anti-vazamento
+  // conheçam todas as variáveis server-only do projeto.
+  "META_APP_ID",
+  "META_APP_SECRET",
+  "META_LOGIN_CONFIG_ID",
+  "META_OAUTH_REDIRECT_URI",
+  "META_GRAPH_API_VERSION",
+] as const;
 
 /**
  * Variáveis de ambiente SERVER-ONLY consumidas pela aplicação.

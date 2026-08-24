@@ -27,6 +27,14 @@ export const ROUTES = {
   authError: "/auth/erro",
   /** Área protegida mínima desta rodada. Não é o dashboard do produto. */
   account: "/conta",
+  /**
+   * Callback do Facebook Login for Business.
+   *
+   * Precisa bater exatamente com o URI cadastrado no app Meta e com
+   * `META_OAUTH_REDIRECT_URI`. Fica fora de `ALLOWED_REDIRECT_PATHS`: nenhum
+   * fluxo interno deve poder despejar sessão aqui.
+   */
+  metaCallback: "/meta/callback",
 } as const;
 
 export type Route = (typeof ROUTES)[keyof typeof ROUTES];

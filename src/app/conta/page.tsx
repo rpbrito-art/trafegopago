@@ -1,7 +1,9 @@
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { BusinessSection } from "@/components/business/business-section";
+import { MetaSection, type MetaResultado } from "@/components/meta/meta-section";
 import { requireUser } from "@/lib/auth/session";
 import { getAccountBusinessState } from "@/lib/business/account";
+import { getMetaConnectionState } from "@/lib/meta/connection-state";
 
 export const metadata = {
   title: "Sua conta — Tráfego Pago",
@@ -25,9 +27,28 @@ export const dynamic = "force-dynamic";
  * `getAccountBusinessState()`, que lê sob RLS — a página não decide o que o
  * usuário pode ver, apenas como mostrar o que chegou.
  */
-export default async function ContaPage() {
+export default async function ContaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ meta?: string }>;
+}) {
   const user = await requireUser();
   const state = await getAccountBusinessState();
+  const metaState = await getMetaConnectionState();
+
+  // Marcadores pobres de desfecho — nada do provider atravessa a URL. Valor
+  // desconhecido é descartado em vez de chegar à tela.
+  const DESFECHOS: readonly MetaResultado[] = [
+    "ok",
+    "erro",
+    "externo",
+    "desconectado",
+    "ainda-ativo",
+    "nao-verificado",
+  ];
+
+  const { meta } = await searchParams;
+  const resultadoMeta = DESFECHOS.find((d) => d === meta);
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-col gap-6 p-8">
@@ -50,6 +71,8 @@ export default async function ContaPage() {
       </dl>
 
       <BusinessSection state={state} />
+
+      <MetaSection state={metaState} resultado={resultadoMeta} />
 
       <SignOutButton />
     </main>
