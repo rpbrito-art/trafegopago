@@ -331,24 +331,23 @@ export async function disconnectMeta(input: {
 /**
  * Revoga a autorização no provider.
  *
- * A Meta tem **dois mecanismos**, e usar o errado falha:
+ * **Invariante:** o estado local só pode ser limpo quando o provider estiver
+ * *comprovadamente* sem token ativo. "O provider aceitou o pedido" não é prova
+ * — por isso a revogação termina numa pós-condição observável.
  *
- * - **`GET /oauth/revoke`** — para token de usuário do sistema (BISU, emitido
- *   pelo Facebook Login for Business). Exige `client_id`, `client_secret` e o
- *   token a revogar; a documentação impõe que o app do `revoke_token` e o do
- *   `client_id` sejam o mesmo, o que é o nosso caso.
- * - **`DELETE /{user-id}/permissions`** — para token de usuário comum. É o
- *   endpoint de permissões *de usuário*, e um system user não as tem no
- *   sentido desse endpoint.
+ * Fluxo:
  *
- * O tipo é descoberto em `debug_token` na hora da desconexão, e não lido de uma
- * coluna: a configuração de login pode mudar no painel Meta entre a conexão e a
- * desconexão, e o token que temos em mãos é a única fonte confiável do que ele
- * é agora.
+ * 1. inspecionar o token. `is_valid === false` já prova que não há autorização
+ *    ativa: nada a revogar, limpeza liberada;
+ * 2. inspeção que falha ou é ambígua **não** vira "inválido" — falha fechado;
+ * 3. revogar pelo mecanismo do tipo (`oauth/revoke` para SYSTEM_USER,
+ *    `DELETE /{user-id}/permissions` para USER);
+ * 4. **reinspecionar o mesmo token.** Só `is_valid === false` libera a limpeza.
  *
- * Token já inválido (`190`) conta como revogado: não há mais autorização a
- * remover, e tratar isso como falha prenderia o usuário numa conexão que ele
- * não consegue desfazer.
+ * Erro do provider — inclusive `190` — nunca é tratado como prova de revogação.
+ * `190` é uma família genérica de falhas de token, e no `oauth/revoke` há duas
+ * credenciais em jogo (`revoke_token` e `access_token`): a presença do código
+ * não diz sequer qual delas falhou, muito menos que o alvo ficou inativo.
  */
 async function revokeOnMeta(input: {
   accessToken: string;
@@ -356,16 +355,43 @@ async function revokeOnMeta(input: {
   env: ReturnType<typeof readMetaEnv>;
 }): Promise<{ ok: boolean }> {
   const base = graphApiBaseUrl(input.env.META_GRAPH_API_VERSION);
-  const tipo = await inspectTokenType({ accessToken: input.accessToken, env: input.env });
 
-  if (tipo === "INVALID") return { ok: true };
+  const antes = await inspectToken({
+    accessToken: input.accessToken,
+    env: input.env,
+  });
 
-  return tipo === "SYSTEM_USER"
-    ? revokeSystemUserToken({ ...input, base })
-    : revokeUserPermissions({ ...input, base });
+  // Não conseguimos verificar: não sabemos o que existe do outro lado.
+  if (!antes.ok) return { ok: false };
+
+  // Já inativo — única forma segura de pular a revogação.
+  if (antes.isValid === false) return { ok: true };
+
+  const revogacao =
+    antes.type === "SYSTEM_USER"
+      ? await revokeSystemUserToken({ ...input, base })
+      : await revokeUserPermissions({ ...input, base });
+
+  // Erro do provider não completa nada.
+  if (!revogacao.ok) return { ok: false };
+
+  // Pós-condição: o provider disse que aceitou — agora comprovamos.
+  const depois = await inspectToken({
+    accessToken: input.accessToken,
+    env: input.env,
+  });
+
+  if (!depois.ok) return { ok: false };
+
+  return { ok: depois.isValid === false };
 }
 
-/** `oauth/revoke` — caminho do token de usuário do sistema. */
+/**
+ * `oauth/revoke` — caminho do token de usuário do sistema.
+ *
+ * Devolve `ok` apenas para sucesso explícito. Qualquer erro, `190` incluído,
+ * é falha: quem decide se o token morreu é a pós-verificação, não este retorno.
+ */
 async function revokeSystemUserToken(input: {
   accessToken: string;
   env: ReturnType<typeof readMetaEnv>;
@@ -382,19 +408,14 @@ async function revokeSystemUserToken(input: {
 
   try {
     const resposta = await fetch(url, { method: "GET" });
+    if (!resposta.ok) return { ok: false };
+
     const corpo = (await resposta.json().catch(() => null)) as {
       success?: unknown;
-      error?: { code?: unknown };
     } | null;
 
     // A API devolve a string "true", não o booleano.
-    if (resposta.ok && (corpo?.success === true || corpo?.success === "true")) {
-      return { ok: true };
-    }
-
-    if (corpo?.error?.code === 190) return { ok: true };
-
-    return { ok: false };
+    return { ok: corpo?.success === true || corpo?.success === "true" };
   } catch {
     return { ok: false };
   }
@@ -412,35 +433,29 @@ async function revokeUserPermissions(input: {
 
   try {
     const resposta = await fetch(url, { method: "DELETE" });
+    if (!resposta.ok) return { ok: false };
 
-    if (resposta.ok) {
-      const corpo = (await resposta.json()) as { success?: unknown };
-      return { ok: corpo.success === true || corpo.success === "true" };
-    }
-
-    const corpo = (await resposta.json().catch(() => null)) as {
-      error?: { code?: unknown };
-    } | null;
-
-    if (corpo?.error?.code === 190) return { ok: true };
-
-    return { ok: false };
+    const corpo = (await resposta.json()) as { success?: unknown };
+    return { ok: corpo.success === true || corpo.success === "true" };
   } catch {
     return { ok: false };
   }
 }
 
 /**
- * Que tipo de token é este, segundo a própria Meta?
+ * Inspeciona o token na própria Meta.
  *
- * `UNKNOWN` quando não dá para saber — e nesse caso o chamador segue pelo
- * caminho de usuário comum, que é o mais conservador: se falhar, a desconexão
- * não completa, em vez de completar sem revogar.
+ * `ok: false` significa **não sabemos** — rede, HTTP ruim ou corpo sem o campo.
+ * É diferente de `ok: true, isValid: false`, que é a única forma de afirmar que
+ * o token não está ativo. Colapsar os dois foi o defeito que esta correção
+ * remove.
  */
-async function inspectTokenType(input: {
+async function inspectToken(input: {
   accessToken: string;
   env: ReturnType<typeof readMetaEnv>;
-}): Promise<"SYSTEM_USER" | "USER" | "INVALID" | "UNKNOWN"> {
+}): Promise<
+  { ok: true; isValid: boolean; type: string | null } | { ok: false }
+> {
   const url = new URL(`${graphApiBaseUrl(input.env.META_GRAPH_API_VERSION)}/debug_token`);
   url.searchParams.set("input_token", input.accessToken);
   url.searchParams.set(
@@ -450,19 +465,22 @@ async function inspectTokenType(input: {
 
   try {
     const resposta = await fetch(url, { method: "GET" });
-    if (!resposta.ok) return "UNKNOWN";
+    if (!resposta.ok) return { ok: false };
 
     const corpo = (await resposta.json()) as {
       data?: { type?: unknown; is_valid?: unknown };
     };
 
-    if (corpo.data?.is_valid === false) return "INVALID";
-    if (corpo.data?.type === "SYSTEM_USER") return "SYSTEM_USER";
-    if (corpo.data?.type === "USER") return "USER";
+    // Sem o booleano explícito não há afirmação possível.
+    if (typeof corpo.data?.is_valid !== "boolean") return { ok: false };
 
-    return "UNKNOWN";
+    return {
+      ok: true,
+      isValid: corpo.data.is_valid,
+      type: typeof corpo.data.type === "string" ? corpo.data.type : null,
+    };
   } catch {
-    return "UNKNOWN";
+    return { ok: false };
   }
 }
 

@@ -1,9 +1,9 @@
-# RELATÓRIO — RODADA 003A + CORREÇÃO 003A-02 — META CONNECTION FOUNDATION
+# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 e 003A-03 — META CONNECTION FOUNDATION
 
 Executor: Claude Code · 2026-08-23
 Branch: `claude/rodada-003a-meta-connection-foundation`
 
-Status: **003A + CORREÇÃO 003A-02 EXECUTADAS — AGUARDANDO REAUDITORIA GPT**
+Status: **003A + CORREÇÕES 003A-02 e 003A-03 EXECUTADAS — AGUARDANDO REAUDITORIA GPT**
 
 > ⚠️ **Conexão real APROVADA; revogação ainda não provada ponta a ponta.** Existe uma
 > conexão `ACTIVE` real no ambiente, mantida de propósito: validar a revogação exigiria
@@ -72,7 +72,7 @@ responde (não é 404); **nada real foi revogado**.
 **Correção aplicada por delta:** a desconexão passa a inspecionar o tipo via `debug_token`
 e escolher o caminho — `oauth/revoke` para `SYSTEM_USER`, `DELETE /{user-id}/permissions`
 para `USER`. Tipo desconhecido segue pelo caminho de usuário, que falha fechado, em vez de
-presumir system user e completar sem revogar. Token já inválido conta como revogado.
+presumir system user e completar sem revogar.
 
 **Não provado ponta a ponta:** validar `oauth/revoke` exige revogar a conexão existente.
 
@@ -86,6 +86,34 @@ autorização possivelmente viva na Meta e sem referência para revogá-la depoi
 Corrigido: erro de leitura agora retorna `TOKEN_READ_FAILED`, sem chamar a Meta e sem tocar
 o estado local. Só a leitura bem-sucedida que devolve vazio autoriza a limpeza. Dois testes
 cobrem isso, um deles comparando explicitamente os dois desfechos da mesma resposta `null`.
+
+## Delta da Correção 003A-03 — `190` não é prova de revogação
+
+O código lia `error.code === 190` como "já estava revogado" e liberava a limpeza local. `190`
+é a família genérica de falha de token, e o `oauth/revoke` carrega **duas** credenciais na
+mesma chamada (`access_token` do app e `revoke_token` alvo): o código não diz sequer qual
+delas falhou, muito menos que o alvo ficou inativo. App secret errado ou permissão
+insuficiente produziam "desconectado" com a autorização viva na Meta — e sem referência para
+revogá-la depois. A equivalência saiu dos **dois** caminhos (`oauth/revoke` e `/permissions`).
+
+| momento | única leitura que autoriza avançar |
+| --- | --- |
+| antes | `debug_token` responde `is_valid: false` → não revoga, mas pode limpar |
+| revogação | sucesso explícito (`success === true`/`"true"`); qualquer erro para tudo |
+| depois | **o mesmo token** reinspecionado responde `is_valid: false` → só então limpa |
+
+Qualquer outro desfecho — HTTP não-ok, erro de rede, `is_valid` ausente ou não-booleano, tipo
+desconhecido — é `PROVIDER_REVOKE_FAILED` com o estado local preservado. `inspectToken` recusa
+deduzir invalidez de resposta ambígua: sem o booleano não há afirmação possível. O provider
+deixou de ser autoridade sobre o próprio desfecho — ele responde, a pós-verificação decide.
+
+**Provas:** 81 testes em `src/lib/meta` (+5 na desconexão), cobrindo os seis mínimos do §4,
+mais duas negativas próprias (erro 100 e resposta sem `is_valid`). Os dois testes do bloqueio
+do Vault seguem intactos. Verificado por mutação: reintroduzir `190 → ok` derruba 1 teste;
+remover a pós-verificação derruba 2 — nenhuma passa por acidente.
+
+**Conexão real preservada:** `ACTIVE`, `disconnected_at` null, referência presente, conferido
+antes e depois. Nada foi revogado, nem na Meta nem localmente.
 
 ## Investigação 2 — por que `ads_*` e `business_management` não vieram
 
@@ -120,7 +148,7 @@ incluindo `code` e `state`. Não é código nosso, e ambos já estavam consumido
 produção esse padrão colocaria credenciais de curta duração em log. Dívida a tratar antes de
 produção, junto da política de redaction (`SECURITY_MODEL.md` §15).
 
-## A falha de handoff que a Correção 003A-01 fechou## A falha de handoff que a Correção 003A-01 fechou
+## A falha de handoff que a Correção 003A-01 fechou
 
 Apliquei três migrations no Supabase remoto e parei no gate humano **sem publicar nada
 no Git**. O GPT encontrou o schema alterado sem branch, PR ou relatório para auditar.
@@ -188,4 +216,4 @@ Apliquei a migration `20260823203915` **antes** de commitá-la, contrariando o c
 durável que a governança introduziu em `4144c03`. Corrigi a ordem em seguida: o commit
 `60a6bff` publicou o delta antes do gate — que é o que a 003A-01 existiu para ensinar.
 
-`003A + CORREÇÃO 003A-02 EXECUTADAS — AGUARDANDO REAUDITORIA GPT`
+`003A + CORREÇÕES 003A-02 e 003A-03 EXECUTADAS — AGUARDANDO REAUDITORIA GPT`

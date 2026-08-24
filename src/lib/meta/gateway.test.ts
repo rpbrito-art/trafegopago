@@ -26,6 +26,11 @@ let conexaoViva: Record<string, unknown> | null = null;
 let tokenNoVault: string | null = "token-guardado";
 /** Tipo que o `debug_token` devolve para o token da desconexão. */
 let tipoDoToken: string = "SYSTEM_USER";
+/** `is_valid` devolvido a cada chamada de `debug_token`, em ordem. */
+let validadeDoToken: boolean[] = [true, false];
+let chamadasDebug = 0;
+/** Desfecho do endpoint de revogação. */
+let revogacaoResponde: "sucesso" | "erro190" | "erro100" | "http500" = "sucesso";
 let erroRpc: Record<string, { code: string } | null> = {};
 
 const rpcCalls: { fn: string; args: Record<string, unknown> }[] = [];
@@ -120,6 +125,10 @@ beforeEach(() => {
   conexaoViva = { id: CONN, external_user_id: "999" };
   tokenNoVault = "token-guardado";
   tipoDoToken = "SYSTEM_USER";
+  // Padrão: válido antes de revogar, inválido depois — o caminho feliz.
+  validadeDoToken = [true, false];
+  chamadasDebug = 0;
+  revogacaoResponde = "sucesso";
   erroRpc = {};
   rpcCalls.length = 0;
   fetchCalls.length = 0;
@@ -140,6 +149,10 @@ beforeEach(() => {
         } as Response;
       }
       if (alvo.includes("/debug_token")) {
+        const i = Math.min(chamadasDebug, validadeDoToken.length - 1);
+        const valida = validadeDoToken[i];
+        chamadasDebug += 1;
+
         return {
           ok: true,
           json: async () => ({
@@ -147,16 +160,20 @@ beforeEach(() => {
               scopes: ["public_profile"],
               user_id: "999",
               type: tipoDoToken,
-              is_valid: tipoDoToken !== "INVALIDO",
+              is_valid: valida,
             },
           }),
         } as Response;
       }
-      if (alvo.includes("/oauth/revoke")) {
-        return { ok: true, json: async () => ({ success: "true" }) } as Response;
-      }
-      if (alvo.includes("/permissions")) {
-        return { ok: true, json: async () => ({ success: true }) } as Response;
+      if (alvo.includes("/oauth/revoke") || alvo.includes("/permissions")) {
+        if (revogacaoResponde === "sucesso") {
+          return { ok: true, json: async () => ({ success: "true" }) } as Response;
+        }
+        if (revogacaoResponde === "http500") {
+          return { ok: false, json: async () => ({}) } as Response;
+        }
+        const code = revogacaoResponde === "erro190" ? 190 : 100;
+        return { ok: false, json: async () => ({ error: { code } }) } as Response;
       }
       return { ok: false, json: async () => ({}) } as Response;
     }),
@@ -373,34 +390,6 @@ describe("disconnectMeta", () => {
     expect(fetchCalls.some((u) => u.includes("/999/permissions"))).toBe(true);
   });
 
-  it("token já inválido não tenta revogar e conclui", async () => {
-    tipoDoToken = "INVALIDO";
-
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
-
-    expect(r).toEqual({ ok: true });
-    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
-    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
-    expect(rpcUsados()).toContain("revoke_meta_connection");
-  });
-
-  it("oauth/revoke sem sucesso NÃO completa a desconexão", async () => {
-    tipoDoToken = "SYSTEM_USER";
-    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
-      const alvo = String(url);
-      fetchCalls.push(alvo);
-      if (alvo.includes("/debug_token")) {
-        return { ok: true, json: async () => ({ data: { type: "SYSTEM_USER", is_valid: true } }) } as Response;
-      }
-      return { ok: false, json: async () => ({ error: { code: 100 } }) } as Response;
-    }));
-
-    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
-
-    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
-    expect(rpcUsados()).not.toContain("revoke_meta_connection");
-  });
-
   it("NÃO revoga localmente se o provider falhar de forma indeterminada", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => {
       throw new Error("rede");
@@ -412,21 +401,112 @@ describe("disconnectMeta", () => {
     expect(rpcUsados()).not.toContain("revoke_meta_connection");
   });
 
-  it("erro 190 na revogação conta como já revogado", async () => {
-    // Token inválido do lado da Meta: não há mais autorização a remover.
-    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
-      const alvo = String(url);
-      fetchCalls.push(alvo);
-      if (alvo.includes("/debug_token")) {
-        return { ok: true, json: async () => ({ data: { type: "SYSTEM_USER", is_valid: true } }) } as Response;
-      }
-      return { ok: false, json: async () => ({ error: { code: 190 } }) } as Response;
-    }));
+  it("erro 190 do provider NAO prova revogacao — falha fechado", async () => {
+    // O bloqueio da reauditoria. `190` e familia generica de falha de token, e
+    // no `oauth/revoke` ha duas credenciais em jogo: o codigo nao diz sequer
+    // qual delas falhou, muito menos que o alvo ficou inativo.
+    revogacaoResponde = "erro190";
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("outros erros do provider tambem falham fechado", async () => {
+    revogacaoResponde = "erro100";
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("sucesso do provider NAO basta: token ainda valido depois falha fechado", async () => {
+    // "Aceitei o pedido" nao e prova. A pos-condicao e que decide.
+    validadeDoToken = [true, true];
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("sucesso + pos-verificacao invalida libera a limpeza local", async () => {
+    validadeDoToken = [true, false];
 
     const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
 
     expect(r).toEqual({ ok: true });
+    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(true);
     expect(rpcUsados()).toContain("revoke_meta_connection");
+  });
+
+  it("token ja invalido antes: nao revoga, mas pode limpar", async () => {
+    validadeDoToken = [false];
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: true });
+    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+    expect(rpcUsados()).toContain("revoke_meta_connection");
+  });
+
+  it("falha na inspecao inicial nao completa a desconexao", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+      fetchCalls.push(String(url));
+      return { ok: false, json: async () => ({}) } as Response;
+    }));
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("falha na POS-verificacao nao completa a desconexao", async () => {
+    let n = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+      const alvo = String(url);
+      fetchCalls.push(alvo);
+      if (alvo.includes("/debug_token")) {
+        n += 1;
+        if (n === 1) {
+          return {
+            ok: true,
+            json: async () => ({ data: { type: "SYSTEM_USER", is_valid: true } }),
+          } as Response;
+        }
+        return { ok: false, json: async () => ({}) } as Response;
+      }
+      return { ok: true, json: async () => ({ success: "true" }) } as Response;
+    }));
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("resposta ambigua de debug_token nao e lida como invalido", async () => {
+    // Sem o booleano `is_valid` nao ha afirmacao possivel — e afirmar seria
+    // exatamente o erro que esta correcao remove.
+    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+      const alvo = String(url);
+      fetchCalls.push(alvo);
+      if (alvo.includes("/debug_token")) {
+        return {
+          ok: true,
+          json: async () => ({ data: { type: "SYSTEM_USER" } }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({ success: "true" }) } as Response;
+    }));
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
   });
 
   it("erro ao LER o token não conclui a desconexão nem limpa o local", async () => {
