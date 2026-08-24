@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **BLOQUEADA EM REAUDITORIA — CORREÇÃO 003A-04 AUTORIZADA**.
+Status: **003A-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
 
 Mandato original:
 
@@ -97,30 +97,31 @@ A Correção 003A-04 exige:
 - token válido + tipo diferente/ausente → falhar fechado, sem mutação remota e sem limpeza local;
 - `is_valid=false` do mesmo token continua sendo prova suficiente de inatividade para permitir limpeza local.
 
-## 7. Próxima ação autorizada
+## 7. Execução da Correção 003A-04 (Claude Code)
 
-Claude Code deve executar **somente**:
+Executada em 2026-08-24. Fatos:
 
-`rodadas/gpt/CORRECAO_003A_04_TIPO_TOKEN_FAIL_CLOSED.md`
+- com o token **válido**, `revokeOnMeta` só reconhece dois caminhos: `SYSTEM_USER` →
+  `oauth/revoke` e `USER` → `/permissions`. Não há mais default;
+- tipo diferente desses dois, ou `type` ausente, retorna `PROVIDER_REVOKE_FAILED` **antes**
+  de qualquer endpoint de revogação e sem tocar o estado local;
+- `is_valid === false` na inspeção inicial continua sendo prova suficiente de inatividade e
+  libera a limpeza local, independentemente de `type`;
+- a pós-verificação exige apenas `is_valid === false` do mesmo token; `type` ausente na
+  resposta posterior não bloqueia (refinamento do mandato §3.7);
+- 83 testes em `src/lib/meta` verdes, cobrindo as seis provas do mandato §4; regra nova
+  verificada por mutação (restaurar o default `/permissions` derruba 2 testes);
+- testes de `190`, pós-verificação, erro de leitura do Vault e falha de inspeção seguem
+  passando;
+- lint e typecheck verdes; nenhuma migration tocada; histórico segue **13**.
 
-Fluxo:
+Sem mutação externa nesta correção:
 
-1. reconciliar a branch com a `main` atual;
-2. corrigir apenas o tratamento de tipo desconhecido;
-3. ajustar os testes afetados;
-4. rodar provas afetadas + CI final uma vez;
-5. atualizar relatório/PR/estado da branch;
-6. parar em `003A-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT`.
+- **desconexão Meta real NÃO executada**;
+- OAuth não refeito, ativos não selecionados, painel Meta não tocado;
+- conexão real conferida: `ACTIVE`, `disconnected_at` null, referência de token presente.
 
-**NÃO executar ainda a desconexão Meta real.**
-
-Também não:
-
-- refazer OAuth;
-- selecionar ativos;
-- revogar pelo painel Meta;
-- iniciar 003B;
-- promover 003A.
+Próxima ação: **reauditoria GPT**. Claude Code não promove 003A nem inicia 003B.
 
 ## 8. Pendências não bloqueantes
 

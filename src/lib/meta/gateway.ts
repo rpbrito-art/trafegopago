@@ -367,15 +367,26 @@ async function revokeOnMeta(input: {
   // Já inativo — única forma segura de pular a revogação.
   if (antes.isValid === false) return { ok: true };
 
+  // O token está ativo, então alguém precisa ser desautorizado — e cada tipo
+  // tem sua primitive. Não há terceira opção que possamos adivinhar: chamar
+  // `/permissions` para um tipo que não é `USER` é uma mutação externa por
+  // tentativa, e o resultado dela não prova nada sobre o token que ficou.
   const revogacao =
     antes.type === "SYSTEM_USER"
       ? await revokeSystemUserToken({ ...input, base })
-      : await revokeUserPermissions({ ...input, base });
+      : antes.type === "USER"
+        ? await revokeUserPermissions({ ...input, base })
+        : null;
+
+  // Tipo fora do que sabemos revogar: para antes de qualquer endpoint.
+  if (revogacao === null) return { ok: false };
 
   // Erro do provider não completa nada.
   if (!revogacao.ok) return { ok: false };
 
-  // Pós-condição: o provider disse que aceitou — agora comprovamos.
+  // Pós-condição: o provider disse que aceitou — agora comprovamos. Aqui o
+  // `type` já cumpriu seu papel (escolher a primitive); a única coisa
+  // material é a invalidez explícita do mesmo token.
   const depois = await inspectToken({
     accessToken: input.accessToken,
     env: input.env,

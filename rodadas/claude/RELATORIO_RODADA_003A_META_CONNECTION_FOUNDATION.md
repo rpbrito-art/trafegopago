@@ -1,9 +1,9 @@
-# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 e 003A-03 — META CONNECTION FOUNDATION
+# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02, 003A-03 e 003A-04 — META CONNECTION FOUNDATION
 
 Executor: Claude Code · 2026-08-23
 Branch: `claude/rodada-003a-meta-connection-foundation`
 
-Status: **003A + CORREÇÕES 003A-02 e 003A-03 EXECUTADAS — AGUARDANDO REAUDITORIA GPT**
+Status: **003A + CORREÇÕES 003A-02, 003A-03 e 003A-04 EXECUTADAS — AGUARDANDO REAUDITORIA GPT**
 
 > ⚠️ **Conexão real APROVADA; revogação ainda não provada ponta a ponta.** Existe uma
 > conexão `ACTIVE` real no ambiente, mantida de propósito: validar a revogação exigiria
@@ -115,6 +115,35 @@ remover a pós-verificação derruba 2 — nenhuma passa por acidente.
 **Conexão real preservada:** `ACTIVE`, `disconnected_at` null, referência presente, conferido
 antes e depois. Nada foi revogado, nem na Meta nem localmente.
 
+## Delta da Correção 003A-04 — tipo desconhecido não revoga por tentativa
+
+A 003A-03 fechou o `190`, mas deixou a escolha da primitive em aberto: qualquer tipo que não
+fosse `SYSTEM_USER` caía em `DELETE /{user-id}/permissions`. `/permissions` desautoriza um
+**usuário**; para um token `PAGE`, ou sem `type`, esse não é o mecanismo certo — e o que ele
+responder não diz nada sobre o token que ficou. A reauditoria classificou isso corretamente:
+não é fail-closed, é mutação externa por tentativa.
+
+Agora, com o token **válido**, só há dois caminhos e nenhum default:
+
+| `type` | ação |
+| --- | --- |
+| `SYSTEM_USER` | `oauth/revoke` |
+| `USER` | `DELETE /{user-id}/permissions` |
+| qualquer outro, ou ausente | `PROVIDER_REVOKE_FAILED` **antes** de qualquer endpoint |
+
+O `type` existe para escolher a primitive enquanto o token vale. Depois que a
+pós-verificação prova `is_valid: false` do **mesmo** token, ele não acrescenta nada — a
+resposta pode vir sem `type` e a limpeza local segue liberada. Adotei esse refinamento do
+mandato §3.7, que relaxa o texto mais restritivo da 003A-03.
+
+**Provas:** 83 testes em `src/lib/meta` (+2). Cobrem os seis mínimos do §4 — `PAGE` e `type`
+ausente falhando fechado sem tocar nenhum endpoint nem `revoke_meta_connection`;
+`SYSTEM_USER` e `USER` restritos aos seus mecanismos; pós-verificação sem `type` ainda
+liberando a limpeza; e os testes de `190`, Vault e falha de inspeção intactos. Por mutação:
+restaurar o default `/permissions` derruba 2 testes.
+
+Sem migration, sem mutação externa. Conexão real conferida intacta.
+
 ## Investigação 2 — por que `ads_*` e `business_management` não vieram
 
 Minha hipótese anterior (App Review / restrição de publicidade) **estava errada**. As
@@ -216,4 +245,4 @@ Apliquei a migration `20260823203915` **antes** de commitá-la, contrariando o c
 durável que a governança introduziu em `4144c03`. Corrigi a ordem em seguida: o commit
 `60a6bff` publicou o delta antes do gate — que é o que a 003A-01 existiu para ensinar.
 
-`003A + CORREÇÕES 003A-02 e 003A-03 EXECUTADAS — AGUARDANDO REAUDITORIA GPT`
+`003A-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT`

@@ -380,14 +380,66 @@ describe("disconnectMeta", () => {
     expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
   });
 
-  it("tipo desconhecido segue pelo caminho conservador de usuário", async () => {
-    // Sem saber o tipo, é melhor tentar o caminho que falha fechado do que
-    // presumir system user e completar uma desconexão que não revogou.
+  it("token valido de tipo desconhecido nao revoga por tentativa", async () => {
+    // `/permissions` desautoriza um usuario; para um token `PAGE` isso nao e o
+    // mecanismo certo, e o que ele responder nao diz nada sobre o token que
+    // ficou. Sem primitive conhecida, nao ha mutacao externa a fazer.
     tipoDoToken = "PAGE";
 
-    await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
 
-    expect(fetchCalls.some((u) => u.includes("/999/permissions"))).toBe(true);
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+    expect(chamouMeta()).toBe(true); // só o debug_token
+    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("token valido sem `type` na resposta tambem falha fechado", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+      const alvo = String(url);
+      fetchCalls.push(alvo);
+      if (alvo.includes("/debug_token")) {
+        return {
+          ok: true,
+          json: async () => ({ data: { is_valid: true } }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({ success: "true" }) } as Response;
+    }));
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("pos-verificacao sem `type` ainda libera a limpeza", async () => {
+    // Depois que o token esta comprovadamente inativo, o tipo nao acrescenta
+    // nada: ele existia para escolher a primitive enquanto o token valia.
+    let n = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) => {
+      const alvo = String(url);
+      fetchCalls.push(alvo);
+      if (alvo.includes("/debug_token")) {
+        n += 1;
+        return {
+          ok: true,
+          json: async () =>
+            n === 1
+              ? { data: { type: "SYSTEM_USER", is_valid: true } }
+              : { data: { is_valid: false } },
+        } as Response;
+      }
+      return { ok: true, json: async () => ({ success: "true" }) } as Response;
+    }));
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: true });
+    expect(rpcUsados()).toContain("revoke_meta_connection");
   });
 
   it("NÃO revoga localmente se o provider falhar de forma indeterminada", async () => {
