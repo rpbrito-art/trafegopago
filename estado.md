@@ -78,34 +78,92 @@ Nenhuma conexão Meta ativa ficou aberta por esse fixture.
 - a assinatura `190/464` só vale como pós-condição dentro do fluxo BISU previamente marcado e com os controles da 003A-10;
 - redaction da URL de callback/log continua pendência antes de produção.
 
-## 6. Próxima etapa
+## 6. Rodada 003B — planejamento concluído
 
-A Fase 3 ainda não está encerrada porque o roadmap inclui seleção/descoberta de Instagram e conta de anúncios.
+Mandato preparado:
 
-Próxima rodada substantiva esperada: **003B — seleção/descoberta de ativos Meta e permissões necessárias para a leitura real**.
+`rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
 
-### Estado da 003B
+Status da 003B:
 
-- **planejada em alto nível pelo roadmap**;
-- **ainda não possui mandato executivo nesta linha de estado**;
-- **não está autorizada para execução pelo Claude Code**.
+**PLANEJADA PELO GPT — AGUARDANDO AUTORIZAÇÃO EXPLÍCITA DO FUNDADOR — NÃO AUTORIZADA PARA CLAUDE CODE**.
 
-Próxima ação autorizada: **GPT planejar a 003B**, revalidando documentação Meta vigente e definindo o mandato/READ SET antes de qualquer execução.
+Objetivo:
 
-## 7. Continua NÃO autorizado
+- descobrir e selecionar a conta profissional do Instagram que alimentará a Fase 4;
+- implementar persistência tenant-safe de `instagram_accounts`;
+- suportar descoberta/seleção opcional de `ad_accounts` quando `ads_read` tiver sido efetivamente concedido;
+- provar capacidade de leitura/Insights sem importar posts ainda.
 
-Até existir novo mandato explícito:
+### Decisão de capacidade
 
-- Claude iniciar 003B por conta própria;
-- novo OAuth apenas por tentativa;
-- nova remoção/reassociação no painel Meta sem objetivo de rodada;
+A conexão Meta não será monolítica:
+
+- Instagram orgânico/Insights é a capacidade principal;
+- conta de anúncios é ramo opcional;
+- ausência de `ads_read` ou de Ad Account não invalida o Instagram nem bloqueia o caminho orgânico.
+
+### Revalidação Meta 2026-08-24
+
+Para o caminho já escolhido pelo projeto — **Instagram API with Facebook Login + Facebook Login for Business + `graph.facebook.com`** — o planejamento parte de:
+
+- `pages_show_list`;
+- `pages_read_engagement`;
+- `instagram_basic`;
+- `instagram_manage_insights`;
+- `ads_read` somente como capacidade opcional/read-only de Ad Account.
+
+Não solicitar inicialmente:
+
+- `ads_management`;
+- `business_management`;
+- permissões de publicação/comentários/leads.
+
+A documentação atual da Meta registra que Insights pode exigir também `ads_management` + `ads_read` quando o papel sobre a Page vier via Business Manager. Essa condição deve ser **provada no E2E**. Se ocorrer, Claude deve parar para decisão GPT; não ampliar escopos por conta própria.
+
+### Gate externo planejado
+
+Quando a execução for autorizada, o GPT conduzirá a configuração manual na Meta.
+
+Preferência: criar uma nova configuração Facebook Login for Business para a 003B, preservando a configuração histórica da 003A.
+
+Nome interno sugerido: `Quoron Instagram Dev Login`.
+
+Pretendido:
+
+- General;
+- System-user access token/BISU;
+- 60 dias em desenvolvimento;
+- assets Pages + Instagram Accounts + Ad Accounts;
+- permissões mínimas acima.
+
+Se as permissões Instagram não estiverem disponíveis no painel, não criar novo App ID por tentativa; primeiro confirmar/habilitar o produto/use case correto no app atual.
+
+## 7. Próxima ação autorizada
+
+**Nenhuma execução pelo Claude está autorizada ainda.**
+
+Próxima decisão humana: fundador autorizar ou ajustar o mandato `RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`.
+
+Se autorizado, o GPT atualizará este estado para execução e somente então o Claude poderá iniciar a 003B via `/proxima`.
+
+## 8. Continua NÃO autorizado
+
+Até autorização explícita da 003B:
+
+- Claude iniciar a 003B;
+- novo OAuth;
+- criar/alterar configuração Meta para a 003B;
+- adicionar permissões por tentativa;
+- novo Meta App ID;
+- selecionar/remover/reassociar ativos no painel Meta;
 - criar anúncios ou gerar gasto;
-- importar conteúdo do Instagram antes da capacidade correspondente;
-- iniciar Fase 4 antes do fechamento necessário da Fase 3.
+- importar conteúdo do Instagram;
+- persistir Page Access Token;
+- iniciar Fase 4.
 
-## 8. Pendências não bloqueantes
+## 9. Pendências não bloqueantes
 
-- escopos `ads_*`/`business_management` e seleção detalhada de ativos entram na análise da 003B;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
 - leaked-password protection antes de produção;
 - SMTP/domínio de produção;
