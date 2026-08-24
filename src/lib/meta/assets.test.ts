@@ -16,6 +16,15 @@ const TOKEN = "token-guardado-no-vault";
 
 /** Estado do banco falso. */
 let membershipAtiva = true;
+/**
+ * A partir de qual checagem a membership deixa de existir.
+ *
+ * `null` significa "não muda". Serve para reproduzir a pessoa removida da
+ * organização **durante** a ida à Meta: a primeira checagem passa, a segunda
+ * — a que acontece logo antes da gravação — já não.
+ */
+let membershipCaiNaChecagem: number | null = null;
+let checagensDeMembership = 0;
 let conexaoAtiva: Record<string, unknown> | null = null;
 let tokenNoVault: string | null = TOKEN;
 let erroLeituraToken: { code: string } | null = null;
@@ -30,6 +39,12 @@ let paginasDeContas: PaginaMeta[] = [];
 let respostaAdAccounts: PaginaMeta = { data: [] };
 let falhaDaMeta: { http: number; code?: number } | null = null;
 let redeQuebrada = false;
+/** Desfecho específico da leitura de metadados do IG User. */
+let metadataIg:
+  | { tipo: "ok"; corpo: Record<string, unknown> }
+  | { tipo: "http"; http: number; code?: number }
+  | { tipo: "rede" }
+  | { tipo: "corpo-ilegivel" } = { tipo: "ok", corpo: {} };
 
 const rpcCalls: { fn: string; args: Record<string, unknown> }[] = [];
 const fetchCalls: string[] = [];
@@ -44,8 +59,14 @@ function queryBuilder(tabela: string) {
 
   builder.maybeSingle = vi.fn(async () => {
     if (tabela === "organization_members") {
+      checagensDeMembership += 1;
+
+      const caiu =
+        membershipCaiNaChecagem !== null &&
+        checagensDeMembership >= membershipCaiNaChecagem;
+
       return {
-        data: membershipAtiva ? { organization_id: ORG_A } : null,
+        data: membershipAtiva && !caiu ? { organization_id: ORG_A } : null,
         error: null,
       };
     }
@@ -123,6 +144,9 @@ const PEDIDO = { userId: USER_A, organizationId: ORG_A };
 
 beforeEach(() => {
   membershipAtiva = true;
+  membershipCaiNaChecagem = null;
+  checagensDeMembership = 0;
+  metadataIg = { tipo: "ok", corpo: {} };
   conexaoAtiva = conexao();
   tokenNoVault = TOKEN;
   erroLeituraToken = null;
@@ -174,10 +198,39 @@ beforeEach(() => {
 
       // Metadados do IG User.
       const igId = new URL(alvo).pathname.split("/").pop();
+      const desfecho = metadataIg;
+
+      if (desfecho.tipo === "rede") throw new Error("rede");
+
+      if (desfecho.tipo === "http") {
+        return {
+          ok: false,
+          status: desfecho.http,
+          json: async () => ({
+            error: { type: "OAuthException", code: desfecho.code ?? 1 },
+          }),
+        } as Response;
+      }
+
+      if (desfecho.tipo === "corpo-ilegivel") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => {
+            throw new Error("corpo ilegível");
+          },
+        } as unknown as Response;
+      }
+
       return {
         ok: true,
         status: 200,
-        json: async () => ({ id: igId, username: `perfil_${igId}`, name: `Nome ${igId}` }),
+        json: async () => ({
+          id: igId,
+          username: `perfil_${igId}`,
+          name: `Nome ${igId}`,
+          ...desfecho.corpo,
+        }),
       } as Response;
     }),
   );
@@ -289,33 +342,115 @@ describe("descoberta de Instagram", () => {
     ]);
   });
 
-  it("metadado que não veio não elimina o candidato", async () => {
-    // O vínculo já provou que a conta existe. Sumir com ela por causa de um
-    // campo ausente deixaria a pessoa sem opção nenhuma para escolher.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: URL | string) => {
-        const alvo = String(url);
-        fetchCalls.push(alvo);
-
-        if (alvo.includes("/me/accounts")) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ data: [pagina("page-1", "ig-1")] }),
-          } as Response;
-        }
-
-        return { ok: false, status: 400, json: async () => ({}) } as Response;
-      }),
-    );
+  it("campo ausente num 2xx não elimina o candidato", async () => {
+    // O vínculo já provou que a conta existe. Sumir com ela porque a Meta não
+    // descreveu o perfil deixaria a pessoa sem opção nenhuma para escolher.
+    metadataIg = { tipo: "ok", corpo: { username: null, name: null } };
 
     const r = await discoverInstagramAccounts(PEDIDO);
 
     expect(r).toMatchObject({
       ok: true,
-      candidates: [{ externalInstagramAccountId: "ig-1", username: null }],
+      candidates: [
+        { externalInstagramAccountId: "ig-1", username: null, name: null },
+      ],
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Correção 003B-01 §2 — leitura do IG User falha fechado
+// ---------------------------------------------------------------------------
+
+describe("leitura do IG User — recusa não é campo ausente", () => {
+  async function selecionar() {
+    return selectInstagramAccount({ ...PEDIDO, externalInstagramAccountId: "ig-1" });
+  }
+
+  it("credencial recusada derruba a descoberta e não grava nada", async () => {
+    // Recusa aqui pode significar que o token da conexão não lê este IG User —
+    // o gate arquitetural do mandato §4.1. Seguir com o candidato ofereceria
+    // para escolha uma conta que ninguém consegue ler.
+    metadataIg = { tipo: "http", http: 400, code: 190 };
+
+    expect(await discoverInstagramAccounts(PEDIDO)).toEqual({
+      ok: false,
+      reason: "CONNECTION_REJECTED",
+    });
+
+    expect(await selecionar()).toEqual({ ok: false, reason: "CONNECTION_REJECTED" });
+    expect(rpcCalls.some((c) => c.fn === "select_instagram_account")).toBe(false);
+  });
+
+  it("permissão insuficiente na leitura do perfil falha fechado", async () => {
+    for (const code of [10, 200]) {
+      metadataIg = { tipo: "http", http: 403, code };
+      rpcCalls.length = 0;
+
+      expect(await discoverInstagramAccounts(PEDIDO)).toEqual({
+        ok: false,
+        reason: "MISSING_PERMISSION",
+      });
+      expect(await selecionar()).toEqual({ ok: false, reason: "MISSING_PERMISSION" });
+      expect(rpcCalls.some((c) => c.fn === "select_instagram_account")).toBe(false);
+    }
+  });
+
+  it("5xx na leitura do perfil não vira candidato gravável", async () => {
+    metadataIg = { tipo: "http", http: 500 };
+
+    expect(await discoverInstagramAccounts(PEDIDO)).toEqual({
+      ok: false,
+      reason: "PROVIDER_UNAVAILABLE",
+    });
+    expect(await selecionar()).toEqual({ ok: false, reason: "PROVIDER_UNAVAILABLE" });
+    expect(rpcCalls.some((c) => c.fn === "select_instagram_account")).toBe(false);
+  });
+
+  it("rede quebrada na leitura do perfil não vira candidato gravável", async () => {
+    metadataIg = { tipo: "rede" };
+
+    expect(await discoverInstagramAccounts(PEDIDO)).toEqual({
+      ok: false,
+      reason: "PROVIDER_UNAVAILABLE",
+    });
+    expect(await selecionar()).toEqual({ ok: false, reason: "PROVIDER_UNAVAILABLE" });
+    expect(rpcCalls.some((c) => c.fn === "select_instagram_account")).toBe(false);
+  });
+
+  it("2xx com corpo ilegível não é tratado como metadata ausente", async () => {
+    metadataIg = { tipo: "corpo-ilegivel" };
+
+    expect(await discoverInstagramAccounts(PEDIDO)).toEqual({
+      ok: false,
+      reason: "PROVIDER_UNAVAILABLE",
+    });
+  });
+
+  it("uma conta ilegível derruba a lista inteira, não só ela mesma", async () => {
+    // Uma lista parcial ofereceria as contas legíveis e esconderia que existe
+    // outra que o token não alcança — exatamente o fato que precisa subir.
+    paginasDeContas = [{ data: [pagina("page-1", "ig-1"), pagina("page-2", "ig-2")] }];
+    metadataIg = { tipo: "http", http: 400, code: 190 };
+
+    expect((await discoverInstagramAccounts(PEDIDO)).ok).toBe(false);
+  });
+
+  it("nada disso é logado com token ou URL", async () => {
+    const logs: unknown[][] = [];
+    const erro = vi.spyOn(console, "error").mockImplementation((...args) => {
+      logs.push(args);
+    });
+
+    metadataIg = { tipo: "http", http: 400, code: 190 };
+    await discoverInstagramAccounts(PEDIDO);
+
+    erro.mockRestore();
+
+    const texto = JSON.stringify(logs);
+    expect(texto).not.toContain(TOKEN);
+    expect(texto).not.toContain("graph.facebook.com");
+    expect(texto).toContain("190");
   });
 });
 
@@ -597,5 +732,49 @@ describe("seleção de conta de anúncios", () => {
 
     expect(r).toEqual({ ok: false, reason: "MISSING_PERMISSION" });
     expect(rpcCalls.some((c) => c.fn === "select_ad_account")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Correção 003B-01 §3 — membership é fato temporal
+// ---------------------------------------------------------------------------
+
+describe("membership removida durante a ida à Meta", () => {
+  it("Instagram: autorização no início não autoriza a gravação no fim", async () => {
+    // A gravação usa `service_role`, então RLS não a barra. Sem esta segunda
+    // checagem, quem saiu da organização durante a redescoberta ainda
+    // conseguiria fixar qual conta ela vai ler.
+    membershipCaiNaChecagem = 2;
+
+    const r = await selectInstagramAccount({
+      ...PEDIDO,
+      externalInstagramAccountId: "ig-1",
+    });
+
+    expect(r).toEqual({ ok: false, reason: "NO_MEMBERSHIP" });
+    expect(rpcCalls.some((c) => c.fn === "select_instagram_account")).toBe(false);
+  });
+
+  it("conta de anúncios: mesma reconferência", async () => {
+    conexaoAtiva = conexao([...ESCOPOS_INSTAGRAM, "ads_read"]);
+    respostaAdAccounts = { data: [{ id: "act_123", name: "Conta", currency: "BRL" }] };
+    membershipCaiNaChecagem = 2;
+
+    const r = await selectAdAccount({ ...PEDIDO, externalAdAccountId: "act_123" });
+
+    expect(r).toEqual({ ok: false, reason: "NO_MEMBERSHIP" });
+    expect(rpcCalls.some((c) => c.fn === "select_ad_account")).toBe(false);
+  });
+
+  it("membership que permanece ativa continua gravando", async () => {
+    const r = await selectInstagramAccount({
+      ...PEDIDO,
+      externalInstagramAccountId: "ig-1",
+    });
+
+    expect(r).toEqual({ ok: true });
+    // Duas checagens: uma para começar, outra imediatamente antes da escrita.
+    expect(checagensDeMembership).toBe(2);
+    expect(rpcCalls.some((c) => c.fn === "select_instagram_account")).toBe(true);
   });
 });

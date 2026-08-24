@@ -5,7 +5,9 @@ Mandato: `rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
 Autorização: `rodadas/gpt/AUTORIZACAO_003B_EXECUCAO.md`
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
-Status: **CÓDIGO, MIGRATION E PROVAS DE BANCO EXECUTADOS — GATE DE CONFIGURAÇÃO EXTERNA META AGUARDANDO GPT**.
+Correção aplicada: `rodadas/gpt/CORRECAO_003B_01_FAIL_CLOSED_METADATA_E_MEMBERSHIP.md`
+
+Status: **003B-01 EXECUTADA — AGUARDANDO AUDITORIA GPT — GATE EXTERNO META CONTINUA BLOQUEADO**.
 
 ## 1. Preflight
 
@@ -41,10 +43,10 @@ Status: **CÓDIGO, MIGRATION E PROVAS DE BANCO EXECUTADOS — GATE DE CONFIGURA�
 | prova | fonte/comando | resultado |
 | --- | --- | --- |
 | capacidades, conjuntos exatos, `ads_management` nunca exigido | `vitest run src/lib/meta/capabilities.test.ts` | 12/12 |
-| descoberta, paginação, fail-closed, seleção, tenancy | `vitest run src/lib/meta/assets.test.ts` | 25/25 |
+| descoberta, paginação, fail-closed, seleção, tenancy | `vitest run src/lib/meta/assets.test.ts` | 39/39 (inclui a 003B-01) |
 | UX: estados vazios distintos, ramo pago opcional, sem vocabulário de plataforma | `vitest run src/components/meta/meta-assets-section.test.tsx` | 19/19 |
 | fronteira das actions, sem eco de id externo na URL | `vitest run src/app/actions/meta-assets.test.ts` | 7/7 |
-| regressão do módulo Meta + actions | `vitest run src/components/meta src/lib/meta src/app/actions` | 245/245 |
+| regressão do módulo Meta + actions | `vitest run src/components/meta src/lib/meta src/app/actions` | 255/255 |
 | tipos e lint | `npm run typecheck` · `npm run lint` | limpos |
 | banco: grants, RLS exercida como `authenticated`, cross-tenant, constraints, idempotência | `supabase db query --file scripts/sql/meta-assets-003b-proof.sql` | **41/41, nenhuma falha** |
 | advisors de segurança | MCP Supabase `get_advisors` | nenhum alerta novo pelas tabelas da 003B |
@@ -57,9 +59,28 @@ Provas de banco incluídas: membro lê a seleção da própria org e **não** a 
 
 Histórico remoto: **15 migrations**. Tabelas em `public`: **10**, todas com RLS. Nenhuma função `SECURITY DEFINER` nova — as de seleção são `invoker` com `EXECUTE` apenas para `service_role`.
 
+## 5.1 Correção 003B-01
+
+Dois bloqueios da auditoria pré-gate, corrigidos sem tocar em migration, schema, escopo ou configuração Meta.
+
+**Bloqueio A — leitura do IG User falhava aberto.** `lerMetadadosInstagram` colapsava "campo ausente" e "leitura recusada" no mesmo `null`, e o candidato sobrevivia. Agora os dois casos são distintos: HTTP 2xx sem `username`/`name` mantém o candidato com metadata nula; 4xx/5xx, rede quebrada ou corpo ilegível sobem como falha de domínio pela mesma taxonomia do resto da fronteira (`classificarRecusa`, agora em um único lugar), e a descoberta inteira falha fechado. Uma conta ilegível derruba a lista toda em vez de gerar lista parcial — esconder que existe uma conta que o token não alcança apagaria justamente o fato que precisa subir, que é o gate arquitetural do mandato §4.1.
+
+**Bloqueio B — membership só era conferida antes das chamadas externas.** A gravação usa `service_role`, então RLS não a barra. `selectInstagramAccount` e `selectAdAccount` passam a reconferir membership **imediatamente antes** da RPC de seleção, depois do intervalo de duração indeterminada gasto na Meta — o mesmo raciocínio que a 003A aplica no callback OAuth.
+
+| prova | fonte/comando | resultado |
+| --- | --- | --- |
+| metadata 400/190, 403/10, 403/200, 500, rede, corpo ilegível → fail-closed sem RPC | `vitest run src/lib/meta/assets.test.ts` | 39/39 |
+| 2xx com campos ausentes → candidato válido com nulos | idem | passa |
+| conta ilegível derruba a lista inteira | idem | passa |
+| log da recusa sem token e sem URL | idem | passa |
+| membership removida durante a redescoberta → nenhuma RPC (IG e Ads) | idem | passa |
+| caminho normal grava, com exatamente duas checagens de membership | idem | passa |
+
+Nada de banco mudou: a prova SQL de §4 continua válida e não foi repetida.
+
 ## 6. Gate
 
-**GATE DE CONFIGURAÇÃO EXTERNA — AGUARDANDO GPT.**
+**GATE EXTERNO META BLOQUEADO ATÉ A AUDITORIA DA 003B-01.**
 
 Tudo o que podia ser executado autonomamente está executado. O E2E do mandato §7 depende de duas ações que pertencem ao GPT/fundador no painel Meta:
 

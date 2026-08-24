@@ -95,24 +95,30 @@ Correção vigente:
 
 Status:
 
-**003B-01 AUTORIZADA — GATE EXTERNO META BLOQUEADO — AGUARDANDO EXECUÇÃO DO CLAUDE**.
+**003B-01 EXECUTADA — AGUARDANDO AUDITORIA GPT — GATE EXTERNO META CONTINUA BLOQUEADO**.
 
-### Bloqueio A — metadata IG falha aberto
+HEAD da correção: ver PR #12.
 
-`lerMetadadosInstagram` trata HTTP não-OK e falha de rede como `null`; `descobrirInstagram` então mantém o candidato e a seleção pode persistir.
+Nada de banco mudou nesta correção: nenhuma migration nova, nenhum schema alterado, nenhuma configuração Meta tocada. A prova SQL `41/41` do HEAD anterior continua válida e não foi repetida.
 
-Isso viola o mandato §6: `provider 4xx/5xx/rede em fail-closed`.
+### Bloqueio A — metadata IG falhava aberto — **CORRIGIDO**
 
-A correção deve separar:
+`lerMetadadosInstagram` passa a distinguir os dois casos:
 
 - HTTP 2xx com campos opcionais ausentes → candidato válido com campos nulos;
-- HTTP 4xx/5xx/rede → falha de domínio sanitizada, sem candidato gravável e sem RPC de seleção.
+- HTTP 4xx/5xx, rede quebrada ou corpo ilegível → falha de domínio sanitizada pela mesma taxonomia do resto da fronteira (`classificarRecusa`, agora em um único lugar), sem candidato gravável e sem RPC de seleção.
 
-### Bloqueio B — membership precisa de recheck antes da escrita
+Uma conta ilegível derruba a descoberta inteira em vez de gerar lista parcial: esconder que existe conta que o token não alcança apagaria o fato que precisa subir ao gate arquitetural do mandato §4.1.
 
-A seleção valida membership antes da redescoberta na Meta, mas há chamadas externas antes da RPC privilegiada de persistência.
+Provado: metadata 400/190, 403/10, 403/200, 500, rede e corpo ilegível falham fechado sem RPC; 2xx com campos ausentes mantém o candidato; o log da recusa não carrega token nem URL.
 
-A correção deve reconferir membership imediatamente antes da RPC de seleção para Instagram e Ad Account.
+### Bloqueio B — membership precisava de recheck antes da escrita — **CORRIGIDO**
+
+`selectInstagramAccount` e `selectAdAccount` reconferem membership imediatamente antes da RPC de seleção, depois do intervalo gasto na Meta. A gravação usa `service_role`, então RLS não a barra — a segunda checagem é o que impede quem saiu da organização durante a redescoberta de fixar qual conta o produto vai ler.
+
+Provado: membership removida durante a redescoberta não gera RPC nem para Instagram nem para Ad Account; o caminho normal continua gravando, com exatamente duas checagens.
+
+Provas do delta: `vitest run src/lib/meta/assets.test.ts` 39/39; regressão do módulo Meta e actions 255/255; typecheck e lint limpos.
 
 ## 6. Estado remoto atual
 
@@ -128,17 +134,11 @@ Nenhum novo OAuth da 003B foi feito e nenhum token novo está ativo.
 
 ## 7. Próxima ação autorizada
 
-Claude Code deve executar **somente a Correção 003B-01**:
+A Correção 003B-01 está executada e publicada na branch. **Claude Code está parado.**
 
-1. trazer a `main` atual para a branch 003B;
-2. corrigir fail-closed da leitura de metadata do IG User;
-3. adicionar recheck de membership imediatamente antes das RPCs de seleção;
-4. adicionar testes focados;
-5. rodar CI uma vez no HEAD final;
-6. atualizar relatório;
-7. parar em `003B-01 EXECUTADA — AGUARDANDO AUDITORIA GPT`.
+Próximo a agir: **GPT** — auditar o delta da 003B-01 no PR #12.
 
-Depois da auditoria GPT, se passar, o gate externo da Meta poderá ser retomado.
+Se a auditoria passar, o gate externo da Meta pode ser retomado nos termos da §6.1 do relatório. Até lá, nada de OAuth, painel Meta, escopo novo ou promoção.
 
 ## 8. Continua NÃO autorizado
 

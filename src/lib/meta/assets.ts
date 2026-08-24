@@ -199,6 +199,22 @@ async function carregarConexao(input: {
 // Paginação
 // ---------------------------------------------------------------------------
 
+/**
+ * Traduz a recusa da Meta para o vocabulário do domínio.
+ *
+ * Um único lugar, usado por toda chamada externa desta fronteira: a mesma
+ * resposta do provider não pode significar coisas diferentes conforme o
+ * endpoint que a recebeu.
+ */
+function classificarRecusa(code: number | null): AssetFailure {
+  // `190` diz que a credencial não serve **agora**. Vira estado de tela, não
+  // mutação: nada aqui revoga, expira ou apaga conexão.
+  if (code === 190) return "CONNECTION_REJECTED";
+  // `10`/`200` são a família de permissão insuficiente.
+  if (code === 10 || code === 200) return "MISSING_PERMISSION";
+  return "PROVIDER_UNAVAILABLE";
+}
+
 type Pagina = { itens: Record<string, unknown>[]; proximoCursor: string | null };
 
 /**
@@ -250,15 +266,7 @@ async function lerPagina(input: {
       subcode,
     });
 
-    // `190` diz que a credencial não serve **agora**. Vira estado de tela, não
-    // mutação: nada aqui revoga, expira ou apaga conexão.
-    if (code === 190) return { ok: false, reason: "CONNECTION_REJECTED" };
-    // `10`/`200` são a família de permissão insuficiente.
-    if (code === 10 || code === 200) {
-      return { ok: false, reason: "MISSING_PERMISSION" };
-    }
-
-    return { ok: false, reason: "PROVIDER_UNAVAILABLE" };
+    return { ok: false, reason: classificarRecusa(code) };
   }
 
   if (!Array.isArray(corpo?.data)) {
@@ -393,52 +401,101 @@ async function descobrirInstagram(
       accessToken: conexao.token,
     });
 
-    // Metadado que não veio não elimina o candidato: o vínculo já provou que a
-    // conta existe e pertence a esta Página. A tela mostra o que tiver.
+    // A recusa derruba a descoberta inteira, e não só este candidato: uma
+    // lista parcial faria a tela oferecer contas legíveis e esconder que outra
+    // existe mas não pôde ser lida.
+    if (!metadados.ok) return { ok: false, reason: metadados.reason };
+
+    // Campos ausentes num 2xx são outra coisa: a conta existe e o vínculo já
+    // provou que pertence a esta Página. A tela mostra o que tiver.
     candidates.push({
       externalInstagramAccountId: vinculo.igId,
       externalPageId: vinculo.pageId,
       pageName: vinculo.pageName,
-      username: metadados?.username ?? null,
-      name: metadados?.name ?? null,
-      accountType: metadados?.accountType ?? null,
+      username: metadados.metadados.username,
+      name: metadados.metadados.name,
+      accountType: metadados.metadados.accountType,
     });
   }
 
   return { ok: true, pagesFound: paginas.itens.length, candidates };
 }
 
-/** Metadados mínimos de uma conta profissional. Somente leitura. */
+type MetadadosInstagram = {
+  username: string | null;
+  name: string | null;
+  accountType: string | null;
+};
+
+/**
+ * Metadados mínimos de uma conta profissional. Somente leitura.
+ *
+ * **Campo ausente e leitura recusada são coisas diferentes.** Um HTTP 200 sem
+ * `username` é uma conta que a Meta não descreve — o candidato continua
+ * válido, com metadata nula. Um 4xx/5xx ou uma falha de rede é a Meta dizendo
+ * que este token **não lê este IG User**, e é precisamente o gate arquitetural
+ * que o mandato 003B §4.1 antecipa: pode significar necessidade de Page Access
+ * Token, decisão que não pertence a esta rodada.
+ *
+ * Colapsar os dois casos em `null` faria a descoberta seguir com um candidato
+ * que ninguém consegue ler, e a seleção o gravaria. Por isso a recusa sobe
+ * como falha de domínio, e a descoberta inteira falha fechado
+ * (Correção 003B-01 §2).
+ */
 async function lerMetadadosInstagram(input: {
   base: string;
   igId: string;
   accessToken: string;
-}): Promise<{ username: string | null; name: string | null; accountType: string | null } | null> {
+}): Promise<
+  { ok: true; metadados: MetadadosInstagram } | { ok: false; reason: AssetFailure }
+> {
   const url = new URL(`${input.base}/${input.igId}`);
   url.searchParams.set("fields", "id,username,name");
   url.searchParams.set("access_token", input.accessToken);
 
+  let resposta: Response;
+
   try {
-    const resposta = await fetch(url, { method: "GET" });
-    if (!resposta.ok) return null;
+    resposta = await fetch(url, { method: "GET" });
+  } catch {
+    return { ok: false, reason: "PROVIDER_UNAVAILABLE" };
+  }
 
-    const corpo = (await resposta.json().catch(() => null)) as Record<
-      string,
-      unknown
-    > | null;
+  const corpo = (await resposta.json().catch(() => null)) as
+    | (Record<string, unknown> & {
+        error?: { code?: unknown; error_subcode?: unknown };
+      })
+    | null;
 
-    if (!corpo) return null;
+  if (!resposta.ok) {
+    const erro = corpo?.error;
+    const code = typeof erro?.code === "number" ? erro.code : null;
 
-    return {
+    // Sem `message` e sem a URL: as duas podem citar o token.
+    console.error("leitura do IG User recusada", {
+      http: resposta.status,
+      code,
+      subcode:
+        typeof erro?.error_subcode === "number" ? erro.error_subcode : null,
+    });
+
+    return { ok: false, reason: classificarRecusa(code) };
+  }
+
+  // 2xx sem corpo legível não é "sem metadata": é uma resposta que não sabemos
+  // ler, e afirmar sobre ela seria inventar.
+  if (!corpo) return { ok: false, reason: "PROVIDER_UNAVAILABLE" };
+
+  return {
+    ok: true,
+    metadados: {
       username: texto(corpo.username),
       name: texto(corpo.name),
       // A Graph API com Facebook Login não expõe `account_type` no IG User.
       // O campo existe no modelo para quando/se o provider passar a expô-lo.
       accountType: texto(corpo.account_type),
-    };
-  } catch {
-    return null;
-  }
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -533,6 +590,17 @@ export async function selectInstagramAccount(input: {
 
   if (!escolhido) return { ok: false, reason: "ASSET_NOT_FOUND" };
 
+  // Membership de novo, agora que a redescoberta terminou.
+  //
+  // A primeira checagem autorizou *começar*; entre ela e este ponto houve uma
+  // ou mais idas à Meta, de duração indeterminada. A gravação usa
+  // `service_role`, então RLS não a barra — se a pessoa deixou a organização
+  // nesse intervalo, é aqui que isso precisa ser notado
+  // (Correção 003B-01 §3, mesmo raciocínio do callback OAuth da 003A).
+  if (!(await hasActiveMembership(supabase, input.userId, input.organizationId))) {
+    return { ok: false, reason: "NO_MEMBERSHIP" };
+  }
+
   const { error } = await supabase.rpc("select_instagram_account", {
     p_organization_id: input.organizationId,
     p_connection_id: carregada.conexao.id,
@@ -576,6 +644,12 @@ export async function selectAdAccount(input: {
   );
 
   if (!escolhida) return { ok: false, reason: "ASSET_NOT_FOUND" };
+
+  // Mesma reconferência do ramo principal: a ida à Meta abriu um intervalo, e
+  // autorização é fato temporal.
+  if (!(await hasActiveMembership(supabase, input.userId, input.organizationId))) {
+    return { ok: false, reason: "NO_MEMBERSHIP" };
+  }
 
   const { error } = await supabase.rpc("select_ad_account", {
     p_organization_id: input.organizationId,
