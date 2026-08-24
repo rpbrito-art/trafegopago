@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **INVESTIGAÇÃO 003A-05 AUDITADA — TOKEN META CONTINUA VÁLIDO — DECISÃO ARQUITETURAL 003A-06 AVANÇOU — INVESTIGAÇÃO READ-ONLY 003A-06A AUTORIZADA — NOVO E2E BLOQUEADO**.
+Status: **INVESTIGAÇÃO 003A-06A CONCLUÍDA — AGUARDANDO GPT — DECISÃO ARQUITETURAL 003A-06 AINDA ABERTA — NOVO E2E BLOQUEADO**.
 
 Mandato original:
 
@@ -139,23 +139,30 @@ A pesquisa GPT encontrou no contrato de Facebook Login for Business que:
 
 Hipótese líder, ainda não final: se o token real for comprovado como BISU, `Desconectar` deverá virar fluxo guiado de remoção da integração no ambiente Meta + pós-verificação `is_valid=false` + só então limpeza do Vault e `REVOKED` local.
 
-## 8. Próxima ação autorizada
+## 8. Resultado da Investigação 003A-06A (Claude Code)
 
-Claude Code deve executar **somente a Investigação 003A-06A**, em leitura:
+Executada em 2026-08-24, somente leitura, com o token real lido pela fronteira server-side.
+Uma única chamada à Meta além da reconfirmação de validade.
 
-`GET /v26.0/me?fields=client_business_id`
+`GET /v26.0/me?fields=client_business_id`:
 
-usando server-side o token real já guardado, sem expor credenciais.
+- HTTP **200**;
+- `client_business_id` = **presente e não vazio** (`5301659283195806`);
+- `id` = `122103866379446065`;
+- `id` **coincide** com o `external_user_id` persistido na conexão;
+- campos devolvidos: `client_business_id`, `id`, `name`.
 
-Deve relatar apenas:
+Reconfirmação `debug_token` (read-only): HTTP 200, `is_valid: true`, `type: SYSTEM_USER`.
 
-- HTTP status;
-- existência/valor de `client_business_id`;
-- `id` retornado;
-- se `id` coincide com `external_user_id` persistido;
-- confirmação de que nenhuma escrita/mutação foi executada.
+**Nenhuma escrita executada** — Meta ou Supabase. Conexão segue `ACTIVE`, `disconnected_at`
+nulo, `updated_at` no instante original `2026-08-24 01:47:57`.
 
-Não precisa criar código permanente nem executar CI se nenhum arquivo de código mudar.
+O script de diagnóstico foi temporário e **não versionado**, conforme §4 do mandato.
+
+Classificação da credencial e escolha do mecanismo de invalidação permanecem com o GPT
+(Decisão 003A-06). Claude Code não conclui arquitetura a partir deste fato.
+
+Próxima ação: **GPT fecha a 003A-06**. Nenhuma mutação externa autorizada até lá.
 
 ## 9. Continua NÃO autorizado
 

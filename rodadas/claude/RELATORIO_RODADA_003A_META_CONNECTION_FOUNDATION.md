@@ -1,9 +1,9 @@
-# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 a 003A-04 + INVESTIGAÇÃO 003A-05
+# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 a 003A-04 + INVESTIGAÇÕES 003A-05 e 003A-06A
 
 Executor: Claude Code · 2026-08-23 a 2026-08-24
 Branch: `claude/rodada-003a-meta-connection-foundation`
 
-Status: **INVESTIGAÇÃO 003A-05 CONCLUÍDA — AGUARDANDO GPT**
+Status: **INVESTIGAÇÃO 003A-06A CONCLUÍDA — AGUARDANDO GPT**
 
 > ⚠️ **Conexão real APROVADA; revogação ainda não provada ponta a ponta.** Existe uma
 > conexão `ACTIVE` real no ambiente, mantida de propósito: validar a revogação exigiria
@@ -188,6 +188,29 @@ o token e o segredo do fixture. 85 testes verdes (+2), lint e typecheck verdes.
 
 Com isso, a próxima tentativa autorizada nomeia a causa em uma passagem.
 
+## Investigação 003A-06A — classificação factual do token
+
+Uma pergunta só, somente leitura, com o token real lido pela fronteira server-side:
+
+| leitura | resultado |
+| --- | --- |
+| `GET /v26.0/me?fields=client_business_id` | HTTP **200** |
+| `client_business_id` | **presente e não vazio** — `5301659283195806` |
+| `id` | `122103866379446065` |
+| `id` == `external_user_id` persistido | **sim** |
+| campos devolvidos | `client_business_id`, `id`, `name` |
+| `debug_token` (reconfirmação) | HTTP 200, `is_valid: true`, `type: SYSTEM_USER` |
+
+O token responde ao campo que o contrato de gerenciamento BISU expõe, e a identidade que ele
+devolve é a mesma já persistida na conexão. Nenhuma escrita foi executada — nem na Meta, nem
+no Supabase; a conexão segue `ACTIVE` com `updated_at` no instante original.
+
+A classificação e a escolha do mecanismo de invalidação são do GPT (Decisão 003A-06). Aqui só
+consta o fato observado.
+
+O script de diagnóstico desta investigação foi **temporário e não versionado**, conforme o §4
+do mandato — que é também a correção do desvio registrado na 003A-05.
+
 ## Investigação 2 — por que `ads_*` e `business_management` não vieram
 
 Minha hipótese anterior (App Review / restrição de publicidade) **estava errada**. As
@@ -289,4 +312,4 @@ Apliquei a migration `20260823203915` **antes** de commitá-la, contrariando o c
 durável que a governança introduziu em `4144c03`. Corrigi a ordem em seguida: o commit
 `60a6bff` publicou o delta antes do gate — que é o que a 003A-01 existiu para ensinar.
 
-`INVESTIGAÇÃO 003A-05 CONCLUÍDA — AGUARDANDO GPT`
+`INVESTIGAÇÃO 003A-06A CONCLUÍDA — AGUARDANDO GPT`
