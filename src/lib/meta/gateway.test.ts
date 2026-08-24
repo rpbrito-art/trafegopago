@@ -589,6 +589,38 @@ describe("disconnectMeta", () => {
     expect(semToken).toEqual({ ok: true });
   });
 
+  it("o log de diagnostico nomeia a etapa sem vazar segredo", async () => {
+    // A instrumentação da 003A-05 existe porque cada tentativa real é cara: sem
+    // ela, "erro" na UI não distingue rede de token ainda válido. O preço de
+    // registrar é nunca deixar o token virar log.
+    const espiao = vi.spyOn(console, "error").mockImplementation(() => {});
+    revogacaoResponde = "erro190";
+
+    await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    const escrito = JSON.stringify(espiao.mock.calls);
+
+    expect(escrito).toContain("REVOGACAO");
+    expect(escrito).toContain("190");
+    expect(escrito).not.toContain("token-guardado");
+    expect(escrito).not.toContain("app-secret");
+    espiao.mockRestore();
+  });
+
+  it("token ainda valido depois da revogacao e registrado como tal", async () => {
+    const espiao = vi.spyOn(console, "error").mockImplementation(() => {});
+    validadeDoToken = [true, true];
+
+    await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    const escrito = JSON.stringify(espiao.mock.calls);
+
+    expect(escrito).toContain("POS_VERIFICACAO");
+    expect(escrito).toContain("AINDA_VALIDO");
+    expect(escrito).not.toContain("token-guardado");
+    espiao.mockRestore();
+  });
+
   it("conexão sem token pula a revogação remota e limpa o local", async () => {
     tokenNoVault = null;
 

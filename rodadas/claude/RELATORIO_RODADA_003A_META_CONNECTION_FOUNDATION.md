@@ -1,9 +1,9 @@
-# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02, 003A-03 e 003A-04 — META CONNECTION FOUNDATION
+# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 a 003A-04 + INVESTIGAÇÃO 003A-05
 
-Executor: Claude Code · 2026-08-23
+Executor: Claude Code · 2026-08-23 a 2026-08-24
 Branch: `claude/rodada-003a-meta-connection-foundation`
 
-Status: **003A + CORREÇÕES 003A-02, 003A-03 e 003A-04 EXECUTADAS — AGUARDANDO REAUDITORIA GPT**
+Status: **INVESTIGAÇÃO 003A-05 CONCLUÍDA — AGUARDANDO GPT**
 
 > ⚠️ **Conexão real APROVADA; revogação ainda não provada ponta a ponta.** Existe uma
 > conexão `ACTIVE` real no ambiente, mantida de propósito: validar a revogação exigiria
@@ -144,6 +144,50 @@ restaurar o default `/permissions` derruba 2 testes.
 
 Sem migration, sem mutação externa. Conexão real conferida intacta.
 
+## Investigação 003A-05 — o E2E real falhou fechado
+
+Diagnóstico read-only por `scripts/meta-diagnose-003a-05.mjs`, que repete as **mesmas**
+chamadas de `revokeOnMeta` e para antes de qualquer revogação. Nenhum endpoint de revogação
+foi tocado; nenhuma escrita no Supabase.
+
+| etapa | resultado hoje |
+| --- | --- |
+| conexão viva | `ACTIVE`, `disconnected_at` null, referência presente, `updated_at` **inalterado** desde `01:47:57` |
+| 1. `read_meta_connection_token` | token presente (399 caracteres) — a leitura do Vault funciona |
+| 2. `GET /debug_token` | HTTP **200**, `is_valid: true`, `type: SYSTEM_USER`, expira 2026-10-23 |
+
+**O token Meta está válido agora.** Escopos e `user_id` preservados. O `updated_at` não se
+moveu: a tentativa real não executou nenhum UPDATE.
+
+O `app_id` do token (`2940404272985831`) é igual ao `META_APP_ID` configurado, e o app token
+`APP_ID|APP_SECRET` é aceito pela Meta — foi ele que autenticou o `debug_token` acima. A
+pré-condição documentada do `oauth/revoke` (mesmo app do `revoke_token`) está satisfeita.
+
+**Etapas descartadas como causa:** leitura do Vault, inspeção inicial e o fail-closed por tipo
+(o tipo é `SYSTEM_USER`, reconhecido). Restam duas hipóteses, **ambas consistentes** com tudo
+que é observável:
+
+1. `oauth/revoke` respondeu erro ou sem `success` → o gateway parou antes da pós-verificação;
+2. `oauth/revoke` respondeu sucesso mas o token seguiu ativo → a pós-verificação barrou.
+
+As duas terminam em `PROVIDER_REVOKE_FAILED` com estado intacto — exatamente o observado.
+Distingui-las exigiria uma segunda chamada a `oauth/revoke`, que esta investigação não
+autoriza. Não há log da tentativa: a action redireciona sem registrar o `reason`, por desenho.
+
+### Instrumentação (delta de código desta investigação)
+
+Cada tentativa real é cara — pode revogar de verdade — e sem registro o próximo clique seria
+tão cego quanto o primeiro. `revokeOnMeta` passa a registrar no servidor **qual etapa barrou**:
+`INSPECAO_INICIAL`, `TIPO_NAO_REVOGAVEL`, `REVOGACAO` ou `POS_VERIFICACAO`, com HTTP status e
+`code`/`subcode` da Meta, mais o rótulo `AINDA_VALIDO` quando o provider aceita e o token
+continua ativo — que é justamente a hipótese 2.
+
+Aditivo: nenhum desfecho muda, a UI continua devolvendo só `?meta=erro`. O log nunca carrega
+token, App Secret nem URL; dois testes provam isso comparando a saída de `console.error` com
+o token e o segredo do fixture. 85 testes verdes (+2), lint e typecheck verdes.
+
+Com isso, a próxima tentativa autorizada nomeia a causa em uma passagem.
+
 ## Investigação 2 — por que `ads_*` e `business_management` não vieram
 
 Minha hipótese anterior (App Review / restrição de publicidade) **estava errada**. As
@@ -245,4 +289,4 @@ Apliquei a migration `20260823203915` **antes** de commitá-la, contrariando o c
 durável que a governança introduziu em `4144c03`. Corrigi a ordem em seguida: o commit
 `60a6bff` publicou o delta antes do gate — que é o que a 003A-01 existiu para ensinar.
 
-`003A-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT`
+`INVESTIGAÇÃO 003A-05 CONCLUÍDA — AGUARDANDO GPT`

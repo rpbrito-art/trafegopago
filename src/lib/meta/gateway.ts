@@ -310,9 +310,8 @@ export async function disconnectMeta(input: {
       env,
     });
 
-    // Só `alreadyRevoked` e `revoked` autorizam seguir. Um erro transitório
-    // deixa tudo como está para que a pessoa possa tentar de novo — melhor uma
-    // desconexão que não completou do que uma que mente.
+    // Um erro transitório deixa tudo como está para que a pessoa possa tentar
+    // de novo — melhor uma desconexão que não completou do que uma que mente.
     if (!revogacao.ok) return { ok: false, reason: "PROVIDER_REVOKE_FAILED" };
   }
 
@@ -326,6 +325,48 @@ export async function disconnectMeta(input: {
   if (error) return { ok: false, reason: "UNAVAILABLE" };
 
   return { ok: true };
+}
+
+/**
+ * Diagnóstico da desconexão — o que pode ser dito em voz alta.
+ *
+ * A action devolve só `?meta=erro`, de propósito: a razão da recusa não é
+ * informação para a barra de endereços. Mas quando a tentativa é real, cada
+ * clique é caro — pode revogar de verdade — e sem registro fica impossível
+ * saber em que etapa parou. O servidor guarda essa distinção.
+ *
+ * Nada aqui carrega token, App Secret ou URL: só HTTP status, código de erro
+ * da Meta e um rótulo de causa.
+ */
+type FalhaExterna = {
+  http?: number;
+  code?: number;
+  subcode?: number;
+  causa?: string;
+};
+
+type Revogacao = { ok: true } | { ok: false; motivo: FalhaExterna };
+
+/** Lê o erro da Meta sem tocar em `message`, que pode citar o token. */
+async function descreverFalha(resposta: Response): Promise<FalhaExterna> {
+  const corpo = (await resposta.json().catch(() => null)) as {
+    error?: { code?: unknown; error_subcode?: unknown };
+  } | null;
+
+  const code = corpo?.error?.code;
+  const subcode = corpo?.error?.error_subcode;
+
+  return {
+    http: resposta.status,
+    ...(typeof code === "number" ? { code } : {}),
+    ...(typeof subcode === "number" ? { subcode } : {}),
+  };
+}
+
+/** Registra a etapa que barrou e falha fechado. */
+function pare(etapa: string, motivo: FalhaExterna): { ok: false } {
+  console.error("desconexao meta interrompida", { etapa, ...motivo });
+  return { ok: false };
 }
 
 /**
@@ -362,7 +403,7 @@ async function revokeOnMeta(input: {
   });
 
   // Não conseguimos verificar: não sabemos o que existe do outro lado.
-  if (!antes.ok) return { ok: false };
+  if (!antes.ok) return pare("INSPECAO_INICIAL", antes.motivo);
 
   // Já inativo — única forma segura de pular a revogação.
   if (antes.isValid === false) return { ok: true };
@@ -379,10 +420,12 @@ async function revokeOnMeta(input: {
         : null;
 
   // Tipo fora do que sabemos revogar: para antes de qualquer endpoint.
-  if (revogacao === null) return { ok: false };
+  if (revogacao === null) {
+    return pare("TIPO_NAO_REVOGAVEL", { causa: antes.type ?? "AUSENTE" });
+  }
 
   // Erro do provider não completa nada.
-  if (!revogacao.ok) return { ok: false };
+  if (!revogacao.ok) return pare("REVOGACAO", revogacao.motivo);
 
   // Pós-condição: o provider disse que aceitou — agora comprovamos. Aqui o
   // `type` já cumpriu seu papel (escolher a primitive); a única coisa
@@ -392,9 +435,16 @@ async function revokeOnMeta(input: {
     env: input.env,
   });
 
-  if (!depois.ok) return { ok: false };
+  if (!depois.ok) return pare("POS_VERIFICACAO", depois.motivo);
 
-  return { ok: depois.isValid === false };
+  if (depois.isValid) {
+    // O provider aceitou o pedido e o token continua ativo. É o caso que mais
+    // importa registrar: sem isto, "erro" na UI não distingue esta situação de
+    // uma falha de rede.
+    return pare("POS_VERIFICACAO", { causa: "AINDA_VALIDO" });
+  }
+
+  return { ok: true };
 }
 
 /**
@@ -407,7 +457,7 @@ async function revokeSystemUserToken(input: {
   accessToken: string;
   env: ReturnType<typeof readMetaEnv>;
   base: string;
-}): Promise<{ ok: boolean }> {
+}): Promise<Revogacao> {
   const url = new URL(`${input.base}/oauth/revoke`);
   url.searchParams.set("client_id", input.env.META_APP_ID);
   url.searchParams.set("client_secret", input.env.META_APP_SECRET);
@@ -419,16 +469,21 @@ async function revokeSystemUserToken(input: {
 
   try {
     const resposta = await fetch(url, { method: "GET" });
-    if (!resposta.ok) return { ok: false };
+
+    if (!resposta.ok) {
+      return { ok: false, motivo: await descreverFalha(resposta) };
+    }
 
     const corpo = (await resposta.json().catch(() => null)) as {
       success?: unknown;
     } | null;
 
     // A API devolve a string "true", não o booleano.
-    return { ok: corpo?.success === true || corpo?.success === "true" };
+    if (corpo?.success === true || corpo?.success === "true") return { ok: true };
+
+    return { ok: false, motivo: { http: resposta.status, causa: "SEM_SUCCESS" } };
   } catch {
-    return { ok: false };
+    return { ok: false, motivo: { causa: "REDE" } };
   }
 }
 
@@ -437,19 +492,24 @@ async function revokeUserPermissions(input: {
   accessToken: string;
   externalUserId: string | null;
   base: string;
-}): Promise<{ ok: boolean }> {
+}): Promise<Revogacao> {
   const alvo = input.externalUserId ?? "me";
   const url = new URL(`${input.base}/${alvo}/permissions`);
   url.searchParams.set("access_token", input.accessToken);
 
   try {
     const resposta = await fetch(url, { method: "DELETE" });
-    if (!resposta.ok) return { ok: false };
+
+    if (!resposta.ok) {
+      return { ok: false, motivo: await descreverFalha(resposta) };
+    }
 
     const corpo = (await resposta.json()) as { success?: unknown };
-    return { ok: corpo.success === true || corpo.success === "true" };
+    if (corpo.success === true || corpo.success === "true") return { ok: true };
+
+    return { ok: false, motivo: { http: resposta.status, causa: "SEM_SUCCESS" } };
   } catch {
-    return { ok: false };
+    return { ok: false, motivo: { causa: "REDE" } };
   }
 }
 
@@ -465,7 +525,8 @@ async function inspectToken(input: {
   accessToken: string;
   env: ReturnType<typeof readMetaEnv>;
 }): Promise<
-  { ok: true; isValid: boolean; type: string | null } | { ok: false }
+  | { ok: true; isValid: boolean; type: string | null }
+  | { ok: false; motivo: FalhaExterna }
 > {
   const url = new URL(`${graphApiBaseUrl(input.env.META_GRAPH_API_VERSION)}/debug_token`);
   url.searchParams.set("input_token", input.accessToken);
@@ -476,14 +537,19 @@ async function inspectToken(input: {
 
   try {
     const resposta = await fetch(url, { method: "GET" });
-    if (!resposta.ok) return { ok: false };
+
+    if (!resposta.ok) {
+      return { ok: false, motivo: await descreverFalha(resposta) };
+    }
 
     const corpo = (await resposta.json()) as {
       data?: { type?: unknown; is_valid?: unknown };
     };
 
     // Sem o booleano explícito não há afirmação possível.
-    if (typeof corpo.data?.is_valid !== "boolean") return { ok: false };
+    if (typeof corpo.data?.is_valid !== "boolean") {
+      return { ok: false, motivo: { http: resposta.status, causa: "SEM_IS_VALID" } };
+    }
 
     return {
       ok: true,
@@ -491,7 +557,7 @@ async function inspectToken(input: {
       type: typeof corpo.data.type === "string" ? corpo.data.type : null,
     };
   } catch {
-    return { ok: false };
+    return { ok: false, motivo: { causa: "REDE" } };
   }
 }
 

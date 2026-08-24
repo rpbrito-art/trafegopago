@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **E2E REAL DE DESCONEXÃO EXECUTADO UMA VEZ E FALHOU FECHADO — INVESTIGAÇÃO 003A-05 AUTORIZADA**.
+Status: **INVESTIGAÇÃO 003A-05 CONCLUÍDA — AGUARDANDO GPT**.
 
 Mandato original:
 
@@ -96,27 +96,39 @@ Portanto o fail-closed funcionou: **a tentativa real falhou sem produzir limpeza
 
 Ainda não está determinado se a falha ocorreu na inspeção inicial, no `oauth/revoke`, na pós-verificação ou em outro ponto do runtime.
 
-## 6. Próxima ação autorizada
+## 6. Resultado da Investigação 003A-05 (Claude Code)
 
-Claude Code deve executar **somente a investigação**:
+Executada em 2026-08-24, read-only, por `scripts/meta-diagnose-003a-05.mjs`. Nenhum endpoint
+de revogação foi chamado; nenhuma escrita no Supabase.
 
-`rodadas/gpt/INVESTIGACAO_003A_05_E2E_DESCONEXAO_FALHOU.md`
+Fatos:
 
-Objetivo principal: determinar, sem nova mutação externa, se o token Meta está atualmente válido ou inválido e em qual etapa a tentativa anterior falhou.
+- conexão continua `ACTIVE`, `disconnected_at` nulo, referência presente e `updated_at`
+  **inalterado** desde `2026-08-24 01:47:57` — a tentativa real não executou nenhum UPDATE;
+- `read_meta_connection_token` devolve o token: a leitura do Vault **não** é a causa;
+- `GET /debug_token`: HTTP **200**, `is_valid: true`, `type: SYSTEM_USER`, expira 2026-10-23,
+  escopos e `user_id` preservados;
+- **o token Meta está válido agora**;
+- `app_id` do token = `META_APP_ID` configurado, e o app token `APP_ID|APP_SECRET` é aceito
+  pela Meta — foi ele que autenticou o `debug_token`;
+- descartadas como causa: leitura do Vault, inspeção inicial e fail-closed por tipo.
 
-Está permitido apenas diagnóstico/read-only conforme o mandato, inclusive `debug_token` somente leitura sem expor credenciais.
+Hipóteses abertas, ambas consistentes com o observado:
 
-**Não está autorizado:**
+1. `oauth/revoke` respondeu erro/sem `success` → parou antes da pós-verificação;
+2. `oauth/revoke` respondeu sucesso e o token seguiu ativo → a pós-verificação barrou.
 
-- clicar `Desconectar` novamente;
-- chamar `oauth/revoke` novamente;
-- chamar `/permissions`;
-- revogar pelo painel Meta;
-- limpar estado local;
-- refazer OAuth;
-- selecionar ativos;
-- iniciar 003B;
-- promover 003A.
+Distingui-las exige nova chamada a `oauth/revoke`, **não autorizada** nesta investigação. Não
+há log da tentativa anterior: a action redireciona sem registrar o `reason`, por desenho.
+
+Delta de código (aditivo, sem mudança de desfecho): `revokeOnMeta` passa a registrar no
+servidor qual etapa barrou — `INSPECAO_INICIAL`, `TIPO_NAO_REVOGAVEL`, `REVOGACAO`,
+`POS_VERIFICACAO` — com HTTP status e `code`/`subcode` da Meta, e o rótulo `AINDA_VALIDO`
+para a hipótese 2. Dois testes provam que o log não carrega token nem App Secret. 85 testes,
+lint e typecheck verdes.
+
+Próxima ação: **GPT decide** se autoriza nova tentativa real de desconexão (agora
+diagnosticável em uma passagem) ou outro caminho. Claude Code não promove 003A nem inicia 003B.
 
 ## 7. Pendências não bloqueantes
 
