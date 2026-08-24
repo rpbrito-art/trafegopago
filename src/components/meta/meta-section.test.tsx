@@ -79,8 +79,7 @@ describe("MetaSection — encerramento no ambiente da Meta", () => {
     const texto = textOf(arvore);
 
     expect(usa(MetaExternalRemoval, arvore)).toBe(true);
-    expect(texto).toContain("Integrações");
-    expect(texto).toContain("Aplicativos conectados");
+    expect(texto).toContain("Apps conectados");
     expect(texto).toContain("Já removi — verificar");
   });
 
@@ -188,5 +187,91 @@ describe("MetaSection — vocabulário", () => {
     for (const termo of PROIBIDO) {
       expect(texto, termo).not.toContain(termo);
     }
+  });
+});
+
+describe("MetaSection — estado persistido de remoção pendente", () => {
+  const PENDENTE = {
+    kind: "remocao-externa-pendente" as const,
+    organizationId: ORG,
+    pedidaEm: "2026-08-24T12:00:00.000Z",
+  };
+
+  it("mostra a trilha sem depender de ?meta=externo", () => {
+    // O caso que motivou a correção: novo login, a query string sumiu, e a
+    // tela voltava a dizer "Meta conectada" como se nada tivesse começado.
+    const arvore = MetaSection({ state: PENDENTE });
+
+    expect(usa(MetaExternalRemoval, arvore)).toBe(true);
+    expect(textOf(arvore)).toContain("Apps conectados");
+  });
+
+  it("não oferece Desconectar enquanto a remoção está pendente", () => {
+    expect(usa(MetaDisconnectButton, MetaSection({ state: PENDENTE }))).toBe(
+      false,
+    );
+  });
+
+  it("carrega os avisos de verificação sobre o estado persistido", () => {
+    expect(
+      textOf(MetaSection({ state: PENDENTE, resultado: "ainda-ativo" })),
+    ).toContain("ainda mostra o acesso como ativo");
+
+    expect(
+      textOf(MetaSection({ state: PENDENTE, resultado: "nao-verificado" })),
+    ).toContain("Não conseguimos confirmar agora");
+  });
+
+  it("não expõe jargão nem identificador em nenhum desfecho", () => {
+    for (const desfecho of [
+      undefined,
+      "erro",
+      "externo",
+      "ainda-ativo",
+      "nao-verificado",
+    ] as const) {
+      const texto = textOf(MetaSection({ state: PENDENTE, resultado: desfecho }));
+      expect(texto).not.toContain(ORG);
+      for (const termo of ["token", "Graph", "OAuth", "client_business_id"]) {
+        expect(texto, `${desfecho} × ${termo}`).not.toContain(termo);
+      }
+    }
+  });
+});
+
+describe("MetaExternalRemoval — caminho na interface da Meta", () => {
+  it("nomeia `Apps conectados`, e não o caminho que não existe", () => {
+    // `Contas > Apps` foi a superfície errada que custou uma remoção inútil;
+    // `Integrações > Aplicativos conectados` era o nome que eu tinha chutado.
+    const texto = textOf(MetaExternalRemoval({ organizationId: ORG }));
+
+    expect(texto).toContain("Apps conectados");
+    expect(texto).not.toContain("Contas > Apps");
+    expect(texto).not.toContain("Aplicativos conectados");
+    expect(texto).not.toContain("Integrações");
+  });
+
+  it("aponta para o destino oficial, sem parâmetro inventado", () => {
+    let href: string | undefined;
+    walk(MetaExternalRemoval({ organizationId: ORG }), (element) => {
+      if (element.type === "a") {
+        href = (element.props as { href?: string }).href;
+      }
+    });
+
+    expect(href).toBe(
+      "https://business.facebook.com/latest/settings/connected_apps/",
+    );
+  });
+
+  it("informa quando a desconexão foi pedida, se já houver registro", () => {
+    const texto = textOf(
+      MetaExternalRemoval({
+        organizationId: ORG,
+        pedidaEm: "2026-08-24T12:00:00.000Z",
+      }),
+    );
+
+    expect(texto).toContain("Você pediu para desconectar em");
   });
 });

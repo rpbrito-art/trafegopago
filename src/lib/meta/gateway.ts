@@ -340,6 +340,23 @@ export async function disconnectMeta(input: {
     // por isso não vira erro genérico: a pessoa precisa saber o que fazer, e
     // a conexão continua exatamente como está até a remoção ser comprovada.
     if (!encerramento.ok && encerramento.externo) {
+      // O intervalo entre pedir e a remoção acontecer lá pode durar dias e
+      // atravessar logout. Sem registro persistido, um reload apagaria a
+      // trilha e a tela voltaria a dizer "conectado", como se nada tivesse
+      // começado. A RPC é idempotente: clicar de novo não reinicia nada.
+      const { error: erroMarcador } = await supabase.rpc(
+        "mark_meta_external_disconnect_pending",
+        { p_connection_id: conexao.id },
+      );
+
+      if (erroMarcador) {
+        console.error("falha ao marcar remocao externa pendente", {
+          connectionId: conexao.id,
+          code: erroMarcador.code,
+        });
+        return { ok: false, reason: "UNAVAILABLE" };
+      }
+
       return { ok: false, reason: "EXTERNAL_ACTION_REQUIRED" };
     }
 
@@ -358,6 +375,86 @@ export async function disconnectMeta(input: {
   if (error) return { ok: false, reason: "UNAVAILABLE" };
 
   return { ok: true };
+}
+
+/**
+ * A assinatura que a Meta devolve depois que a integração é removida.
+ *
+ * Descoberta na Investigação 003A-09, contra a conexão real: removida a
+ * integração em `Apps conectados`, a Meta **para de devolver**
+ * `debug_token.is_valid = false`. O alvo passa a produzir HTTP 400 sem `data`,
+ * e `GET /me` responde `OAuthException` 190 com subcode 464.
+ *
+ * O que torna isso prova, e não a volta do velho "190 = revogado" que a
+ * 003A-03 removeu:
+ *
+ * 1. **só vale com remoção externa já pedida.** Sem o marcador persistido,
+ *    190/464 não conclui nada;
+ * 2. **o app token é auditado antes.** Se ele próprio estiver doente, o erro
+ *    fala do nosso app, não do alvo — e nada é apagado;
+ * 3. **a assinatura é exata.** `190` sozinho não serve; subcode diferente de
+ *    464 não serve. A mesma sonda mostrou que um token inventado devolve
+ *    `is_valid: false` com HTTP 200 e que `/me` com lixo devolve 190 **sem**
+ *    subcode — ou seja, a assinatura aceita aqui não é o erro genérico;
+ * 4. **`/me` que ainda responde é o veredicto oposto:** o token opera, a
+ *    remoção não surtiu efeito, nada é apagado.
+ *
+ * Somente leitura, como o resto da verificação.
+ */
+async function provarRemocaoExterna(input: {
+  accessToken: string;
+  env: ReturnType<typeof readMetaEnv>;
+}): Promise<{ ok: true } | { ok: false; reason: "STILL_ACTIVE" | "UNVERIFIED" }> {
+  const base = graphApiBaseUrl(input.env.META_GRAPH_API_VERSION);
+  const appToken = `${input.env.META_APP_ID}|${input.env.META_APP_SECRET}`;
+
+  // Controle: o erro do alvo só fala do alvo se as nossas credenciais estiverem
+  // saudáveis.
+  const controle = await inspectToken({ accessToken: appToken, env: input.env });
+
+  if (!controle.ok || !controle.isValid) {
+    console.error("controle do app token falhou", {
+      etapa: "PROVA_COMPOSTA",
+      causa: controle.ok ? "APP_TOKEN_INVALIDO" : "APP_TOKEN_INDISPONIVEL",
+    });
+    return { ok: false, reason: "UNVERIFIED" };
+  }
+
+  const url = new URL(`${base}/me`);
+  url.searchParams.set("fields", "id");
+  url.searchParams.set("access_token", input.accessToken);
+
+  try {
+    const resposta = await fetch(url, { method: "GET" });
+
+    // Ainda opera: a remoção não surtiu efeito.
+    if (resposta.ok) return { ok: false, reason: "STILL_ACTIVE" };
+
+    const corpo = (await resposta.json().catch(() => null)) as {
+      error?: { code?: unknown; error_subcode?: unknown; type?: unknown };
+    } | null;
+
+    const erro = corpo?.error;
+    const assinaturaEsperada =
+      erro?.type === "OAuthException" &&
+      erro?.code === 190 &&
+      erro?.error_subcode === 464;
+
+    if (!assinaturaEsperada) {
+      console.error("assinatura pos-remocao nao confere", {
+        etapa: "PROVA_COMPOSTA",
+        http: resposta.status,
+        code: typeof erro?.code === "number" ? erro.code : null,
+        subcode:
+          typeof erro?.error_subcode === "number" ? erro.error_subcode : null,
+      });
+      return { ok: false, reason: "UNVERIFIED" };
+    }
+
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "UNVERIFIED" };
+  }
 }
 
 /**
@@ -384,12 +481,16 @@ export async function checkMetaDisconnection(input: {
 
   const { data: conexao } = await supabase
     .from("meta_connections")
-    .select("id")
+    .select("id, external_disconnect_pending_at")
     .eq("organization_id", input.organizationId)
     .in("status", ["PENDING", "ACTIVE", "ACTION_REQUIRED"])
     .maybeSingle();
 
+  // Já `REVOKED` de um clique anterior: não há o que verificar, e recriar
+  // qualquer coisa aqui seria pior do que não achar nada.
   if (!conexao) return { ok: false, reason: "NOT_FOUND" };
+
+  const remocaoPedida = conexao.external_disconnect_pending_at !== null;
 
   const { data: token, error: erroLeitura } = await supabase.rpc(
     "read_meta_connection_token",
@@ -409,12 +510,22 @@ export async function checkMetaDisconnection(input: {
   if (typeof token === "string" && token.length > 0) {
     const estado = await inspectToken({ accessToken: token, env });
 
-    if (!estado.ok) {
+    if (estado.ok) {
+      if (estado.isValid) return { ok: false, reason: "STILL_ACTIVE" };
+      // `is_valid: false` explícito continua sendo a prova mais forte, e não
+      // depende de marcador nenhum.
+    } else if (!remocaoPedida) {
+      // Sem remoção externa em curso, uma inspeção que falha é só uma inspeção
+      // que falha.
       console.error("verificacao de desconexao inconclusiva", estado.motivo);
       return { ok: false, reason: "UNVERIFIED" };
+    } else {
+      // Remoção pedida + `debug_token` inutilizável: é exatamente o cenário da
+      // 003A-09. A prova composta decide, e ela pode dizer que o token continua
+      // operando.
+      const prova = await provarRemocaoExterna({ accessToken: token, env });
+      if (!prova.ok) return { ok: false, reason: prova.reason };
     }
-
-    if (estado.isValid) return { ok: false, reason: "STILL_ACTIVE" };
   }
 
   const { error } = await supabase.rpc("revoke_meta_connection", {

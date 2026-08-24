@@ -1,9 +1,9 @@
-# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 a 003A-08 + INVESTIGAÇÕES 003A-05, 003A-06A e 003A-09
+# RELATÓRIO — RODADA 003A + CORREÇÕES 003A-02 a 003A-10 + INVESTIGAÇÕES 003A-05, 003A-06A e 003A-09
 
 Executor: Claude Code · 2026-08-23 a 2026-08-24
 Branch: `claude/rodada-003a-meta-connection-foundation`
 
-Status: **003A-09 INVESTIGADA — AGUARDANDO DECISÃO GPT — NENHUMA NOVA MUTAÇÃO EXECUTADA**
+Status: **003A-10 EXECUTADA — AGUARDANDO AUDITORIA GPT — MIGRATION NÃO APLICADA NO REMOTO**
 
 > ⚠️ **Conexão real APROVADA; revogação ainda não provada ponta a ponta.** Existe uma
 > conexão `ACTIVE` real no ambiente, mantida de propósito: validar a revogação exigiria
@@ -316,6 +316,74 @@ do executor.
 Estado remoto reconferido durante a investigação: `ACTIVE`, `disconnected_at` nulo,
 `updated_at` ainda em `01:47:57`.
 
+## Delta da Correção 003A-10 — o fluxo BISU passa a durar mais que a aba
+
+Dois problemas, um de estado e um de prova.
+
+### Estado de processo não mora na URL
+
+O intervalo entre pedir a desconexão e a remoção acontecer na Meta pode durar dias e
+atravessar logout. Ele vivia só em `?meta=externo` — um reload apagava a trilha e a tela
+voltava a dizer "Meta conectada", como se nada tivesse começado. Foi o que aconteceu no gate
+real.
+
+Migration aditiva `20260824170000`: coluna `external_disconnect_pending_at`, `SELECT` dela
+liberado ao browser (saber *quando* foi pedido não recupera segredo nenhum), RPC idempotente
+`mark_meta_external_disconnect_pending` — clicar de novo não reinicia a contagem — e
+`revoke_meta_connection` recriada por `create or replace` para zerar o marcador na limpeza,
+sem editar migration aplicada. Sem isso, uma reconexão futura nasceria com uma remoção
+pendente herdada do ciclo anterior.
+
+A UI passa a derivar o estado da conexão persistida: `remocao-externa-pendente` vence
+"conectado" e não oferece `Desconectar`. O ramo por query string continua, de propósito — o
+redirect chega antes de qualquer releitura.
+
+### A prova composta, e por que não é "190 = revogado" de volta
+
+A 003A-09 mostrou que, removida a integração, a Meta **para** de responder
+`is_valid: false`: o alvo dá HTTP 400 sem `data`, e `/me` dá `OAuthException` 190/464. O
+desenho esperava uma pós-condição que deixou de existir.
+
+`provarRemocaoExterna` aceita essa assinatura sob quatro travas:
+
+| trava | por quê |
+| --- | --- |
+| só com marcador persistido | fora do fluxo de remoção, 190/464 não conclui nada |
+| app token auditado antes | se o **nosso** app está doente, o erro fala dele, não do alvo |
+| assinatura exata `OAuthException` + 190 + **464** | um token inventado devolve `is_valid: false` com HTTP 200, e `/me` com lixo dá 190 **sem** subcode — a assinatura aceita não é o erro genérico |
+| `/me` que responde é veredicto oposto | o token opera; nada é apagado |
+
+`is_valid: false` explícito continua concluindo sozinho, sem marcador e sem prova composta.
+
+### Caminho na interface, corrigido
+
+`Configurações do negócio > **Apps conectados**` — a superfície comprovada no gate real, com
+link para `business.facebook.com/latest/settings/connected_apps/`, sem parâmetro inventado.
+Saem `Contas > Apps` (a superfície errada que custou uma remoção inútil) e
+`Integrações > Aplicativos conectados` (nome que eu havia chutado). Um teste falha se
+qualquer um dos dois voltar.
+
+### Provas
+
+138 testes em `src/lib/meta` + `src/components/meta` (+17), cobrindo os doze mínimos do §5 e
+a idempotência do §4. Por mutação, cada trava foi verificada isoladamente: dispensar o
+marcador derruba 1 teste, aceitar 190 sem conferir subcode derruba 2, pular o controle do app
+token derruba 1.
+
+Suíte completa local: **648 verdes**. Lint, typecheck e build verdes.
+
+### Migration NÃO aplicada no remoto
+
+Conforme §6. Validada em transação revertida contra o remoto — coluna, grant e função
+conferidos e desfeitos pelo `rollback`; conferi depois que nada persistiu. `migration list`:
+13 aplicadas, `20260824170000` local-only.
+
+**Consequência a considerar na auditoria:** o código já lê `external_disconnect_pending_at`.
+Enquanto a migration não for aplicada, a leitura de estado da conexão falha em runtime. É o
+efeito esperado do gate — o E2E só ocorre depois que o GPT aplicar.
+
+Nenhuma nova ação na Meta. Conexão segue `ACTIVE`, `updated_at` em `01:47:57`.
+
 ## Investigação 2 — por que `ads_*` e `business_management` não vieram
 
 Minha hipótese anterior (App Review / restrição de publicidade) **estava errada**. As
@@ -416,4 +484,4 @@ Apliquei a migration `20260823203915` **antes** de commitá-la, contrariando o c
 durável que a governança introduziu em `4144c03`. Corrigi a ordem em seguida: o commit
 `60a6bff` publicou o delta antes do gate — que é o que a 003A-01 existiu para ensinar.
 
-`003A-09 INVESTIGADA — AGUARDANDO DECISÃO GPT — NENHUMA NOVA MUTAÇÃO EXECUTADA`
+`003A-10 EXECUTADA — AGUARDANDO AUDITORIA GPT — INTEGRAÇÃO EXTERNA JÁ REMOVIDA; ESTADO LOCAL AINDA PRESERVADO`

@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-09 AUDITADA E APROVADA COMO INVESTIGAÇÃO — BISU EXTERNO JÁ REMOVIDO — META RECUSA O TOKEN ALVO SEM DEVOLVER `is_valid=false` — CORREÇÃO 003A-10 AUTORIZADA — 003A AINDA NÃO PROMOVIDA**.
+Status: **003A-10 EXECUTADA — AGUARDANDO AUDITORIA GPT — MIGRATION `20260824170000` NÃO APLICADA NO REMOTO**.
 
 Mandato original:
 
@@ -93,20 +93,52 @@ Conclusão: após a remoção correta, a Meta tornou o BISU alvo inutilizável, 
 
 Não reintroduzir `190 => revogado` genericamente.
 
-## 7. Próxima ação autorizada
+## 7. Execução da Correção 003A-10 (Claude Code)
 
-Claude Code deve executar somente a **Correção 003A-10 — Verificação BISU pós-remoção + continuidade do fluxo**.
+Executada em 2026-08-24. Nenhuma nova ação na Meta, nenhuma migration aplicada no remoto.
 
-Objetivos centrais:
+Persistência do fluxo BISU (migration aditiva `20260824170000`, **local-only**):
 
-- persistir explicitamente que um BISU entrou em remoção externa, sobrevivendo a reload/login;
-- corrigir a UX para **Configurações do negócio > Apps conectados**;
-- reconhecer a pós-condição composta real apenas no contexto BISU pendente: app token saudável + assinatura alvo observada `190/464` após `debug_token` não utilizável;
-- manter 190 genérico, outros subcodes, rede/5xx/ambiguidade e ausência do marcador em fail-closed;
-- limpar Vault/estado apenas após prova contextual;
-- provar idempotência e recuperação após login.
+- coluna `meta_connections.external_disconnect_pending_at`, com `SELECT` liberado ao
+  `authenticated` — saber quando foi pedido não recupera segredo;
+- `mark_meta_external_disconnect_pending`, idempotente: reclicar `Desconectar` não reinicia;
+- `revoke_meta_connection` recriada por `create or replace` para zerar o marcador na limpeza;
+  nenhuma migration aplicada foi editada;
+- a UI deriva `remocao-externa-pendente` da conexão persistida: sobrevive a reload, logout e
+  nova sessão, e não oferece `Desconectar` enquanto vale.
 
-Se houver migration aditiva, Claude deve criá-la e testá-la, mas o GPT fará o gate de aplicação no Supabase antes do E2E final.
+Prova composta pós-remoção, somente leitura, em `checkMetaDisconnection`:
+
+- `HTTP 200 + is_valid=false` continua concluindo sozinho, com ou sem marcador;
+- a assinatura da 003A-09 só é aceita sob quatro travas: **marcador persistido presente**,
+  app token de controle auditado e saudável, assinatura exata `OAuthException` + code 190 +
+  subcode **464**, e `/me` que responde tratado como `STILL_ACTIVE`;
+- 190 genérico, outro subcode, outro code, 5xx, rede, ambiguidade ou app token doente
+  preservam o estado local;
+- nenhum endpoint mutável é chamado.
+
+Caminho na interface corrigido para a superfície comprovada: `Configurações do negócio >
+Apps conectados`, com link para `business.facebook.com/latest/settings/connected_apps/`. Saem
+`Contas > Apps` e `Integrações > Aplicativos conectados`.
+
+Provas:
+
+- 138 testes em `src/lib/meta` + `src/components/meta` (+17), cobrindo os doze mínimos do §5
+  e a idempotência do §4;
+- cada trava verificada por mutação: dispensar o marcador derruba 1 teste, aceitar 190 sem
+  subcode derruba 2, pular o controle do app token derruba 1;
+- suíte completa local: **648 verdes**; lint, typecheck e build verdes;
+- migration validada em transação revertida contra o remoto e conferida depois: **nada
+  persistiu**. `migration list` = 13 aplicadas, `20260824170000` local-only.
+
+**Ponto para a auditoria:** o código já lê `external_disconnect_pending_at`. Enquanto a
+migration não for aplicada, a leitura de estado da conexão falha em runtime — efeito esperado
+do gate do §6. O E2E só pode ocorrer depois que o GPT aplicar a migration.
+
+Estado remoto: conexão `ACTIVE`, `disconnected_at` nulo, `updated_at` em
+`2026-08-24 01:47:57`.
+
+Próxima ação: **auditoria GPT** e aplicação da migration.
 
 ## 8. Continua NÃO autorizado
 

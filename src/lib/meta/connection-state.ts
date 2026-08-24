@@ -26,6 +26,18 @@ export type MetaConnectionState =
   /** Conexão em andamento — autorizou mas ainda não concluiu. */
   | { kind: "conectando"; organizationId: string }
   | { kind: "conectado"; organizationId: string; conectadaEm: string | null }
+  /**
+   * Desconexão pedida; falta remover a integração no ambiente da Meta.
+   *
+   * Estado de processo, e por isso persistido: o intervalo pode durar dias e
+   * atravessar logout. Enquanto ele vale, a conexão continua viva de propósito
+   * — é o token que ainda permite verificar se a remoção surtiu efeito.
+   */
+  | {
+      kind: "remocao-externa-pendente";
+      organizationId: string;
+      pedidaEm: string;
+    }
   /** Precisa de ação humana: permissão revogada, token expirado etc. */
   | {
       kind: "acao-necessaria";
@@ -55,7 +67,9 @@ export async function getMetaConnectionState(): Promise<MetaConnectionState> {
   // resultaria em erro de privilégio — a fronteira não depende deste código.
   const { data: conexao, error } = await supabase
     .from("meta_connections")
-    .select("status, connected_at, action_required_reason")
+    .select(
+      "status, connected_at, action_required_reason, external_disconnect_pending_at",
+    )
     .eq("organization_id", organizationId)
     .in("status", ["PENDING", "ACTIVE", "ACTION_REQUIRED"])
     .maybeSingle();
@@ -63,7 +77,22 @@ export async function getMetaConnectionState(): Promise<MetaConnectionState> {
   if (error) return { kind: "erro-tecnico" };
   if (!conexao) return { kind: "desconectado", organizationId };
 
+  const remocaoPedidaEm = conexao.external_disconnect_pending_at as
+    | string
+    | null;
+
   if (conexao.status === "ACTIVE") {
+    // A remoção pendente vence a leitura de "conectado": tecnicamente a
+    // conexão está viva, mas a pessoa já pediu para encerrá-la e o que ela
+    // precisa ver é o passo que falta.
+    if (remocaoPedidaEm) {
+      return {
+        kind: "remocao-externa-pendente",
+        organizationId,
+        pedidaEm: remocaoPedidaEm,
+      };
+    }
+
     return {
       kind: "conectado",
       organizationId,

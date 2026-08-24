@@ -39,6 +39,23 @@ let negocioDoToken: string | null = "negocio-123";
  * padrão não produz — `{}`, `id` ausente, tipo inválido.
  */
 let corpoDoMe: Record<string, unknown> | null | "PADRAO" = "PADRAO";
+/**
+ * Desfecho de `GET /me?fields=id` — o segundo braço da prova composta.
+ * `"REMOVIDO"` reproduz a assinatura real observada na 003A-09.
+ */
+let meComTokenAlvo:
+  | "OPERA"
+  | "REMOVIDO"
+  | "SEM_SUBCODE"
+  | "OUTRO_SUBCODE"
+  | "OUTRO_CODE"
+  | "HTTP_500"
+  | "REDE" = "REMOVIDO";
+/** O app token de controle está saudável? */
+let appTokenSaudavel = true;
+
+/** Instante fixo — o marcador de remoção pendente é só "existe ou não". */
+const AGORA = "2026-08-24T12:00:00.000Z";
 /** Desfecho do endpoint de revogação. */
 let revogacaoResponde: "sucesso" | "erro190" | "erro100" | "http500" = "sucesso";
 let erroRpc: Record<string, { code: string } | null> = {};
@@ -136,7 +153,11 @@ beforeEach(() => {
   membershipAtiva = true;
   intencao = intencaoValida();
   consumoVence = true;
-  conexaoViva = { id: CONN, external_user_id: "999" };
+  conexaoViva = {
+    id: CONN,
+    external_user_id: "999",
+    external_disconnect_pending_at: null,
+  };
   tokenNoVault = "token-guardado";
   tipoDoToken = "SYSTEM_USER";
   // Padrão: válido antes de revogar, inválido depois — o caminho feliz.
@@ -146,6 +167,8 @@ beforeEach(() => {
   // Padrão: a credencial real da 003A — BISU emitido pelo Login for Business.
   negocioDoToken = "negocio-123";
   corpoDoMe = "PADRAO";
+  meComTokenAlvo = "REMOVIDO";
+  appTokenSaudavel = true;
   erroRpc = {};
   rpcCalls.length = 0;
   fetchCalls.length = 0;
@@ -166,6 +189,17 @@ beforeEach(() => {
         } as Response;
       }
       if (alvo.includes("/debug_token")) {
+        // Controle da prova composta: o app inspecionando a si mesmo.
+        if (alvo.includes(`input_token=${encodeURIComponent("app-id|app-secret")}`)) {
+          if (!appTokenSaudavel) {
+            return { ok: false, json: async () => ({}) } as Response;
+          }
+          return {
+            ok: true,
+            json: async () => ({ data: { type: "APP", is_valid: true } }),
+          } as Response;
+        }
+
         const i = Math.min(chamadasDebug, validadeDoToken.length - 1);
         const valida = validadeDoToken[i];
         chamadasDebug += 1;
@@ -192,6 +226,26 @@ beforeEach(() => {
         }
         const code = revogacaoResponde === "erro190" ? 190 : 100;
         return { ok: false, json: async () => ({ error: { code } }) } as Response;
+      }
+      if (alvo.includes("/me?") && alvo.includes("fields=id")) {
+        if (meComTokenAlvo === "REDE") throw new Error("rede");
+        if (meComTokenAlvo === "OPERA") {
+          return { ok: true, json: async () => ({ id: "999" }) } as Response;
+        }
+        if (meComTokenAlvo === "HTTP_500") {
+          return { ok: false, json: async () => ({}) } as Response;
+        }
+
+        const erro =
+          meComTokenAlvo === "REMOVIDO"
+            ? { type: "OAuthException", code: 190, error_subcode: 464 }
+            : meComTokenAlvo === "SEM_SUBCODE"
+              ? { type: "OAuthException", code: 190 }
+              : meComTokenAlvo === "OUTRO_SUBCODE"
+                ? { type: "OAuthException", code: 190, error_subcode: 463 }
+                : { type: "OAuthException", code: 200, error_subcode: 464 };
+
+        return { ok: false, json: async () => ({ error: erro }) } as Response;
       }
       if (alvo.includes("/me?") && alvo.includes("client_business_id")) {
         if (negocioDoToken === "HTTP_RUIM") {
@@ -940,5 +994,249 @@ describe("checkMetaDisconnection", () => {
     });
 
     expect(r).toEqual({ ok: false, reason: "NOT_FOUND" });
+  });
+});
+
+describe("remoção externa pendente — marcador persistido", () => {
+  it("BISU válido persiste o marcador e não muta a Meta", async () => {
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: false, reason: "EXTERNAL_ACTION_REQUIRED" });
+    expect(rpcUsados()).toContain("mark_meta_external_disconnect_pending");
+    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("falha ao persistir o marcador não finge que o passo foi registrado", async () => {
+    // Sem marcador, a verificação depois não teria como distinguir este caso
+    // de um erro qualquer — e a trilha sumiria no próximo reload.
+    erroRpc = { mark_meta_external_disconnect_pending: { code: "23503" } };
+
+    const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(r).toEqual({ ok: false, reason: "UNAVAILABLE" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("clicar Desconectar de novo não produz efeito diferente", async () => {
+    const primeiro = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    conexaoViva = { ...conexaoViva, external_disconnect_pending_at: AGORA };
+    // A sequência de `is_valid` é consumida por chamada; sem reiniciar, a
+    // segunda volta leria o token como já inativo.
+    chamadasDebug = 0;
+
+    const segundo = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+    expect(primeiro).toEqual(segundo);
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+});
+
+describe("checkMetaDisconnection — prova composta pós-remoção", () => {
+  /** Conexão com remoção externa já pedida. */
+  function comRemocaoPedida() {
+    conexaoViva = { ...conexaoViva, external_disconnect_pending_at: AGORA };
+  }
+
+  /** Reproduz a 003A-09: `debug_token` deixa de ser utilizável. */
+  function debugTokenInutilizavel() {
+    validadeDoToken = [];
+  }
+
+  it("assinatura real pós-remoção conclui a desconexão", async () => {
+    comRemocaoPedida();
+    debugTokenInutilizavel();
+    meComTokenAlvo = "REMOVIDO";
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: true });
+    expect(rpcUsados()).toContain("revoke_meta_connection");
+    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+  });
+
+  it("a MESMA assinatura sem remoção pedida NÃO conclui", async () => {
+    // O que separa esta correção da regra insegura "190 = revogado": fora do
+    // fluxo de remoção externa, 190/464 não prova nada.
+    debugTokenInutilizavel();
+    meComTokenAlvo = "REMOVIDO";
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "UNVERIFIED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("190 sem subcode não conclui", async () => {
+    comRemocaoPedida();
+    debugTokenInutilizavel();
+    meComTokenAlvo = "SEM_SUBCODE";
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "UNVERIFIED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("190 com outro subcode não conclui", async () => {
+    comRemocaoPedida();
+    debugTokenInutilizavel();
+    meComTokenAlvo = "OUTRO_SUBCODE";
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "UNVERIFIED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("outro código com o subcode certo não conclui", async () => {
+    comRemocaoPedida();
+    debugTokenInutilizavel();
+    meComTokenAlvo = "OUTRO_CODE";
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "UNVERIFIED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("app token de controle doente preserva o local", async () => {
+    // Se as nossas credenciais estão ruins, o erro fala do nosso app — não do
+    // token alvo. Apagar aqui seria apagar sem prova.
+    comRemocaoPedida();
+    debugTokenInutilizavel();
+    appTokenSaudavel = false;
+    meComTokenAlvo = "REMOVIDO";
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "UNVERIFIED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("token que ainda opera informa ainda ativo e preserva o local", async () => {
+    comRemocaoPedida();
+    debugTokenInutilizavel();
+    meComTokenAlvo = "OPERA";
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "STILL_ACTIVE" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("5xx na prova composta preserva o local", async () => {
+    comRemocaoPedida();
+    debugTokenInutilizavel();
+    meComTokenAlvo = "HTTP_500";
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "UNVERIFIED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("rede caída na prova composta preserva o local", async () => {
+    comRemocaoPedida();
+    debugTokenInutilizavel();
+    meComTokenAlvo = "REDE";
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "UNVERIFIED" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("is_valid=false explícito continua concluindo, com ou sem marcador", async () => {
+    validadeDoToken = [false];
+
+    const semMarcador = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(semMarcador).toEqual({ ok: true });
+    expect(rpcUsados()).toContain("revoke_meta_connection");
+    // E não precisou da prova composta.
+    expect(fetchCalls.some((u) => u.includes("fields=id"))).toBe(false);
+  });
+
+  it("token ainda válido no debug_token vence o marcador", async () => {
+    comRemocaoPedida();
+    validadeDoToken = [true];
+
+    const r = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(r).toEqual({ ok: false, reason: "STILL_ACTIVE" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("verificações repetidas são idempotentes", async () => {
+    comRemocaoPedida();
+    debugTokenInutilizavel();
+    meComTokenAlvo = "REMOVIDO";
+
+    const primeira = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    // Depois da limpeza não há mais conexão viva: a segunda não recria nada.
+    conexaoViva = null;
+    rpcCalls.length = 0;
+
+    const segunda = await checkMetaDisconnection({
+      userId: USER_A,
+      organizationId: ORG_A,
+    });
+
+    expect(primeira).toEqual({ ok: true });
+    expect(segunda).toEqual({ ok: false, reason: "NOT_FOUND" });
+    expect(rpcUsados()).not.toContain("revoke_meta_connection");
+  });
+
+  it("a prova composta não toca nenhum endpoint mutável", async () => {
+    comRemocaoPedida();
+    debugTokenInutilizavel();
+    meComTokenAlvo = "REMOVIDO";
+
+    await checkMetaDisconnection({ userId: USER_A, organizationId: ORG_A });
+
+    expect(fetchCalls.some((u) => u.includes("/permissions"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("/access_tokens"))).toBe(false);
   });
 });

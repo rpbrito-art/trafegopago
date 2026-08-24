@@ -15,10 +15,13 @@ import { checkMetaDisconnectionAction } from "@/app/actions/meta";
 export function MetaExternalRemoval({
   organizationId,
   aviso,
+  pedidaEm,
 }: {
   organizationId: string;
   /** Resultado da última verificação, quando já houve uma. */
   aviso?: "ainda-ativo" | "nao-verificado";
+  /** Quando a desconexão foi pedida, se já ficou registrada. */
+  pedidaEm?: string;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -28,17 +31,31 @@ export function MetaExternalRemoval({
       </p>
 
       <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm text-neutral-700">
-        <li>abra as configurações do seu negócio na Meta;</li>
         <li>
-          procure <strong>Integrações</strong> e depois{" "}
-          <strong>Aplicativos conectados</strong>;
+          abra as{" "}
+          <a
+            className="underline"
+            href="https://business.facebook.com/latest/settings/connected_apps/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            configurações do seu negócio na Meta
+          </a>
+          ;
         </li>
-        <li>remova o Tráfego Pago da lista.</li>
+        <li>
+          vá em <strong>Apps conectados</strong>;
+        </li>
+        <li>remova o Tráfego Pago da lista e confirme.</li>
       </ol>
 
       <p className="text-sm text-neutral-600">
         Até a Meta confirmar a remoção, mantemos a sua conexão guardada e
-        protegida aqui. Quando terminar, volte e confirme abaixo.
+        protegida aqui. Quando terminar, volte e confirme abaixo — pode ser
+        agora ou depois.
+        {pedidaEm
+          ? ` Você pediu para desconectar em ${new Date(pedidaEm).toLocaleDateString("pt-BR")}.`
+          : null}
       </p>
 
       {aviso === "ainda-ativo" ? (

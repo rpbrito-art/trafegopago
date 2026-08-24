@@ -67,10 +67,30 @@ export function MetaSection({
     );
   }
 
+  // Estado persistido: sobrevive a reload, logout e nova sessão. Enquanto
+  // valer, `Desconectar` não é oferecido — repetir o botão que já foi clicado
+  // só reforçaria a impressão de que o encerramento acontece aqui.
+  if (state.kind === "remocao-externa-pendente") {
+    return (
+      <Bloco tom="atencao" titulo="Falta concluir na Meta">
+        <MetaExternalRemoval
+          organizationId={state.organizationId}
+          pedidaEm={state.pedidaEm}
+          aviso={
+            resultado === "ainda-ativo" || resultado === "nao-verificado"
+              ? resultado
+              : undefined
+          }
+        />
+      </Bloco>
+    );
+  }
+
   if (state.kind === "conectado") {
-    // A desconexão pediu a remoção no ambiente da Meta — ou a verificação ainda
-    // não confirmou. Enquanto isso a conexão segue de pé, e é isso que a tela
-    // mostra: o passo pendente, não um erro.
+    // Redundante com o estado persistido no caminho normal, e de propósito: o
+    // redirect chega antes de qualquer releitura, e uma janela em que a tela
+    // diz "conectado" logo após o clique seria exatamente a confusão que o
+    // marcador existe para evitar.
     const emRemocao =
       resultado === "externo" ||
       resultado === "ainda-ativo" ||
