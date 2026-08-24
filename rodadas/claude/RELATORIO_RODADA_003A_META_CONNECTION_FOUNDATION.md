@@ -3,7 +3,7 @@
 Executor: Claude Code · 2026-08-23 a 2026-08-24
 Branch: `claude/rodada-003a-meta-connection-foundation`
 
-Status: **003A-10 EXECUTADA — AGUARDANDO AUDITORIA GPT — MIGRATION NÃO APLICADA NO REMOTO**
+Status: **003A-10B EXECUTADA — MARCADOR E2E PERSISTIDO — AGUARDANDO AUDITORIA GPT**
 
 > ⚠️ **Conexão real APROVADA; revogação ainda não provada ponta a ponta.** Existe uma
 > conexão `ACTIVE` real no ambiente, mantida de propósito: validar a revogação exigiria
@@ -372,17 +372,35 @@ token derruba 1.
 
 Suíte completa local: **648 verdes**. Lint, typecheck e build verdes.
 
-### Migration NÃO aplicada no remoto
+### Migration entregue sob gate, depois aplicada
 
-Conforme §6. Validada em transação revertida contra o remoto — coluna, grant e função
-conferidos e desfeitos pelo `rollback`; conferi depois que nada persistiu. `migration list`:
-13 aplicadas, `20260824170000` local-only.
+Entregue sem aplicar, conforme §6, e validada antes em transação revertida contra o remoto —
+coluna, grant e função conferidos e desfeitos pelo `rollback`. O fundador aplicou em seguida;
+o histórico foi para **14 aplicadas, zero pendentes**, e a conexão real não se moveu.
 
-**Consequência a considerar na auditoria:** o código já lê `external_disconnect_pending_at`.
-Enquanto a migration não for aplicada, a leitura de estado da conexão falha em runtime. É o
-efeito esperado do gate — o E2E só ocorre depois que o GPT aplicar.
+Nenhuma nova ação na Meta.
 
-Nenhuma nova ação na Meta. Conexão segue `ACTIVE`, `updated_at` em `01:47:57`.
+## Gate 003A-10B — o marcador que o E2E não teve como criar
+
+A remoção externa real aconteceu **antes** de a coluna existir, então a conexão do E2E ficou
+com `external_disconnect_pending_at` nulo — sem o marcador, a prova composta da 003A-10 não
+se habilita, por desenho. O GPT não conseguiu preencher pelo conector: a RPC é restrita a
+`service_role` (a ACL fez o que devia) e o conector é read-only.
+
+Uma escrita, alvo fixo, pelo caminho `service_role` local:
+`mark_meta_external_disconnect_pending('9d256edf-…')` → HTTP 204.
+
+| invariante | antes | depois |
+| --- | --- | --- |
+| `status` | `ACTIVE` | `ACTIVE` |
+| `external_disconnect_pending_at` | null | **2026-08-24 19:57:57Z** |
+| `disconnected_at` | null | null |
+| `connected_at`, `token_expires_at`, `external_user_id`, escopos | — | **inalterados** |
+| referência do token / segredo no Vault | presente | **presente** |
+
+Confirmei por leitura independente que o segredo continua no Vault e que a tabela tem uma
+única conexão, com um único marcador — nada além do alvo foi tocado. Nenhum endpoint Meta,
+nenhum clique, nenhuma limpeza.
 
 ## Investigação 2 — por que `ads_*` e `business_management` não vieram
 
@@ -484,4 +502,4 @@ Apliquei a migration `20260823203915` **antes** de commitá-la, contrariando o c
 durável que a governança introduziu em `4144c03`. Corrigi a ordem em seguida: o commit
 `60a6bff` publicou o delta antes do gate — que é o que a 003A-01 existiu para ensinar.
 
-`003A-10 EXECUTADA — AGUARDANDO AUDITORIA GPT — INTEGRAÇÃO EXTERNA JÁ REMOVIDA; ESTADO LOCAL AINDA PRESERVADO`
+`003A-10B EXECUTADA — MARCADOR E2E PERSISTIDO — AGUARDANDO AUDITORIA GPT — NENHUMA LIMPEZA EXECUTADA`

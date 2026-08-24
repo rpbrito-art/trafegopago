@@ -24,7 +24,7 @@ Promovidas: **000–002C**.
 
 **003A — META CONNECTION FOUNDATION**
 
-Status: **003A-10 AUDITADA E APROVADA — MIGRATION 20260824170000 APLICADA E AUDITADA NO REMOTO — BISU EXTERNO JÁ REMOVIDO — MARCADOR ONE-OFF DO E2E AINDA PENDENTE — 003A AINDA NÃO PROMOVIDA**.
+Status: **003A-10B EXECUTADA — MARCADOR E2E PERSISTIDO — AGUARDANDO AUDITORIA GPT — NENHUMA LIMPEZA EXECUTADA**.
 
 Mandato original:
 
@@ -115,19 +115,26 @@ A correção foi aprovada:
 
 A regra **não** é `190 => revogado`.
 
-## 7. Particularidade one-off do E2E atual
+## 7. Execução do Gate 003A-10B (Claude Code)
 
-O E2E começou antes da existência da coluna nova. Por isso a conexão real recebeu a coluna com valor nulo mesmo com a remoção externa já executada e auditada.
+Executado em 2026-08-24. Uma única escrita, no alvo fixo do mandato, pelo caminho
+`service_role` local: `mark_meta_external_disconnect_pending('9d256edf-0a89-4436-8d60-f375bc087c08')`
+→ HTTP 204.
 
-O GPT tentou reconstruir esse fato pelo conector Supabase:
+Provado por leitura, antes e depois:
 
-- chamada da RPC foi recusada com `permission denied for function`, confirmando a ACL de `service_role`;
-- `UPDATE` direto foi recusado porque o conector opera em transação somente leitura;
-- nenhuma tentativa alterou dados.
+- `status` = `ACTIVE` (inalterado);
+- `external_disconnect_pending_at` = **2026-08-24 19:57:57.550577+00** (era nulo);
+- `disconnected_at` = nulo (inalterado);
+- `connected_at`, `token_expires_at`, `external_user_id` e escopos **inalterados**;
+- `token_secret_reference` presente e segredo correspondente ainda existente no Vault,
+  conferido por leitura independente contra `vault.secrets`;
+- a tabela tem uma única conexão e um único marcador — nada além do alvo foi tocado.
 
-Portanto o marcador one-off deve ser aplicado pelo Claude Code usando o caminho server-side `service_role`, exclusivamente para a conexão real do E2E.
+Não executado: nenhum endpoint Meta, nenhum clique na UI, nenhuma `revoke_meta_connection`,
+nenhuma reaplicação de migration, nenhuma alteração de token ou Vault.
 
-Não refazer OAuth e não remover novamente a integração na Meta.
+Próxima ação: **auditoria GPT**.
 
 ## 8. Próxima ação autorizada
 
