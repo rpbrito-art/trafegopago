@@ -78,7 +78,7 @@ Nenhuma conexão Meta ativa ficou aberta por esse fixture.
 - a assinatura `190/464` só vale como pós-condição dentro do fluxo BISU previamente marcado e com os controles da 003A-10;
 - redaction da URL de callback/log continua pendência antes de produção.
 
-## 6. Rodada 003B — AUTORIZADA
+## 6. Rodada 003B — EM EXECUÇÃO
 
 Mandato técnico:
 
@@ -90,7 +90,25 @@ Autorização explícita do fundador:
 
 Status da 003B:
 
-**AUTORIZADA PELO FUNDADOR — CLAUDE CODE PODE INICIAR A EXECUÇÃO — CONFIGURAÇÃO EXTERNA META CONTINUA SOB GATE DO GPT**.
+**CÓDIGO, MIGRATION E PROVAS DE BANCO EXECUTADOS — GATE DE CONFIGURAÇÃO EXTERNA META AGUARDANDO GPT — 003B NÃO PROMOVIDA**.
+
+Branch: `claude/rodada-003b-meta-asset-discovery-selection`.
+
+Relatório: `rodadas/claude/RELATORIO_RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`.
+
+Entregue e provado nesta sessão:
+
+- `instagram_accounts` e `ad_accounts` com FK composta contra `meta_connections (organization_id, id)`, grant por coluna (external ids fora do browser), RLS por membership e funções de seleção `invoker` restritas a `service_role`;
+- capacidade derivada de `granted_scopes` reais: `instagram_discovery`, `instagram_insights`, `ads_discovery`;
+- descoberta server-side de Páginas/Instagram e de contas de anúncios, com paginação por cursor reconstruído contra o host controlado — `paging.next` do provider nunca é seguido;
+- toda seleção redescobre o ativo contra a Meta antes de gravar; id arbitrário falha fechado sem escrita;
+- `190` do provider vira estado de tela, nunca mutação local — a decisão da 003A permanece intacta;
+- ausência de `ads_read` continua sendo capacidade inexistente, não conexão quebrada;
+- UI de escolha em linguagem de negócio, sem escopo, id externo ou versão de API.
+
+Migration `20260824210000_create_meta_asset_selection.sql` aplicada após checkpoint publicado. Histórico remoto: **15 migrations**; **10 tabelas** em `public`, todas com RLS; nenhuma função `SECURITY DEFINER` nova.
+
+Provas: 63 testes novos, 245/245 no módulo Meta e actions, typecheck/lint limpos, prova de banco `scripts/sql/meta-assets-003b-proof.sql` **41/41 sem falhas**, advisors sem alerta novo.
 
 A frase antiga do cabeçalho do mandato que dizia `AGUARDANDO AUTORIZAÇÃO DO FUNDADOR — NÃO EXECUTAR AINDA` está superada exclusivamente por esta autorização e por este `estado.md`; o restante do mandato permanece vigente.
 
@@ -125,21 +143,27 @@ Não solicitar inicialmente:
 
 Se o E2E provar necessidade material de `ads_management`, Page Access Token persistente ou outra ampliação arquitetural, Claude deve parar em `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`.
 
+## 6.1 Gate aberto — configuração externa Meta
+
+O E2E do mandato §7 não pôde ser executado: depende de ação do GPT/fundador no painel Meta.
+
+Falta, nesta ordem:
+
+1. criar a nova *business login configuration* da 003B com os escopos de §2 e ativos Pages + Instagram Accounts + Ad Accounts;
+2. informar o novo `config_id` para `META_LOGIN_CONFIG_ID` (não é segredo);
+3. autorizar o OAuth real;
+4. fundador escolhe o Instagram na tela `/conta`;
+5. `node scripts/meta-assets-003b-probe.mjs` executa as sondas read-only de IG User, Insights e contas de anúncios.
+
+Se a sonda mostrar necessidade de Page Access Token persistente ou de `ads_management`, o desfecho é `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`. Nada será ampliado por conta própria.
+
 ## 7. Próxima ação autorizada
 
-Claude Code deve iniciar a 003B via `/proxima`.
+O trabalho autônomo da 003B está concluído. **Claude Code está parado no gate.**
 
-Pode:
+Próximo a agir: **GPT** — conduzir o fundador na configuração externa da Meta e devolver o resultado técnico do gate (novo `config_id` e liberação do OAuth real).
 
-1. executar preflight não destrutivo;
-2. criar branch/PR próprios da 003B;
-3. implementar o escopo técnico do mandato;
-4. criar migrations/testes/provas proporcionais ao risco;
-5. avançar até o ponto em que configuração externa Meta ou OAuth real sejam necessários.
-
-Ao chegar ao gate externo, deve parar e devolver fatos objetivos ao GPT.
-
-O fundador não deve alterar nada manualmente na Meta até instrução do GPT.
+Claude Code só retoma a 003B ao receber esse resultado. Até lá não deve executar OAuth, alterar painel Meta, ampliar escopo nem promover a rodada.
 
 ## 8. Continua NÃO autorizado
 

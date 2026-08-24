@@ -104,6 +104,7 @@ select pg_temp.reg('selecao: EXECUTE nunca para anon/authenticated', 'true',
 
 do $$
 declare
+  v_user uuid;
   v_org_a uuid;
   v_org_b uuid;
   v_conn_a uuid;
@@ -117,6 +118,10 @@ declare
   r_anterior text;
   r_ad_opcional text;
 begin
+  -- `selected_by` é obrigatório: a escolha de ativo é sempre de alguém. Um
+  -- usuário existente basta — a prova é sobre a mecânica, não sobre quem é.
+  select id into v_user from auth.users limit 1;
+
   insert into public.organizations (name) values ('Org A 003B') returning id into v_org_a;
   insert into public.organizations (name) values ('Org B 003B') returning id into v_org_b;
 
@@ -130,21 +135,21 @@ begin
   set local role service_role;
 
   v_ig := public.select_instagram_account(
-    v_org_a, v_conn_a, null, 'ig-1', 'page-1', 'perfil_a', 'Negócio A', null);
+    v_org_a, v_conn_a, v_user, 'ig-1', 'page-1', 'perfil_a', 'Negócio A', null);
 
   select organization_id::text, status into r_org, r_status
   from public.instagram_accounts where id = v_ig;
 
   -- Reenviar a mesma escolha é idempotente: mesma linha, sem duplicata.
   v_ig_reenvio := public.select_instagram_account(
-    v_org_a, v_conn_a, null, 'ig-1', 'page-1', 'perfil_a', 'Negócio A', null);
+    v_org_a, v_conn_a, v_user, 'ig-1', 'page-1', 'perfil_a', 'Negócio A', null);
 
   select count(*)::text into r_linhas_apos_reenvio
   from public.instagram_accounts where meta_connection_id = v_conn_a;
 
   -- Trocar de conta preserva a anterior como histórico e mantém uma só viva.
   perform public.select_instagram_account(
-    v_org_a, v_conn_a, null, 'ig-2', 'page-2', 'perfil_b', 'Negócio A2', null);
+    v_org_a, v_conn_a, v_user, 'ig-2', 'page-2', 'perfil_b', 'Negócio A2', null);
 
   select count(*)::text into r_uma_viva
   from public.instagram_accounts
@@ -173,41 +178,61 @@ end $$;
 
 do $$
 declare
+  v_user uuid;
   v_org_a uuid;
   v_org_b uuid;
   v_conn_b uuid;
   v_conn_revogada uuid;
+  r_fk text;
+  r_outra_org text;
+  r_revogada text;
 begin
+  select id into v_user from auth.users limit 1;
   select id into v_org_a from public.organizations where name = 'Org A 003B';
   select id into v_org_b from public.organizations where name = 'Org B 003B';
-  select id into v_conn_b from public.meta_connections where organization_id = v_org_b;
-
-  -- A FK composta recusa: a conexão existe, mas é de outra organização.
-  perform pg_temp.reg('conexao de outra org nao aceita selecao', '23503',
-    pg_temp.sqlstate_de(format($q$
-      insert into public.instagram_accounts
-        (organization_id, meta_connection_id, external_instagram_account_id, external_page_id)
-      values (%L, %L, 'ig-invasor', 'page-invasor')
-    $q$, v_org_a, v_conn_b)));
-
-  -- E pelo caminho oficial, a função recusa antes de qualquer escrita.
-  set local role service_role;
-  perform pg_temp.reg('funcao recusa conexao de outra org', '23503',
-    pg_temp.sqlstate_de(format($q$
-      select public.select_instagram_account(%L, %L, null, 'ig-x', 'page-x', null, null, null)
-    $q$, v_org_a, v_conn_b)));
-  reset role;
+  select id into v_conn_b from public.meta_connections
+    where organization_id = v_org_b and status = 'ACTIVE';
 
   -- Selecionar ativo sobre conexão encerrada gravaria escolha que ninguém lê.
   insert into public.meta_connections (organization_id, status, disconnected_at)
   values (v_org_b, 'REVOKED', now()) returning id into v_conn_revogada;
 
+  -- A FK composta recusa: a conexão existe, mas é de outra organização.
+  begin
+    insert into public.instagram_accounts
+      (organization_id, meta_connection_id, external_instagram_account_id, external_page_id)
+    values (v_org_a, v_conn_b, 'ig-invasor', 'page-invasor');
+    r_fk := '00000';
+  exception when others then
+    r_fk := sqlstate;
+  end;
+
+  -- E pelo caminho oficial, a função recusa antes de qualquer escrita. Os
+  -- resultados só podem ser registrados depois do `reset role`: `service_role`
+  -- não tem EXECUTE nas funções temporárias desta transação.
   set local role service_role;
-  perform pg_temp.reg('conexao revogada nao aceita selecao', '23503',
-    pg_temp.sqlstate_de(format($q$
-      select public.select_instagram_account(%L, %L, null, 'ig-y', 'page-y', null, null, null)
-    $q$, v_org_b, v_conn_revogada)));
+
+  begin
+    perform public.select_instagram_account(
+      v_org_a, v_conn_b, v_user, 'ig-x', 'page-x', null, null, null);
+    r_outra_org := '00000';
+  exception when others then
+    r_outra_org := sqlstate;
+  end;
+
+  begin
+    perform public.select_instagram_account(
+      v_org_b, v_conn_revogada, v_user, 'ig-y', 'page-y', null, null, null);
+    r_revogada := '00000';
+  exception when others then
+    r_revogada := sqlstate;
+  end;
+
   reset role;
+
+  perform pg_temp.reg('conexao de outra org nao aceita selecao', '23503', r_fk);
+  perform pg_temp.reg('funcao recusa conexao de outra org', '23503', r_outra_org);
+  perform pg_temp.reg('conexao revogada nao aceita selecao', '23503', r_revogada);
 end $$;
 
 -- ---------------------------------------------------------------------------
