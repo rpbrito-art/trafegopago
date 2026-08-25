@@ -47,40 +47,61 @@ type GeminiUsageMetadata = {
 /**
  * Normaliza o usage do provider para o contrato da 004A.
  *
- * Dois ajustes que não são cosméticos:
+ * Três ajustes que não são cosméticos:
  *
  * - o contrato define `cachedTokens` **disjunto** de `inputTokens`, enquanto o
  *   Gemini reporta `promptTokenCount` já incluindo a parcela cacheada. Somar os
  *   dois cobraria a mesma entrada duas vezes;
  * - `thoughtsTokenCount` é cobrado como saída, então entra em `outputTokens`.
  *   Esta task não habilita raciocínio, mas normalizar o campo evita que uma
- *   mudança de default do provider passe despercebida na conta.
+ *   mudança de default do provider passe despercebida na conta;
+ * - **contagem obrigatória ausente é falha, não zero** (Correção 004E-02 §4).
  *
- * Qualquer contagem inválida vira `USAGE_INVALID` em vez de estimativa: um
- * custo estimado por chute é pior do que uma falha visível (§6.1).
+ * A terceira merece explicação. A versão anterior fazia
+ * `metadata.promptTokenCount ?? 0`, o que transformava "o provider não informou"
+ * em "custou nada". Numa task que envia um prompt não vazio e exige um JSON não
+ * vazio de volta, entrada zero e saída zero são impossíveis — se aparecem, ou o
+ * metadado veio incompleto, ou algo mudou no provider. Nos dois casos, o custo
+ * calculado seria ficção, e uma chamada paga entraria no ledger como gratuita.
+ *
+ * Por isso `promptTokenCount` e `candidatesTokenCount` precisam existir e ser
+ * positivos. Já `cachedContentTokenCount` ausente significa apenas "não
+ * informado": vira `0` na subtração e `null` no contrato — porque `0` afirmaria
+ * que nada veio de cache, o que é diferente de não saber. `thoughtsTokenCount`
+ * ausente é legitimamente zero: esta task desabilita raciocínio.
  */
 export function normalizarUsage(
   metadata: GeminiUsageMetadata | null | undefined,
 ): AIAdapterUsage | null {
   if (!metadata) return null;
 
-  const prompt = metadata.promptTokenCount ?? 0;
-  const cached = metadata.cachedContentTokenCount ?? 0;
-  const candidates = metadata.candidatesTokenCount ?? 0;
-  const thoughts = metadata.thoughtsTokenCount ?? 0;
+  const prompt = metadata.promptTokenCount;
+  const candidates = metadata.candidatesTokenCount;
 
-  for (const valor of [prompt, cached, candidates, thoughts]) {
-    if (!Number.isInteger(valor) || valor < 0) return null;
+  // Obrigatórios: sem eles não há custo confiável, e estimar é pior do que
+  // falhar de forma visível.
+  for (const obrigatorio of [prompt, candidates]) {
+    if (typeof obrigatorio !== "number") return null;
+    if (!Number.isInteger(obrigatorio) || obrigatorio <= 0) return null;
   }
 
-  const inputTokens = prompt - cached;
+  // Opcionais: ausência tem significado próprio e não invalida a contagem.
+  const cached = metadata.cachedContentTokenCount ?? 0;
+  const thoughts = metadata.thoughtsTokenCount ?? 0;
+
+  for (const opcional of [cached, thoughts]) {
+    if (!Number.isInteger(opcional) || opcional < 0) return null;
+  }
+
+  const inputTokens = (prompt as number) - cached;
+
+  // Cache maior que o prompt total tornaria a entrada negativa: metadado
+  // incoerente, não um desconto.
   if (inputTokens < 0) return null;
 
   return {
     inputTokens,
-    outputTokens: candidates + thoughts,
-    // `null` quando o provider não informa cache: `0` afirmaria que nada veio
-    // de cache, o que é diferente de não saber.
+    outputTokens: (candidates as number) + thoughts,
     cachedTokens: metadata.cachedContentTokenCount ?? null,
   };
 }

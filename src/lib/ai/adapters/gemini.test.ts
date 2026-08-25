@@ -100,14 +100,95 @@ describe("normalizarUsage", () => {
     expect(usage?.inputTokens).toBe(100);
   });
 
+  /** Nenhuma estimativa por tamanho de texto: ou o provider informou, ou falha. */
+  it("não estima tokens quando o provider não informa", () => {
+    expect(normalizarUsage(undefined)).toBeNull();
+    expect(normalizarUsage({ thoughtsTokenCount: 10 })).toBeNull();
+  });
+
   it("recusa contagem negativa, fracionária ou incoerente", () => {
-    expect(normalizarUsage({ promptTokenCount: -1 })).toBeNull();
-    expect(normalizarUsage({ candidatesTokenCount: 1.5 })).toBeNull();
+    expect(normalizarUsage({ promptTokenCount: -1, candidatesTokenCount: 10 })).toBeNull();
+    expect(normalizarUsage({ promptTokenCount: 10, candidatesTokenCount: 1.5 })).toBeNull();
     // Cache maior que o prompt total tornaria a entrada negativa.
     expect(
-      normalizarUsage({ promptTokenCount: 10, cachedContentTokenCount: 20 }),
+      normalizarUsage({
+        promptTokenCount: 10,
+        candidatesTokenCount: 5,
+        cachedContentTokenCount: 20,
+      }),
     ).toBeNull();
     expect(normalizarUsage(null)).toBeNull();
+  });
+
+  /**
+   * Correção 004E-02 §4.
+   *
+   * A versão anterior fazia `?? 0`, convertendo "o provider não informou" em
+   * "custou nada" — e uma chamada paga entraria no ledger como gratuita. Numa
+   * task que envia prompt não vazio e exige JSON não vazio de volta, entrada
+   * ou saída zero são impossíveis: se aparecem, o metadado não é confiável.
+   */
+  it("metadata vazia não vira custo zero", () => {
+    expect(normalizarUsage({})).toBeNull();
+  });
+
+  it("recusa quando falta uma das contagens obrigatórias", () => {
+    expect(normalizarUsage({ promptTokenCount: 100 })).toBeNull();
+    expect(normalizarUsage({ candidatesTokenCount: 20 })).toBeNull();
+  });
+
+  it("recusa entrada ou saída zeradas numa resposta textual", () => {
+    expect(
+      normalizarUsage({ promptTokenCount: 0, candidatesTokenCount: 20 }),
+    ).toBeNull();
+    expect(
+      normalizarUsage({ promptTokenCount: 100, candidatesTokenCount: 0 }),
+    ).toBeNull();
+  });
+
+  /** Opcional ausente tem significado próprio e não invalida a contagem. */
+  it("aceita cache e raciocínio ausentes", () => {
+    const usage = normalizarUsage({
+      promptTokenCount: 100,
+      candidatesTokenCount: 20,
+    });
+
+    expect(usage).toEqual({
+      inputTokens: 100,
+      outputTokens: 20,
+      cachedTokens: null,
+    });
+  });
+
+  it("aceita cache informado e o mantém disjunto da entrada", () => {
+    const usage = normalizarUsage({
+      promptTokenCount: 1000,
+      cachedContentTokenCount: 250,
+      candidatesTokenCount: 40,
+    });
+
+    expect(usage).toEqual({
+      inputTokens: 750,
+      outputTokens: 40,
+      cachedTokens: 250,
+    });
+  });
+
+  it("recusa opcional fracionário ou negativo", () => {
+    expect(
+      normalizarUsage({
+        promptTokenCount: 100,
+        candidatesTokenCount: 20,
+        cachedContentTokenCount: -5,
+      }),
+    ).toBeNull();
+    expect(
+      normalizarUsage({
+        promptTokenCount: 100,
+        candidatesTokenCount: 20,
+        thoughtsTokenCount: 2.5,
+      }),
+    ).toBeNull();
   });
 });
 

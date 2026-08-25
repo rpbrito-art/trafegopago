@@ -1,6 +1,7 @@
 import type { AccountBusinessState } from "@/lib/business/account";
 import type { GrowthObjective } from "@/lib/growth/objectives";
 import type { BusinessOffer } from "@/lib/offers/offers";
+import type { ExpectativaDoCaso } from "@/lib/review/eval-criteria";
 
 /**
  * Fixtures sintéticas da revisão de contexto declarado (Rodada 004E §14).
@@ -82,15 +83,15 @@ export type CasoDeEval = {
   conta: Pronta;
   ofertas: BusinessOffer[];
   objetivo: GrowthObjective;
-  /** O que a revisão precisa reconhecer neste caso. */
-  esperado: {
-    /** Tópicos que devem aparecer entre os ausentes do snapshot. */
-    ausentesEsperados?: string[];
-    /** Refs que precisam existir no snapshot. */
-    refsEsperadas?: string[];
-    /** Refs que não podem existir — campo vazio não vira fato. */
-    refsProibidas?: string[];
-  };
+  /**
+   * O que a revisão precisa reconhecer neste caso.
+   *
+   * A expectativa é **metadado explícito**, e não algo inferido do nome do
+   * caso: um avaliador que lê o título da fixture para decidir o que exigir
+   * quebra silenciosamente quando alguém renomeia o caso
+   * (Correção 004E-02 §5.2).
+   */
+  esperado: ExpectativaDoCaso;
 };
 
 /** Texto de cliente contendo instruções — tratado como dado, nunca comando. */
@@ -167,6 +168,13 @@ export const CASOS_DE_EVAL: CasoDeEval[] = [
     }),
     esperado: {
       refsEsperadas: [
+        "objective:00000000-0000-4000-8000-0000000000b1:objective",
+        "objective:00000000-0000-4000-8000-0000000000b1:focus",
+      ],
+      // Este é o caso em que a revisão precisa apontar a divergência — e
+      // ancorá-la nos dois lados que divergem, não em qualquer par de refs.
+      esperaTensao: true,
+      refsDaTensao: [
         "objective:00000000-0000-4000-8000-0000000000b1:objective",
         "objective:00000000-0000-4000-8000-0000000000b1:focus",
       ],
