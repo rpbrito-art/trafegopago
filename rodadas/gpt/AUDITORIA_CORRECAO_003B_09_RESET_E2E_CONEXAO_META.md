@@ -2,110 +2,132 @@
 
 Data: 2026-08-25
 
-Veredito: **PARCIALMENTE APROVADA EM CÓDIGO; REPROVADA/INCOMPLETA NO CRITÉRIO OPERACIONAL E2E**.
+Veredito final: **E2E REAL EXECUTADO; CORREÇÃO DE PARSER/UX APROVADA; OBJETIVO DE RESET NÃO ATINGIDO POR DEFEITO ARQUITETURAL ANTERIOR IDENTIFICADO. TRILHA META ESTACIONADA, 003B NÃO PROMOVIDA.**
 
-## 1. O que foi executado
+## 1. Estado auditado
 
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
-HEAD auditado: `895dd0dc8b0d0d0c005c64edb95161518540deb8`.
+HEAD final auditado desta execução: `053bc7ca3f25b53954579df30bce598894e718dd`.
 
-PR #12: aberto, draft, não mergeado, `mergeable=true`.
+PR #12: aberto, draft, não mergeado. Após novos commits documentais na `main`, o GitHub passou a indicar `mergeable=false`; isso não deve ser corrigido agora apenas por alinhamento, pois a 003B está estacionada e não será promovida.
 
-CI: `32854313271` — `success`.
+CI do HEAD: `32859795018` — **success**.
 
-CI executou lint, typecheck, typecheck das Edge Functions, testes e build. Resultado da suíte normal: **759/759 testes passando**.
+O relatório do Claude agora existe:
 
-Delta de produto relevante:
+`rodadas/claude/RELATORIO_CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`.
 
-- `revokeUserPermissions()` aceita sucesso explícito como JSON literal `true` e também `{ success: true }`;
-- token USER saiu da query string do `DELETE /permissions` e passou para `Authorization: Bearer`;
-- formas `false`, objeto sem `success` e corpo ilegível continuam falhando fechadas;
-- BISU continua fora do endpoint USER;
-- estado `conexao-recusada` agora oferece `Conectar novamente` e `Desconectar e começar de novo`;
-- o cartão verde de conexão saudável pode ser suprimido quando a descoberta já provou que a credencial foi recusada;
-- foi criado `scripts/e2e/meta-disconnect-003b-09.e2e.ts` e `vitest.e2e.config.ts` para a prova real.
+## 2. Código da 003B-09 que permanece aprovado
 
-A auditoria de código não encontrou alteração de app Meta, scopes, `.env.local`, Business Login Configuration, portfolios, Page, Instagram, Ad Account, campanha ou gasto no delta publicado.
+O delta implementado antes do E2E permanece coerente e não deve ser revertido:
 
-## 2. Falha de execução contra o mandato
+- `revokeUserPermissions()` aceita sucesso explícito como JSON literal `true` e `{ success: true }`;
+- token USER no `DELETE /permissions` fica em `Authorization: Bearer`, não na URL;
+- respostas ambíguas continuam falhando fechadas;
+- BISU continua sem usar a primitive de revogação USER;
+- estado `conexao-recusada` oferece `Conectar novamente` e `Desconectar e começar de novo`;
+- a UI não deve combinar cartão verde saudável com estado de conexão recusada;
+- harness E2E permanece separado da CI normal e exige autorização explícita para mutação real.
 
-O mandato 003B-09 exigia explicitamente:
+A CI final ficou verde e o Claude reportou 242/242 testes dos módulos afetados, além de typecheck e lint limpos.
 
-1. executar uma desconexão USER real pelo backend canônico;
-2. provar a forma da resposta real da Meta;
-3. deixar a conexão `REVOKED`;
-4. provar no Supabase a limpeza da referência do token, expiração e scopes;
-5. não reconectar;
-6. escrever `rodadas/claude/RELATORIO_CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`.
+## 3. E2E real — prova independente
 
-Isso **não foi concluído**.
+O fundador autorizou manualmente a execução:
 
-Evidências independentes:
+`META_E2E_DISCONNECT=1 npx vitest run --config vitest.e2e.config.ts`
 
-- o arquivo de relatório exigido não existe no HEAD auditado;
-- o harness E2E foi deliberadamente excluído da suíte normal/CI e exige `META_E2E_DISCONNECT=1`;
-- a CI verde, portanto, não prova a desconexão real;
-- snapshot independente do Supabase após o Claude terminar mostra a conexão `655da6e6-9056-456d-a81d-5e2570da5faf` ainda:
-  - `status=ACTIVE`;
-  - `scope_count=6`;
-  - `has_token_reference=true`;
-  - `disconnected_at=null`;
-  - `external_disconnect_pending_at=null`;
-  - nenhum Instagram ou Ad Account selecionado.
+O E2E **foi efetivamente executado**.
 
-Logo o objetivo principal — **zerar o ambiente para o fundador testar do zero** — não foi atingido.
+Resultado sanitizado observado pelo Claude:
 
-## 3. Avaliação do código publicado
+- `disconnectMeta()` retornou falha fechada;
+- etapa: `CLASSIFICACAO`;
+- HTTP `400`;
+- Meta code `190`;
+- nenhuma chamada chegou a `/permissions`.
 
-A correção de parser é coerente com o mandato:
+Snapshot independente do GPT no Supabase após a execução confirma que nada foi apagado ou revogado:
 
-- sucesso booleano literal `true` é aceito;
-- objeto com `success === true` ou `"true"` é aceito por compatibilidade;
-- demais respostas não viram sucesso;
-- pós-condição continua exigindo que o token deixe de estar válido antes da limpeza local;
-- não existe fallback para apagar localmente sem prova.
+- conexão `655da6e6-9056-456d-a81d-5e2570da5faf` continua `ACTIVE`;
+- `scope_count=6`;
+- referência de token presente;
+- `token_expires_at` preenchido;
+- `disconnected_at=null`;
+- `external_disconnect_pending_at=null`.
 
-A mudança do token para header no `DELETE` melhora a segurança porque evita credencial em URL/logs.
+Portanto o fail-closed funcionou: o sistema não simulou um reset local sem prova externa.
 
-A UX também corrige a contradição anterior: quando a descoberta classifica a credencial como recusada, a tela passa a apresentar um único estado acionável em vez de combinar cartão verde saudável com aviso de recusa.
+## 4. Causa real isolada
 
-Portanto o **código pode permanecer**. Não há motivo para revertê-lo.
+A sonda executada pelo Claude mostrou, com o mesmo User Access Token válido e a mesma versão da Graph API:
 
-## 4. Complemento obrigatório imediatamente autorizado
+- `GET /me?fields=id,name` → HTTP 200;
+- `GET /me?fields=client_business_id` → HTTP 400 / code 190;
+- `GET /me?fields=id,client_business_id` → HTTP 400 / code 190.
 
-Claude Code deve continuar na mesma branch e **não abrir nova arquitetura**.
+O token foi também observado como válido via `debug_token`, com `type=USER` e os seis scopes esperados.
 
-Executar agora somente a conclusão faltante da 003B-09:
+Conclusão comprovada para este ambiente:
 
-1. rodar o harness real já criado com a flag explícita prevista pelo próprio código;
-2. usar a conexão alvo e identidade já fixadas pelo mandato;
-3. não simular revogação via SQL;
-4. observar apenas metadados sanitizados da resposta da Meta;
-5. se o E2E revelar uma forma de resposta não coberta, corrigir minimamente `revokeUserPermissions()` dentro do contrato USER e repetir;
-6. ao final, provar no Supabase:
-   - `status=REVOKED`;
-   - sem referência de token;
-   - `token_expires_at=null`;
-   - scopes vazios;
-   - `disconnected_at` preenchido;
-   - nenhum ativo selecionado;
-7. não reconectar;
-8. escrever `rodadas/claude/RELATORIO_CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`;
-9. se houver novo commit de código, rodar novamente testes/typecheck/lint/CI;
-10. parar em `AGUARDANDO AUDITORIA GPT`.
+**o classificador compartilhado introduzido na 003B-06 tenta ler `client_business_id` de um User Access Token válido; essa leitura é recusada pela Meta e o código interpreta a recusa como falha de credencial.**
 
-Se o harness falhar por comportamento real da Meta, Claude deve registrar o erro sanitizado e corrigir apenas o necessário dentro desta mesma correção. Não está autorizado a alterar app, scopes, portfolios, ativos, `.env.local` ou arquitetura BISU.
+Consequências:
 
-## 5. Estado
+1. a desconexão USER para antes de `DELETE /permissions`;
+2. a descoberta de ativos pode produzir `conexao-recusada` sobre token válido;
+3. a mensagem vista pelo fundador não prova que a autorização estava morta;
+4. o parser de revogação corrigido pela 003B-09 ainda não foi exercitado contra a Meta real, porque o fluxo não chegou até ele.
+
+## 5. Impacto sobre a 003B-06
+
+A evidência oficial que sustentou `SystemUser.getAssignedPages() → /assigned_pages` continua válida. Não há razão para reverter essa parte.
+
+O que deixa de poder ser considerado suficientemente provado é o **mecanismo compartilhado de classificação USER x BISU baseado na tentativa de `client_business_id`**.
+
+Assim:
+
+- endpoint BISU `/{system-user-id}/assigned_pages`: preservado;
+- classifier atual: **necessita nova decisão/correção antes de uso real**;
+- E2E BISU: continua ausente;
+- 003B: continua não promovida.
+
+Não aprovar solução baseada apenas em tratar qualquer `190` como “é USER”. A próxima correção Meta deverá separar identidade válida de detecção do contrato BISU usando evidência oficial e testes reais, sem transformar erro genérico em semântica de negócio por conveniência.
+
+## 6. Decisão operacional
+
+O fundador aprovou que o gate Meta deixe de bloquear o desenvolvimento global:
+
+`rodadas/gpt/DECISAO_DESBLOQUEIO_DESENVOLVIMENTO_META_GATE.md`.
+
+Portanto não será aberta agora uma nova correção Meta apenas para manter o Claude ocupado nessa trilha.
+
+A situação fica estacionada como:
+
+- 003B: **executada em grande parte, auditada parcialmente, NÃO PROMOVIDA**;
+- 003B-09: **E2E executado; reset não atingido; causa real identificada**;
+- conexão USER diagnóstica: continua `ACTIVE` no banco, mas o classificador atual é sabidamente inadequado para esse token;
+- BISU: gate externo e E2E continuam pendentes;
+- correção futura do classifier: obrigatória antes de retomar a promoção da 003B.
+
+## 7. Próximo desenvolvimento
+
+A próxima rodada substantiva passa a ser:
+
+**004A — AI Foundation Core**
+
+Ela parte da `main`, não da branch 003B, e é independente da Meta.
+
+## 8. Estado formal
 
 003B-09:
 
 - planejada: sim;
 - autorizada: sim;
 - código executado: sim;
-- código auditado: **aprovado**;
-- E2E real obrigatório: **não executado/comprovado**;
-- reset da conexão: **não realizado**;
-- rodada operacionalmente aprovada: **não**;
-- promoção 003B: **não autorizada**.
+- E2E real: **sim**;
+- código parser/UX: **auditado e preservado**;
+- reset USER: **não realizado**;
+- causa do bloqueio: **identificada por E2E real**;
+- rodada 003B promovida: **não**.
