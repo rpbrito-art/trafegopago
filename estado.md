@@ -123,7 +123,7 @@ Arquivo de trilha: `rodadas/gpt/DECISAO_003B_04_SEPARAR_PROVEDOR_E_CLIENTE_FIXTU
 
 Status: **ANULADO COMO DECISÃO**. O fundador estava apenas debatendo e não havia autorizado aquela solução.
 
-### 7.3 Experimento 003B-04 — app Meta de teste sem portfólio
+### 7.3 Experimento 003B-04 — app Meta de teste sem portfólio / BISU
 
 Autorização: `rodadas/gpt/AUTORIZACAO_003B_04_APP_META_TESTE_SEM_PORTFOLIO.md`
 
@@ -137,45 +137,59 @@ Fatos provados pela UI atual da Meta:
 - o caso de uso `Gerenciar mensagens e conteúdo no Instagram` expôs `API setup with Facebook login`;
 - o app recebeu `Login do Facebook para Empresas` e permitiu iniciar `Criar configuração`;
 - na etapa `Escolher o token de acesso`, `Token de acesso do usuário` ficou disponível;
-- **`Token de acesso do usuário do sistema` ficou desabilitado** com a mensagem de que a opção não está disponível porque o app não está associado a um portfólio empresarial.
+- **`Token de acesso do usuário do sistema` ficou desabilitado** porque o app não está associado a um portfólio empresarial.
 
 Conclusão limitada: **não é possível reproduzir o contrato BISU vigente usando um app de teste sem portfólio empresarial**.
 
-Isso **não** autoriza trocar para User Access Token. Essa alternativa altera ciclo de vida, revogação e operação da credencial e exige decisão arquitetural separada.
-
 Nada foi alterado em `.env.local`; nenhum novo OAuth foi concluído; nenhum token novo foi persistido; o app de teste continua sem portfólio associado.
 
-## 8. Próxima ação
+### 7.4 Experimento 003B-05 — User Access Token
 
-Status atual:
+Autorização: `rodadas/gpt/AUTORIZACAO_003B_05_USER_ACCESS_TOKEN_E2E.md`
 
-`DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT/FUNDADOR`
+Status: **AUTORIZADO PELO FUNDADOR PARA EXPERIMENTO CONTROLADO — NÃO É DECISÃO ARQUITETURAL DEFINITIVA**.
 
-Alternativas em debate, nenhuma ainda promovida como arquitetura:
+O fundador autorizou testar o caminho `Token de acesso do usuário` no app `Trafego Pago E2E Test` para provar ou reprovar a cadeia:
 
-1. **manter BISU** e aguardar a liberação de um segundo portfólio empresarial elegível para concluir o E2E real exigido pela 003B;
-2. usar **User Access Token apenas como diagnóstico temporário**, sem promover a 003B com base nele, para provar descoberta/leitura de Instagram enquanto o gate BISU permanece aberto;
-3. reavaliar formalmente a arquitetura de autenticação para User Access Token, o que exigiria novo mandato, análise de segurança, ciclo de vida, revogação e impacto em produção.
+`configuração USER → OAuth real → Quoron elegível → escopos corretos → Page descoberta → @goquoron descoberto → seleção persistida → leitura IG User → Insights`
 
-Até nova decisão, o fundador deve **cancelar/fechar a criação dessa configuração sem selecionar User Access Token**.
+Motivo: a Meta oferece explicitamente User Access Token nessa configuração; a documentação oficial do Instagram com Facebook Login trabalha com Facebook User Access Token; a Marketing API também admite User Access Token; e o gateway atual já contém caminho distinto para reconhecer/revogar token USER. Isso torna a hipótese relevante, mas ainda não provada no E2E específico do produto.
+
+A autorização **não** promove User Access Token como arquitetura definitiva e **não** remove BISU do produto.
+
+## 8. Próxima ação autorizada
+
+Próximo a agir: **fundador no Meta for Developers, no app `Trafego Pago E2E Test`**.
+
+Na criação da configuração de `Login do Facebook para Empresas`:
+
+1. selecionar **Token de acesso do usuário**;
+2. avançar para `Ativos`;
+3. configurar apenas os tipos de ativo necessários ao experimento, sem criar/mover ativos;
+4. em `Permissões`, usar privilégio mínimo coerente com a 003B;
+5. antes de qualquer passo que exija associar Business Portfolio, criar novo ativo, ampliar permissões de escrita ou alterar o app oficial, parar e retornar ao GPT.
+
+Depois de criada a configuração, o GPT deve registrar o novo `config_id`, orientar a troca **temporária** das credenciais locais para o app E2E sem expor segredo e conduzir o OAuth real. A conexão atual deve ser preservada até o gate seguro definido pelo GPT.
 
 ## 9. Continua NÃO autorizado
 
-- selecionar `Token de acesso do usuário` como substituição automática do BISU;
+- declarar User Access Token arquitetura definitiva antes do E2E e da análise de ciclo de vida/segurança;
+- remover suporte BISU;
 - associar o app de teste ao portfólio Quoron apenas para habilitar BISU;
 - substituir definitivamente o app oficial;
-- alterar `.env.local` para o novo app;
+- alterar `.env.local` antes de a configuração USER estar concluída e o GPT orientar a troca temporária;
 - criar novo portfólio empresarial;
 - usar conta de terceiro;
 - criar `Quoron 1`;
 - inventar site/domínio;
 - mover Página Quoron ou `@goquoron` entre portfólios;
 - transferir a propriedade do app oficial;
-- desconectar a conexão real atual;
-- remover novamente a integração em Apps conectados;
+- desconectar a conexão real atual sem gate específico;
+- remover novamente a integração em Apps conectados sem gate específico;
 - apagar a configuração histórica da 003A;
 - migrar para Instagram Login/`instagram_business_*`;
 - persistir Page Access Token sem decisão arquitetural;
+- ampliar permissões por tentativa;
 - criar campanha, anúncio ou gasto;
 - importar conteúdo do Instagram;
 - iniciar Fase 4;
@@ -183,6 +197,7 @@ Até nova decisão, o fundador deve **cancelar/fechar a criação dessa configur
 
 ## 10. Pendências não bloqueantes
 
+- se USER passar no E2E, revisar formalmente duração/expiração, renovação/reautorização, revogação, impacto em Ads e segurança antes de decidir arquitetura definitiva;
 - investigar, sem presumir resultado, como o próprio Quoron poderá usar o SaaS sendo o portfólio dono do app em produção;
 - harmonização dos canônicos antigos com `PAID_MEDIA_CANONICAL.md` antes da próxima rodada substantiva pós-003B;
 - revisar onboarding final para não depender de configurações manuais desnecessárias no painel Meta;
