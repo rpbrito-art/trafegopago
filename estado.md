@@ -29,26 +29,29 @@ Promovidas: **000–003A**.
 
 Mandato: `rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
 
-Autorização original: `rodadas/gpt/AUTORIZACAO_003B_EXECUCAO.md`
-
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
-PR: **#12 draft**.
+PR: **#12 draft, open, não mergeado**.
 
-HEAD final auditado das sondas/branch: `1771965805a09082579da1f1baea58b674f24084`.
+HEAD anterior auditado: `1771965805a09082579da1f1baea58b674f24084`.
 
-CI final auditada: `32844721885` — **success**.
+CI anterior auditada: `32844721885` — success.
+
+HEAD da Correção 003B-06: `c1b3ba01abd44503777adaf6b5ea4507063bce34`.
+
+Situação atual do PR: branch divergiu da `main`, PR temporariamente não mergeável; o HEAD `c1b3ba0...` ainda não possui CI associada.
 
 Já executado/auditado:
 
 - migration `20260824210000_create_meta_asset_selection.sql` aplicada;
 - `instagram_accounts` e `ad_accounts` presentes;
 - descoberta/seleção, capabilities e UX implementadas;
-- Correção 003B-01 fail-closed metadata + membership: **EXECUTADA, AUDITADA E APROVADA**;
-- Correção 003B-03 reautorização de conexão ativa: **EXECUTADA, AUDITADA E APROVADA**;
-- investigação 003B-05 de token/Pages/Ads: **EXECUTADA E AUDITADA**;
-- complemento de leitura direta da Page: **EXECUTADO, AUDITADO E APROVADO COMO EVIDÊNCIA READ-ONLY**;
-- complemento de IG User + Insights diretos: **EXECUTADO, AUDITADO E APROVADO COMO EVIDÊNCIA READ-ONLY**.
+- Correção 003B-01: **EXECUTADA, AUDITADA E APROVADA**;
+- Correção 003B-03: **EXECUTADA, AUDITADA E APROVADA**;
+- investigação 003B-05: **EXECUTADA E AUDITADA**;
+- complemento Page direta: **EXECUTADO, AUDITADO E APROVADO COMO EVIDÊNCIA READ-ONLY**;
+- complemento IG User + Insights: **EXECUTADO, AUDITADO E APROVADO COMO EVIDÊNCIA READ-ONLY**;
+- Correção 003B-06 credential-aware discovery: **EXECUTADA E AUDITADA; APROVADA NO NÍVEL DE CÓDIGO/ARQUITETURA DOCUMENTADA; NÃO É PROVA E2E BISU**.
 
 003B continua **NÃO PROMOVIDA**.
 
@@ -56,178 +59,152 @@ Já executado/auditado:
 
 Canônico específico: `docs/01-produto/PAID_MEDIA_CANONICAL.md`.
 
-Mídia paga é pilar central da proposta de crescimento; orgânico também entrega valor. Permissão Ads não equivale a criar campanha/gastar. Gasto exige aprovação humana explícita, comando de domínio, idempotência e auditoria.
+Mídia paga é pilar central; orgânico também entrega valor. Permissão Ads não equivale a criar campanha/gastar. Gasto exige aprovação humana explícita, comando de domínio, idempotência e auditoria.
 
 `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` permanece obrigatório para simplicidade guiada: complexidade técnica pertence ao sistema, não ao pequeno empresário.
 
-## 5. Configurações Meta relevantes
+## 5. Arquitetura Meta vigente
 
-### Arquitetura canônica mantida
+Permanece canônico para produção:
 
-Permanece canônico para produção, até nova decisão arquitetural:
-
-- **Facebook Login for Business**;
-- **System-user access token / BISU**;
-- seleção de ativos no fluxo apropriado;
+- Facebook Login for Business;
+- System-user access token / BISU;
 - Graph API v26.0 no estado atual.
 
 App baseline:
 
-- **Trafego Pago Business Dev** — App ID `2940404272985831`;
-- configuração `Quoron Instagram Dev Login` — Configuration ID `38307908848822330`;
+- `Trafego Pago Business Dev` — App ID `2940404272985831`;
+- `Quoron Instagram Dev Login` — Configuration ID `38307908848822330`;
 - Business Portfolio Quoron ID `5301659283195806`.
 
-Configuração histórica 003A ainda não apagar:
+Experimento USER:
 
-- `Trafego Pago Dev Login` — Configuration ID `1549901823029730`.
+- app `Trafego Pago E2E Test`;
+- configuração `Quoron E2E Login` — ID `1068370819137366`;
+- User Access Token;
+- evidência diagnóstica válida, mas **não canônica**.
 
-### Experimento USER — NÃO CANÔNICO
-
-App:
-
-- **Trafego Pago E2E Test**;
-- sem Business Portfolio;
-- Instagram em API setup with Facebook login;
-- configuração `Quoron E2E Login`;
-- Configuration ID `1068370819137366`;
-- token: User Access Token;
-- `Ativos` indisponível no modo USER testado.
-
-O experimento USER é evidência diagnóstica válida, mas **não substitui o BISU como arquitetura canônica**.
-
-## 6. Conexão real do experimento USER
+## 6. Conexão USER real atual
 
 Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 
 - status ACTIVE;
 - `external_user_id=28050226117920563`;
 - `external_business_id=null`;
-- scopes:
-  - `pages_show_list`
-  - `pages_read_engagement`
-  - `instagram_basic`
-  - `instagram_manage_insights`
-  - `ads_read`
-  - `public_profile`
+- scopes: `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_manage_insights`, `ads_read`, `public_profile`;
 - token no Vault;
 - `instagram_accounts=0`;
 - `ad_accounts=0`.
 
-Ativos reais usados como fixture diagnóstica:
+O GPT reconfirmou esse snapshot no Supabase após a execução 003B-06; não houve persistência de seleção nem mutação externa.
 
-- Page Quoron — `1356474050873300`;
-- Instagram profissional `@goquoron` — `17841429590351285`.
+Ativos de fixture diagnóstica:
 
-## 7. Evidência consolidada do experimento USER
+- Page Quoron `1356474050873300`;
+- Instagram profissional `@goquoron` `17841429590351285`.
 
-### Passou
+## 7. Evidência USER consolidada
 
 Com o mesmo User Access Token:
 
 - token válido, tipo USER, app/identidade esperados;
 - `/me/adaccounts` → HTTP 200, 3 contas;
-- leitura direta da Page Quoron → HTTP 200;
+- leitura direta da Page → HTTP 200;
 - Page resolve `instagram_business_account.id=17841429590351285`;
 - leitura direta de `@goquoron` → HTTP 200;
 - `media_count=9`;
-- Insights `reach/day` → HTTP 200 com série retornada.
+- Insights `reach/day` → HTTP 200.
 
-Isso ocorreu sem `business_management`, `ads_management` e sem Page Access Token.
+Sem `business_management`, `ads_management` ou Page Access Token.
 
-### Falhou
+Falha observada:
 
-- `/me/accounts?fields=id,name,tasks` → HTTP 200, 0 itens;
-- `/me/accounts?fields=id,name,tasks,instagram_business_account` → HTTP 200, 0 itens.
+- `/me/accounts` → HTTP 200, 0 Pages.
 
-Logo o único ponto materialmente quebrado no experimento USER é a **descoberta genérica inicial de Pages por `/me/accounts`**.
+A causa interna da Meta permanece não provada. USER continua não canônico porque não satisfez descoberta automática no E2E real.
 
-A causa interna da Meta permanece **não provada**.
+## 8. Correção 003B-06 — resultado da auditoria
 
-## 8. Decisão arquitetural GPT — USER NÃO CANÔNICO
+Documentos:
 
-Decisão preservada:
+- `rodadas/gpt/CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`;
+- `rodadas/claude/RELATORIO_CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`;
+- `rodadas/gpt/AUDITORIA_CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`.
 
-- User Access Token **não** é adotado como arquitetura canônica de descoberta da 003B;
-- BISU permanece arquitetura canônica de produção até nova decisão;
-- não usar Page ID/IG ID hardcoded ou informado tecnicamente pelo cliente;
-- não adicionar scopes por tentativa;
-- não pedir/persistir Page Access Token sem prova material.
+A afirmação anterior de que `assigned_pages` era apenas hipótese fica **SUPERADA**.
 
-Motivo: o fluxo USER testado não consegue descobrir automaticamente as Pages, e exigir ID técnico viola `Simplicidade Guiada`.
+Evidência primária verificada: o SDK oficial da Meta `facebook-nodejs-business-sdk`, objeto `SystemUser`, implementa `getAssignedPages()` usando `/assigned_pages` e objetos `Page`.
 
-## 9. Achado de auditoria sobre o código de descoberta
+Arquitetura aprovada no código:
 
-`src/lib/meta/assets.ts` usa hoje `me/accounts` para descoberta de Pages independentemente do tipo de credencial.
+- USER → `/me/accounts`;
+- BISU/System User positivamente classificado → `/{system-user-id}/assigned_pages`;
+- classificação centralizada e fail-closed;
+- `SYSTEM_USER` sozinho não prova BISU;
+- `external_business_id` não é proxy;
+- classificação inconclusiva não tenta endpoint por chute;
+- Ads permanece independente.
 
-A documentação oficial Meta consultada descreve `/me/accounts` explicitamente como caminho de listagem com **User Access Token**. Isso torna legítima a pergunta sobre a compatibilidade do mesmo edge com BISU/System-user access token.
+A execução não deve ser revertida.
 
-Porém, o GPT **ainda não comprovou em fonte oficial vigente qual é o mecanismo correto e genérico de descoberta de Pages para BISU/System-user access token** no fluxo usado pelo projeto.
+## 9. O que a 003B-06 NÃO provou
 
-A menção anterior a `assigned_pages` foi apenas hipótese de investigação e não pode ser tratada como solução comprovada.
+Ainda não há prova E2E real de BISU para:
 
-## 10. Correção 003B-06 — SUSPENSA
+1. chamada de `assigned_pages` com um BISU ativo do fluxo real;
+2. permissões efetivamente exigidas pelo edge nesse arranjo;
+3. expansão `instagram_business_account` no retorno real desse edge;
+4. descoberta/seleção completa usando uma entidade cliente elegível separada do portfólio dono do app.
 
-Documento:
-
-`rodadas/gpt/CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`
-
-Status: **SUSPENSA — NÃO EXECUTAR**.
-
-Motivo: não há ainda prova documental suficiente para autorizar mudança comportamental no código.
-
-Próximo a agir: **GPT**, não Claude.
-
-Próxima obrigação do GPT:
-
-- investigar e documentar, com fonte oficial Meta, SDK oficial ou sample oficial vigente, qual é o contrato de descoberta de Pages/Instagram para BISU/System-user access token no Facebook Login for Business;
-- somente depois disso decidir se existe correção segura no código ou se o bloqueio restante é externo/arquitetural.
-
-Até essa comprovação, **não enviar `/proxima` ao Claude**.
-
-## 11. Gate externo BISU
-
-No fluxo BISU anterior, o portfólio Quoron apareceu desabilitado com:
-
-`This Meta Business Account owns the app`
-
-Esse fato permanece válido.
-
-Ainda não está decidido se esse gate externo é o único bloqueio final, porque primeiro é necessário resolver documentalmente o contrato correto de descoberta para BISU.
+No BISU anterior, o portfólio Quoron apareceu desabilitado com `This Meta Business Account owns the app`. Esse fato permanece válido.
 
 Não usar empresa/portfólio de terceiro sem nova decisão explícita do fundador.
 
-## 12. Continua NÃO autorizado
+## 10. Próxima ação autorizada — RECONCILIAÇÃO + CI
+
+Próximo a agir: **Claude Code**.
+
+Claude deve somente:
+
+1. atualizar a branch 003B com a `main` atual;
+2. resolver o conflito documental preservando esta auditoria como estado mais novo;
+3. não mudar o comportamento aprovado da 003B-06 salvo necessidade estrita de reconciliação;
+4. executar testes Meta relevantes, typecheck e lint;
+5. publicar o novo HEAD remoto e obter CI do PR;
+6. entregar HEAD, estado do PR e CI;
+7. parar em `AGUARDANDO AUDITORIA GPT`.
+
+Essa autorização é apenas de integração técnica e CI. Não autoriza novo E2E, OAuth ou alteração Meta.
+
+## 11. Continua NÃO autorizado
 
 - promover/mergear 003B automaticamente;
 - iniciar Fase 4;
 - declarar USER arquitetura definitiva;
 - remover BISU;
-- implementar `assigned_pages` ou qualquer outro edge por hipótese;
-- pedir Page ID técnico ao cliente como fluxo padrão;
 - adicionar `business_management`, `ads_management` ou outro scope por tentativa;
 - novo OAuth;
 - alterar `.env.local`;
-- mexer no acesso da Page Quoron;
+- mexer no acesso da Page/Instagram/Business Portfolio;
 - alterar App/Business Login Configuration no painel Meta;
-- criar/mover Page, Instagram, portfólio ou Ad Account;
-- usar conta/empresa de terceiro sem nova decisão explícita do fundador;
+- usar empresa/portfólio de terceiro sem nova decisão explícita;
 - expor App Secret/token;
 - pedir/imprimir/persistir Page Access Token;
 - campanha/anúncio/gasto;
 - importar conteúdo.
 
-## 13. Pendências
+## 12. Pendências
 
-- comprovar oficialmente o mecanismo de discovery para BISU/System-user access token;
-- depois decidir se 003B-06 volta a ser autorizada ou se o gate final é externo;
-- corrigir UX que hoje afirma ausência de Page quando a API apenas devolve lista vazia;
+- reconciliar PR #12 com `main` e obter CI verde no novo HEAD;
+- depois decidir o critério final de E2E/promoção da 003B;
+- corrigir UX que hoje afirma ausência de Page quando API devolve lista vazia;
 - harmonizar canônicos de mídia paga pós-003B;
 - redaction do callback em logs antes de produção;
 - leaked-password protection, SMTP/domínio, App Review/Business Verification quando aplicável.
 
-## 14. Regra de comunicação para continuidade
+## 13. Regra de comunicação para continuidade
 
-- Sempre que o fundador for instruído a abrir uma página/tela externa, fornecer o link direto.
-- O fundador não é programador: toda ação manual precisa dizer o que fazer, onde fazer e por quê.
-- Não fragmentar uma sequência lógica conhecida em pedidos sucessivos que poderiam ter sido dados juntos.
-- Não tratar hipótese sobre comportamento da Meta como fato antes de prova.
+- sempre fornecer link direto quando instruir o fundador a abrir página/tela externa;
+- explicar toda ação manual em linguagem simples;
+- não fragmentar sequência lógica conhecida;
+- não tratar hipótese sobre comportamento da Meta como fato antes de prova.
