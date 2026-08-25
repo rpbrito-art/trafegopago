@@ -160,21 +160,24 @@ No BISU anterior, o portfólio Quoron apareceu desabilitado com `This Meta Busin
 
 Não usar empresa/portfólio de terceiro sem nova decisão explícita do fundador.
 
-## 10. Próxima ação autorizada — RECONCILIAÇÃO + CI
+## 10. Reconciliação + CI — EXECUTADA
 
-Próximo a agir: **Claude Code**.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
-Claude deve somente:
+Autorização: §10 anterior — integração técnica e CI, sem E2E, OAuth ou alteração Meta.
 
-1. atualizar a branch 003B com a `main` atual;
-2. resolver o conflito documental preservando esta auditoria como estado mais novo;
-3. não mudar o comportamento aprovado da 003B-06 salvo necessidade estrita de reconciliação;
-4. executar testes Meta relevantes, typecheck e lint;
-5. publicar o novo HEAD remoto e obter CI do PR;
-6. entregar HEAD, estado do PR e CI;
-7. parar em `AGUARDANDO AUDITORIA GPT`.
+Executado:
 
-Essa autorização é apenas de integração técnica e CI. Não autoriza novo E2E, OAuth ou alteração Meta.
+- branch 003B atualizada com a `main` da auditoria por merge, sem `reset`/`clean` e sem force-push;
+- único conflito foi documental, em `estado.md`: resolvido preservando a versão de `main`, que é a auditoria mais nova;
+- **nenhuma mudança de comportamento**: o delta de código da 003B-06 permaneceu idêntico ao aprovado — `src/lib/meta/credential.ts`, `assets.ts`, `gateway.ts` e `assets.test.ts` sem alteração nesta reconciliação;
+- provas re-executadas após o merge: `vitest run src/lib/meta src/lib/actions src/components/meta` **228/228**; `tsc --noEmit` limpo; `npm run lint` limpo.
+
+Fato corrigido nesta rodada: o push anterior (`c1b3ba0`) **não disparou CI** — não havia check run para aquele SHA, então o item de CI do handoff da 003B-06 estava em aberto. A CI do novo HEAD é a que fecha esse item.
+
+Nenhum OAuth, nenhuma alteração no painel Meta, nenhuma escrita no Supabase, nenhum escopo alterado.
+
+Próximo a agir: **GPT** — auditar HEAD, PR e CI.
 
 ## 11. Continua NÃO autorizado
 
