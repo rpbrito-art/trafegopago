@@ -171,12 +171,38 @@ Decisão:
 
 O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes podem continuar a partir da `main`.
 
+### 6.1 Onboarding Meta guiado — requisito central, execução bloqueada
+
+Canônico:
+
+`docs/01-produto/META_ONBOARDING_CANONICAL.md`.
+
+Decisão do fundador:
+
+- a experiência futura de conexão Meta deve esconder do pequeno negócio a complexidade técnica sempre que possível;
+- o usuário deve lidar principalmente com login, consentimento, propriedade dos próprios ativos e decisões financeiras;
+- o Quoron deve conduzir descoberta de ativos, permissões, pendências e recuperação por fluxo guiado e oficial;
+- o usuário não deve precisar dominar Business Portfolio, System User, tokens, scopes, IDs ou APIs para o fluxo normal;
+- ativos e gasto permanecem sob controle do cliente;
+- `Permissão Meta ≠ Campanha ≠ Aprovação financeira ≠ Gasto`.
+
+Status desta capacidade:
+
+**REQUISITO CANÔNICO / PLANEJADO, MAS NÃO AUTORIZADO PARA IMPLEMENTAÇÃO E BLOQUEADO PELO GATE EXTERNO META.**
+
+A implementação só pode ser retomada depois que o fundador informar que resolveu o problema atual do portfólio empresarial restrito no Facebook/Meta ou que existe nova condição operacional comprovadamente utilizável. Nesse momento, o GPT deve primeiro verificar a documentação oficial Meta vigente e decidir a arquitetura comercial de onboarding antes de autorizar Claude Code.
+
+A existência da 003B/BISU/System User não torna essa arquitetura comercial definitiva.
+
+Este bloqueio **não altera nem suspende a 004C**, que continua independente da Meta e autorizada.
+
 ## 7. Continua NÃO autorizado fora do mandato 004C
 
 ### Meta
 
 - promover/mergear 003B;
 - iniciar importação/publicação real Instagram dependente da arquitetura ainda bloqueada;
+- implementar o onboarding Meta guiado antes da abertura explícita do gate do §6.1;
 - declarar USER arquitetura definitiva;
 - remover BISU;
 - alterar scopes/app/Business Login Configuration;
