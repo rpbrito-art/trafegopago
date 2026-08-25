@@ -209,25 +209,53 @@ Ainda usam o nome antigo como identidade corrente e devem ser atualizados semant
 - `docs/00-governanca/DOCUMENTATION_LIFECYCLE.md`;
 - `docs/00-governanca/HISTORY_SUMMARY.md` apenas na identidade/título corrente, sem reescrever histórico.
 
-## 7. Correção vigente — 004B-01
+## 7. Correção 004B-01 — EXECUTADA
 
-Mandato:
+Mandato: `rodadas/gpt/CORRECAO_004B_01_MULTI_ORG_NULLABLE_BRANDING.md`.
 
-`rodadas/gpt/CORRECAO_004B_01_MULTI_ORG_NULLABLE_BRANDING.md`.
+Branch: `claude/rodada-004b-quoron-growth-context` · PR #14.
 
-Status:
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
-**AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE.**
+Relatório: `rodadas/claude/RELATORIO_CORRECAO_004B_01_MULTI_ORG_NULLABLE_BRANDING.md`.
 
-Escopo fechado:
+Sem DDL: nenhuma migration nova; RPC e policy intactas.
 
-1. alinhar objetivo à semântica de zero/uma indisponível/múltiplas memberships e impedir mutação em tenant escolhido implicitamente;
-2. preservar `targetAudience=null` no contrato de leitura;
-3. completar branding nos documentos ativos listados;
-4. executar prova remota focada da RLS real de `growth_objectives` sob papel autenticado;
-5. testes focados + uma CI final.
+### 7.1 Contexto de organização falha fechado
 
-Sem DDL esperado. Não reexecutar os 29 casos SQL por ritual. Não tocar Meta/003B nem abrir nova feature.
+Novo `src/lib/business/organization-context.ts` — resolvedor único com a semântica já promovida em `getAccountBusinessState()`, para não haver duas definições divergentes de "a organização do usuário".
+
+`ativas[0]` e `.limit(1)` removidos. Só o contexto inequívoco devolve `organizationId`.
+
+- `getObjectiveState()` não consulta `growth_objectives` em multi-org; ganhou `negocio-indisponivel` e `multiplos-negocios`;
+- `setGrowthObjectiveAction()` não chama a RPC em contexto ambíguo ou indisponível; `organizationId` do formulário segue sem caminho até o SQL;
+- UI trata os dois estados em linguagem simples, sem id, papel ou contagem técnica; nenhum seletor multi-org adicionado.
+
+Membership `INACTIVE` continua contando para detectar múltiplos negócios.
+
+### 7.2 Nulabilidade fiel
+
+`BusinessProfileSummary.targetAudience` passou a `string | null`; `?? ""` removido. O defeito era visível: com `""` o fallback da UI não disparava e a tela mostrava campo em branco como se fosse valor. Agora mostra **Não informado**. Sem update ou backfill.
+
+### 7.3 Branding ativo
+
+Migrados os oito documentos do §5, apenas onde o nome era identidade corrente. Preservados histórico, relatórios, auditorias, migrations, o conceito `tráfego pago` em minúsculas e os identificadores técnicos legados.
+
+### 7.4 Prova RLS real
+
+`scripts/sql/growth-objectives-rls-004b01-proof.sql` → **7 casos, 7 passaram, 0 falharam**.
+
+Leitura sob `set local role authenticated` com `auth.uid()` simulado por `request.jwt.claims`, e consulta a `growth_objectives` **sem filtro de organização** — quem restringe é a policy. Diferente da prova da 004B, que avaliava a expressão como owner sem atravessar a RLS.
+
+Provado: usuário A vê exatamente 1 objetivo, o da própria organização; não vê o da B; membership `INACTIVE` lê zero; organização `INACTIVE` lê zero; `authenticated` recebe `42501` ao tentar INSERT e ao tentar executar a RPC.
+
+Resíduo após rollback: zero.
+
+### 7.5 Testes
+
+`npx vitest run` → **803/803** em 36 arquivos. Novos: contexto 12, action 13, marca 6, estados de UI 3, nulabilidade 3. `tsc --noEmit` e `lint` limpos.
+
+Os 29 casos SQL da 004B não foram repetidos: nada tocou migration, RPC ou policy.
 
 ## 8. Continua NÃO autorizado
 
@@ -274,17 +302,7 @@ Sem DDL esperado. Não reexecutar os 29 casos SQL por ritual. Não tocar Meta/00
 
 ## 9. Próximo a agir
 
-**Claude Code**.
-
-Na mesma janela do projeto, executar `/proxima`.
-
-Claude deve:
-
-1. permanecer na branch 004B;
-2. reconciliar a `main` atual;
-3. executar apenas `CORRECAO_004B_01_MULTI_ORG_NULLABLE_BRANDING.md`;
-4. se o classificador pedir aprovação para a prova RLS transacional, pedir somente esse gate ao fundador;
-5. parar em **AGUARDANDO AUDITORIA GPT**.
+**GPT** — reauditar a 004B no PR #14.
 
 ## 10. Regra de continuidade
 

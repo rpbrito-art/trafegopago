@@ -1,4 +1,4 @@
-# IMPLEMENTATION ROADMAP — Tráfego Pago MVP
+# IMPLEMENTATION ROADMAP — Quoron MVP
 
 Status: canônico como ordem de construção. Pode ser refinado por rodadas, mas não deve ser pulado sem decisão documentada.
 

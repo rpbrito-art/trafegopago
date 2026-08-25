@@ -1,9 +1,9 @@
-# LEAD NURTURING CANONICAL — TRÁFEGO PAGO
+# LEAD NURTURING CANONICAL — QUORON
 
 Status: **CANÔNICO PARA PLANEJAMENTO FUTURO DE LEADS, MICRO-CRM E NUTRIÇÃO**
 Data: 2026-08-24
 
-Este documento transforma em contrato explícito uma capacidade que já aparecia parcialmente em `MVP_CANONICAL.md`, `DATA_MODEL.md`, `TECHNICAL_SPEC.md` e `IMPLEMENTATION_ROADMAP.md`, mas ainda não estava suficientemente detalhada: o Tráfego Pago não deve apenas capturar e armazenar leads; quando a jornada do negócio envolver atendimento comercial, deve ajudar a **trabalhar o lead ao longo do tempo até o próximo desfecho relevante**, preservando simplicidade, auditabilidade e controle humano.
+Este documento transforma em contrato explícito uma capacidade que já aparecia parcialmente em `MVP_CANONICAL.md`, `DATA_MODEL.md`, `TECHNICAL_SPEC.md` e `IMPLEMENTATION_ROADMAP.md`, mas ainda não estava suficientemente detalhada: o Quoron não deve apenas capturar e armazenar leads; quando a jornada do negócio envolver atendimento comercial, deve ajudar a **trabalhar o lead ao longo do tempo até o próximo desfecho relevante**, preservando simplicidade, auditabilidade e controle humano.
 
 Este documento:
 
@@ -23,7 +23,7 @@ Uma fase de Micro-CRM **não pode ser considerada completa** se entregar apenas 
 
 ## 1. Papel do Micro-CRM no produto
 
-O Tráfego Pago não pretende competir com CRMs empresariais genéricos. O Micro-CRM existe para fechar o ciclo de aprendizagem entre marketing e resultado comercial:
+O Quoron não pretende competir com CRMs empresariais genéricos. O Micro-CRM existe para fechar o ciclo de aprendizagem entre marketing e resultado comercial:
 
 `conteúdo/criativo → distribuição → lead → atendimento → qualificação → oportunidade → resultado → aprendizado`
 
@@ -130,7 +130,7 @@ O produto deve evitar que um lead simplesmente permaneça parado em `CONTACTED` 
 
 ## 4. Next Best Action — próxima melhor ação
 
-O Tráfego Pago deve evoluir para uma camada de **Next Best Action** comercial.
+O Quoron deve evoluir para uma camada de **Next Best Action** comercial.
 
 Entrada possível:
 

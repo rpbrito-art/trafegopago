@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ROUTES } from "@/lib/auth/routes";
+import { APP_NAME } from "@/lib/brand";
 
 /**
  * Moldura comum das telas de autenticação.
@@ -28,7 +29,7 @@ export function AuthShell({
           href={ROUTES.home}
           className="text-xs font-medium uppercase tracking-wide text-neutral-500"
         >
-          Tráfego Pago
+          {APP_NAME}
         </Link>
         <h1 className="text-xl font-semibold">{title}</h1>
         {description ? (

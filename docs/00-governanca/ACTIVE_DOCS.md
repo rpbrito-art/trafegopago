@@ -1,4 +1,4 @@
-# ACTIVE DOCS — TRÁFEGO PAGO
+# ACTIVE DOCS — QUORON
 
 Status: índice canônico estável.
 Atualizado: 2026-08-24.

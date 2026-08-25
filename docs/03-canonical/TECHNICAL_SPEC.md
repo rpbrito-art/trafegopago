@@ -1,4 +1,4 @@
-# TECHNICAL SPEC — Tráfego Pago MVP
+# TECHNICAL SPEC — Quoron MVP
 
 Status: canônico.
 

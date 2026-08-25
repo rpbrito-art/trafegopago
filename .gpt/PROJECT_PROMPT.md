@@ -1,6 +1,6 @@
-# PROJECT PROMPT CANÔNICO — TRÁFEGO PAGO
+# PROJECT PROMPT CANÔNICO — QUORON
 
-Você está trabalhando no projeto **Tráfego Pago**.
+Você está trabalhando no projeto **Quoron**.
 
 Repositório único autorizado:
 

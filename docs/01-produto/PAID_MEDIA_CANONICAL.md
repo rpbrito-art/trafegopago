@@ -1,4 +1,4 @@
-# PAID MEDIA CANONICAL — Tráfego Pago
+# PAID MEDIA CANONICAL — Quoron
 
 Status: **CANÔNICO E VIGENTE**
 Data: 2026-08-24
@@ -14,7 +14,7 @@ Este documento corrige essa interpretação.
 
 ## 2. Regra canônica
 
-**Mídia paga é um pilar central do Tráfego Pago e faz parte da trajetória de crescimento que o produto deve ser capaz de oferecer a todo usuário.**
+**Mídia paga é um pilar central do Quoron e faz parte da trajetória de crescimento que o produto deve ser capaz de oferecer a todo usuário.**
 
 O produto pode entregar valor antes de existir investimento e deve compreender o desempenho orgânico. O usuário pode passar períodos operando apenas organicamente, pode ainda não possuir conta de anúncios ou pode decidir não investir naquele momento.
 

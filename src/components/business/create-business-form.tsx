@@ -6,7 +6,6 @@ import {
   createInitialBusinessAction,
   type BusinessFormState,
 } from "@/app/actions/business";
-import { MAX_COMMERCIAL_GOAL_LENGTH } from "@/lib/business/schemas";
 
 const initialState: BusinessFormState = {};
 
@@ -57,52 +56,11 @@ export function CreateBusinessForm() {
         multiline
         state={state}
       />
-      <Field
-        name="averageTicket"
-        label="Ticket médio (opcional)"
-        hint="Em reais. Ex.: 1.250,00."
-        inputMode="decimal"
-        maxLength={20}
-        state={state}
-      />
-      <Field
-        name="targetAudience"
-        label="Público-alvo"
-        maxLength={280}
-        required
-        multiline
-        state={state}
-      />
-      <Field
-        name="differentiators"
-        label="Principais diferenciais (opcional)"
-        maxLength={1000}
-        multiline
-        state={state}
-      />
-      <Field
-        name="knownObjections"
-        label="Principais objeções conhecidas (opcional)"
-        maxLength={1000}
-        multiline
-        state={state}
-      />
-      <Field
-        name="acquisitionGoal"
-        label="Objetivo de aquisição"
-        hint="O que você quer conseguir com marketing pago agora."
-        maxLength={280}
-        required
-        multiline
-        state={state}
-      />
-      <Field
-        name="commercialGoal"
-        label="Meta comercial (opcional)"
-        maxLength={MAX_COMMERCIAL_GOAL_LENGTH}
-        multiline
-        state={state}
-      />
+      <p className="text-sm text-neutral-600">
+        Só isso por enquanto. Depois de criar o negócio, você define o objetivo
+        atual — e o restante do contexto é completado aos poucos, conforme fizer
+        diferença.
+      </p>
 
       {state?.message ? (
         <p role="alert" className="text-sm text-red-700">

@@ -1,4 +1,4 @@
-# API CONTRACTS — Tráfego Pago MVP
+# API CONTRACTS — Quoron MVP
 
 Status: canônico em nível de contrato. Endpoints/campos externos devem ser revalidados contra documentação vigente no momento da implementação.
 

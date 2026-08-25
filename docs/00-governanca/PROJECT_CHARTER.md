@@ -1,4 +1,4 @@
-# PROJECT CHARTER — Tráfego Pago
+# PROJECT CHARTER — Quoron
 
 ## 1. Mandato
 

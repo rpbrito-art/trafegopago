@@ -3,9 +3,10 @@ import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { SignUpForm } from "@/components/auth/sign-up-form";
 import { ROUTES } from "@/lib/auth/routes";
+import { pageTitle } from "@/lib/brand";
 
 export const metadata = {
-  title: "Criar conta — Tráfego Pago",
+  title: pageTitle("Criar conta"),
 };
 
 export default function CadastroPage() {

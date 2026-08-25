@@ -114,21 +114,62 @@ describe("createInitialBusinessAction", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("cria o negócio e leva para a conta", async () => {
+  it("cria o negócio e leva para o próximo passo: o objetivo", async () => {
+    // Terminar em `/conta` deixaria a pessoa numa tela de resumo sem dizer o
+    // que fazer agora (mandato 004B §5.2).
     const destino = await capturarRedirect(() =>
-      createInitialBusinessAction(undefined, form({ averageTicket: "1.250,00" })),
+      createInitialBusinessAction(undefined, form()),
     );
 
-    expect(destino).toBe(ROUTES.account);
+    expect(destino).toBe(ROUTES.objective);
     expect(rpc).toHaveBeenCalledTimes(1);
 
     const [nome, args] = rpc.mock.calls[0]!;
 
     expect(nome).toBe("bootstrap_organization_business_profile");
     expect(args.p_user_id).toBe(USER_ID);
-    expect(args.p_average_ticket_minor).toBe(125_000);
     expect(args.p_currency).toBe("BRL");
     expect(args.p_timezone).toBe("America/Sao_Paulo");
+  });
+
+  it("o contexto progressivo nasce nulo, não como string vazia", async () => {
+    // Ausência é `NULL`: string vazia afirmaria um dado que ninguém informou, e
+    // o CHECK `..._not_blank` da tabela a recusaria.
+    await capturarRedirect(() => createInitialBusinessAction(undefined, form()));
+
+    const [, args] = rpc.mock.calls[0]!;
+
+    for (const campo of [
+      "p_target_audience",
+      "p_acquisition_goal",
+      "p_average_ticket_minor",
+      "p_differentiators",
+      "p_known_objections",
+      "p_commercial_goal_json",
+    ]) {
+      expect(args[campo], campo).toBeNull();
+    }
+  });
+
+  it("campos progressivos enviados no POST não alcançam a RPC", async () => {
+    // O primeiro formulário não os pede; enviá-los à força não deve inseri-los
+    // pela porta dos fundos.
+    await capturarRedirect(() =>
+      createInitialBusinessAction(
+        undefined,
+        form({
+          targetAudience: "Injetado pelo cliente",
+          acquisitionGoal: "Injetado pelo cliente",
+          averageTicket: "1.250,00",
+        }),
+      ),
+    );
+
+    const [, args] = rpc.mock.calls[0]!;
+
+    expect(args.p_target_audience).toBeNull();
+    expect(args.p_acquisition_goal).toBeNull();
+    expect(args.p_average_ticket_minor).toBeNull();
   });
 
   it("usa a identidade verificada e ignora a enviada pelo formulário", async () => {

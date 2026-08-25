@@ -173,3 +173,59 @@ describe("BusinessSection", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Correção 004B-01 — nulabilidade fiel e branding ativo
+// ---------------------------------------------------------------------------
+
+describe("público ausente", () => {
+  it("mostra “Não informado” em vez de um campo em branco", () => {
+    // Com `?? ""` o valor chegava como string vazia: não é `null`, então o
+    // fallback não disparava e a tela exibia um campo vazio como se fosse um
+    // valor (auditoria 004B §6.2).
+    const texto = textOf(
+      BusinessSection({ state: {
+        kind: "pronta",
+        organization: ORGANIZACAO,
+        profile: { ...PERFIL, targetAudience: null },
+      } }),
+    );
+
+    expect(texto).toContain("Público-alvo");
+    expect(texto).toContain("Não informado");
+  });
+
+  it("público informado continua aparecendo", () => {
+    const texto = textOf(
+      BusinessSection({ state: {
+        kind: "pronta",
+        organization: ORGANIZACAO,
+        profile: { ...PERFIL, targetAudience: "Adultos de 30 a 55 anos" },
+      } }),
+    );
+
+    expect(texto).toContain("Adultos de 30 a 55 anos");
+  });
+
+  it("perfil recém-criado mostra todos os progressivos como não informados", () => {
+    // É o estado normal logo após o onboarding reduzido.
+    const texto = textOf(
+      BusinessSection({ state: {
+        kind: "pronta",
+        organization: ORGANIZACAO,
+        profile: {
+          ...PERFIL,
+          targetAudience: null,
+          differentiators: null,
+          knownObjections: null,
+          acquisitionGoal: null,
+          commercialGoal: null,
+          averageTicketMinor: null,
+        },
+      } }),
+    );
+
+    expect(texto).not.toContain("undefined");
+    expect(texto).not.toContain("null");
+  });
+});
