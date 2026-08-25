@@ -35,7 +35,7 @@ PR #12: **draft, open, não mergeado, mergeable=true**.
 
 HEAD reconciliado e auditado: `377756b08b02895b900cad04c6bf7ec13e6e0fd5`.
 
-CI final auditada: `32848304161` — **success**.
+CI final auditada antes da 003B-08: `32848304161` — **success**.
 
 Já executado/auditado:
 
@@ -53,6 +53,12 @@ Já executado/auditado:
 - CI do HEAD reconciliado: **verde**.
 
 003B continua **NÃO PROMOVIDA**.
+
+Correção vigente:
+
+`rodadas/gpt/CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md`
+
+Status da 003B-08: **AUTORIZADA, AINDA NÃO EXECUTADA/AUDITADA**.
 
 ## 4. Produto — mídia paga
 
@@ -154,7 +160,24 @@ Arquitetura aprovada no código:
 
 A execução não deve ser revertida.
 
-## 10. Gate E2E BISU — ESTADO ATUAL
+## 10. Bug de reconexão observado — 003B-08
+
+Na tela real, o estado `conexao-recusada` mostra:
+
+`A Meta não aceitou mais a autorização atual. Conecte novamente para retomar de onde parou.`
+
+Mas o componente não oferece o botão correspondente.
+
+Causa confirmada no código:
+
+- `src/components/meta/meta-assets-section.tsx`: ramo `conexao-recusada` não renderiza `MetaConnectButton`;
+- `src/components/meta/meta-assets-section.test.tsx`: teste atual inclusive exige que `conexao-recusada` não tenha botão.
+
+O fluxo de servidor existente já suporta reautorização sem apagar a conexão anterior: `MetaConnectButton` → `connectMetaAction` → `startMetaAuthorization`; no callback, a conexão viva é retomada e o segredo só é substituído após autorização bem-sucedida.
+
+A correção autorizada deve apenas disponibilizar **Conectar novamente** nesse ramo e ajustar os testes correspondentes.
+
+## 11. Gate E2E BISU — ESTADO ATUAL
 
 Ainda falta E2E real de BISU para provar:
 
@@ -163,26 +186,32 @@ Ainda falta E2E real de BISU para provar:
 3. expansão `instagram_business_account` no retorno real;
 4. descoberta/seleção completa em entidade cliente elegível.
 
-Não há vaga para criar terceiro portfólio. Antes de escolher uma fixture existente, o inventário Meta deve ser reconstruído corretamente, distinguindo Quoron, Bizzman5po e BizzManiq1 e provando quais deles contam para o limite e qual papel cada um exerce.
+Não há vaga para criar terceiro portfólio. O inventário Meta ainda precisa ser reconstruído corretamente, distinguindo Quoron, Bizzman5po e BizzManiq1 e provando qual papel cada um exerce.
 
-## 11. Próxima ação autorizada
+A 003B-08 é independente desse inventário: ela apenas restaura na UI a ação de reconectar já suportada pelo backend.
 
-Próximo a agir: **GPT**.
+## 12. Próxima ação autorizada
 
-GPT deve reconstruir o inventário Meta real antes de nova instrução manual:
+Próximo a agir: **Claude Code**.
 
-1. identificar exatamente os dois Business Portfolios que contam para o limite;
-2. confirmar o papel/estado de `BizzManiq1`;
-3. confirmar o estado/restrição de `Bizzman5po`;
-4. determinar se algum recurso existente pode funcionar legitimamente como cliente do E2E BISU.
+Executar somente `rodadas/gpt/CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md` na branch `claude/rodada-003b-meta-asset-discovery-selection`.
 
-Até essa reconstrução, **nenhuma nova ação manual do fundador está autorizada**.
+Claude deve:
 
-## 12. Continua NÃO autorizado
+1. adicionar `MetaConnectButton` com rótulo `Conectar novamente` ao estado `conexao-recusada`;
+2. ajustar os testes para exigir esse botão e remover a expectativa antiga que o proibia;
+3. não alterar banco, migration, `.env.local`, Meta App, Business Login Configuration, scopes ou tokens;
+4. executar testes Meta/actions/componentes, typecheck e lint;
+5. publicar novo HEAD e obter CI no PR #12;
+6. parar em `AGUARDANDO AUDITORIA GPT`.
+
+Depois da auditoria GPT, se aprovada, o fundador poderá recarregar a aplicação local e usar **Conectar novamente** para testar outra autorização.
+
+## 13. Continua NÃO autorizado
 
 - criar terceiro Business Portfolio;
 - excluir `Bizzman5po` por tentativa;
-- promover/mergear 003B antes do E2E BISU;
+- promover/mergear 003B antes do gate correspondente;
 - iniciar Fase 4;
 - declarar USER arquitetura definitiva;
 - remover BISU;
@@ -194,9 +223,10 @@ Até essa reconstrução, **nenhuma nova ação manual do fundador está autoriz
 - campanha/anúncio/gasto;
 - importar conteúdo.
 
-## 13. Pendências
+## 14. Pendências
 
-- reconstruir inventário Meta real sem confundir nomes;
+- executar/auditar Correção 003B-08;
+- depois reconstruir inventário Meta real sem confundir nomes;
 - definir fixture BISU elegível usando recursos existentes, se possível;
 - executar E2E BISU real;
 - se passar, decidir promoção da 003B;
@@ -205,7 +235,7 @@ Até essa reconstrução, **nenhuma nova ação manual do fundador está autoriz
 - redaction do callback em logs antes de produção;
 - leaked-password protection, SMTP/domínio, App Review/Business Verification quando aplicável.
 
-## 14. Regra de comunicação para continuidade
+## 15. Regra de comunicação para continuidade
 
 - sempre fornecer link direto quando instruir o fundador a abrir página/tela externa;
 - explicar toda ação manual em linguagem simples;
