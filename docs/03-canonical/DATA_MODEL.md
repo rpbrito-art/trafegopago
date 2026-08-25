@@ -51,6 +51,47 @@ Constraint única `(organization_id, user_id)`.
 - commercial_goal_json estruturado
 - created_at/updated_at
 
+`business_profiles` é a **primeira camada** do contexto do negócio, não sua forma final (`GROWTH_INTELLIGENCE_CANONICAL.md` §3.1). `primary_offer` permanece como texto legado: não é a fonte canônica da oferta e não deve ser convertido automaticamente na estrutura abaixo.
+
+### business_offers
+
+Identidade estável de uma oferta ao longo do tempo. Implementada na Rodada 004C.
+
+- id
+- organization_id
+- status (`ACTIVE|ARCHIVED`)
+- created_by (`auth.users`, `on delete set null`)
+- created_at
+- archived_at
+
+Unique `(organization_id, id)` para permitir FK composta tenant-safe das versões. O fluxo normal não usa DELETE: arquivar preserva identidade e histórico.
+
+### business_offer_versions
+
+Conteúdo versionado da oferta. Uma edição material não sobrescreve a versão anterior.
+
+- id
+- organization_id
+- offer_id
+- version_no
+- name
+- offer_type (`PRODUCT|SERVICE|PACKAGE|OTHER`)
+- description opcional
+- value_proposition opcional
+- price_mode (`FIXED|STARTING_AT|RANGE|QUOTE|FREE|NOT_INFORMED`)
+- price_min_minor / price_max_minor em unidade menor inteira
+- currency (moeda padrão da organização, validada server-side)
+- created_by (`auth.users`, `on delete set null`)
+- created_at
+- superseded_at
+
+Invariantes:
+
+- FK composta `(organization_id, offer_id)` → `business_offers (organization_id, id)`;
+- no máximo uma versão corrente por oferta (`superseded_at is null`);
+- cada `price_mode` admite exatamente uma forma de valor; `QUOTE`, `FREE` e `NOT_INFORMED` não persistem número;
+- escrita somente por RPC `service_role`; browser sem INSERT/UPDATE/DELETE.
+
 ## 3. Integração Meta
 
 ### meta_connections

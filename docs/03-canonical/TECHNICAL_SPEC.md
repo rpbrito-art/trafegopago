@@ -42,9 +42,11 @@ Responsável por autenticação, sessão e perfil do usuário.
 
 Responsável por organizações, memberships, papéis e isolamento tenant.
 
-### 3.3 Business Profile
+### 3.3 Business Context
 
-Contexto empresarial usado por regras e IA: oferta, público, ticket, objetivos e limites.
+Contexto empresarial usado por regras e IA: público, ticket, objetivos e limites.
+
+`business_profiles` é a **primeira camada** desse contexto, não sua forma final (`GROWTH_INTELLIGENCE_CANONICAL.md` §3.1). O que a empresa oferece vive em `business_offers` + `business_offer_versions`, e o objetivo atual em `growth_objectives`; `business_profiles.primary_offer` permanece como texto legado e não é a fonte canônica da oferta.
 
 ### 3.4 Meta Auth
 

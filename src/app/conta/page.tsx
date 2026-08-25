@@ -2,10 +2,12 @@ import { SignOutButton } from "@/components/auth/sign-out-button";
 import { BusinessSection } from "@/components/business/business-section";
 import { MetaSection, type MetaResultado } from "@/components/meta/meta-section";
 import { ObjectiveSection } from "@/components/growth/objective-section";
+import { OffersSection } from "@/components/offers/offers-section";
 import { requireUser } from "@/lib/auth/session";
 import { getAccountBusinessState } from "@/lib/business/account";
 import { getMetaConnectionState } from "@/lib/meta/connection-state";
 import { getObjectiveState } from "@/lib/growth/objective-state";
+import { getOffersState } from "@/lib/offers/offer-catalog";
 import { pageTitle } from "@/lib/brand";
 
 export const metadata = {
@@ -42,6 +44,10 @@ export default async function ContaPage({
   // Objetivo aparece como resumo/CTA aqui; a definição mora em `/objetivo`.
   // Ausência é estado válido e não bloqueia conta nem conexão.
   const objectiveState = await getObjectiveState();
+
+  // Ofertas aparecem como resumo/CTA aqui; o cadastro mora em `/ofertas`.
+  // Catálogo vazio é estado válido e não bloqueia nada.
+  const offersState = await getOffersState();
 
   // Marcadores pobres de desfecho — nada do provider atravessa a URL. Valor
   // desconhecido é descartado em vez de chegar à tela.
@@ -80,6 +86,8 @@ export default async function ContaPage({
       <BusinessSection state={state} />
 
       <ObjectiveSection state={objectiveState} />
+
+      <OffersSection state={offersState} />
 
       <MetaSection state={metaState} resultado={resultadoMeta} />
 

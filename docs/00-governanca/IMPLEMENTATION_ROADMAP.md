@@ -4,7 +4,9 @@ Status: canônico como ordem de construção. Pode ser refinado por rodadas, mas
 
 ## Regra de interpretação
 
-As fases descrevem **dependências e capacidades**, não um funil obrigatório que todo cliente percorre na mesma ordem. Uma capacidade construída na Fase N não implica que todo negócio a use: mídia paga, Lead Ads e desfecho comercial são ramos, não etapas universais (`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`).
+As fases descrevem **dependências e capacidades**, não um funil obrigatório que todo cliente percorre na mesma ordem. Uma capacidade construída na Fase N não implica que todo negócio a use **naquele momento**: Lead Ads e desfecho comercial são ramos, não etapas universais (`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`).
+
+Mídia paga não entra nessa lista. Ela é pilar central da trajetória do produto (`docs/01-produto/PAID_MEDIA_CANONICAL.md` §2): o usuário não é obrigado a gastar para começar, mas a capacidade deve estar disponível e integrada. Permissão técnica, campanha, aprovação e gasto continuam sendo etapas distintas, e nenhuma delas é automática.
 
 Antes de iniciar cada fase que toque Meta, produto ou experiência, revalidar:
 

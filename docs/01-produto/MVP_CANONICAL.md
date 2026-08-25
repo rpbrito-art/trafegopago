@@ -17,7 +17,7 @@ O ciclo canônico é:
 
 `contexto do negócio → objetivo → jornada desejada → público/personas → conteúdo/criativo → distribuição orgânica, paga ou ambas → evento mensurável → resultado → aprendizado → próxima recomendação`
 
-Mídia paga é uma **capacidade** desse ciclo, não pré-condição de valor: o produto deve entregar inteligência útil em modo puramente orgânico e ampliar para investimento quando isso servir ao objetivo do negócio.
+Mídia paga é **pilar central** desse ciclo, e não um ramo eventual: o produto deve possuir e evoluir capacidades de leitura, criação, medição, experimentação e escala de mídia paga (`PAID_MEDIA_CANONICAL.md` §§2–3). O que é opcional é **gastar agora**: o produto entrega inteligência útil em modo puramente orgânico, e conduz para investimento quando houver base, objetivo e segurança suficientes.
 
 A publicação e o gerenciamento de anúncios são meios. O valor está em decidir melhor o que testar, medir o resultado real até onde a observabilidade permitir e aprender continuamente.
 
@@ -26,7 +26,7 @@ A publicação e o gerenciamento de anúncios são meios. O valor está em decid
 Pequenas empresas que:
 
 - operam Instagram profissional;
-- podem ou não investir em Meta Ads — investimento é opcional;
+- podem ainda não investir em Meta Ads, ou não ter conta de anúncios — ausência temporária de investimento é um estado do negócio, não evidência de que mídia paga seja periférica na proposta de valor;
 - buscam um resultado mensurável, que nem sempre é lead ou venda direta;
 - não dispõem de equipe analítica sofisticada;
 - precisam de orientação objetiva sobre conteúdo, distribuição e resultado.
