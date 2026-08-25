@@ -20,25 +20,38 @@ import { calcularFingerprint } from "./fingerprint";
 import type { DeclaredContextSnapshot } from "./snapshot";
 
 /**
- * Execução da revisão de contexto declarado (Rodada 004E §§8 e 9).
+ * Execução da revisão de contexto declarado (Rodada 004E §§8 e 9, endurecida
+ * pela Correção 004E-01 §4).
  *
  * Esta é a primeira feature do Quoron que gasta dinheiro real, e a ordem das
  * verificações é a proteção principal:
  *
- * 1. cache por fingerprint — antes de qualquer coisa;
- * 2. papel: só owner/admin geram custo novo;
- * 3. limite de 3 chamadas não cacheadas por organização por hora, medido pela
- *    evidência persistida em `ai_runs`, não por estado do browser;
- * 4. só então o Router, que resolve modelo, abre o ledger e chama o provider;
- * 5. grounding validado antes de persistir ou exibir qualquer coisa.
+ * 1. cache por fingerprint — leitura barata, antes de qualquer coisa;
+ * 2. **reserva atômica** no banco, que decide num único passo serializado se
+ *    há cache, se já existe execução em andamento para o mesmo contexto, se o
+ *    papel autoriza e se ainda há vaga na janela de uma hora;
+ * 3. só quem adquire a reserva chega ao Router;
+ * 4. grounding validado antes de persistir ou exibir qualquer coisa;
+ * 5. a reserva é fechada em qualquer desfecho.
  *
- * Nenhuma dessas etapas pode viver na UI: uma tela é sugestão, um limite
- * server-side é limite (`SECURITY_MODEL.md` §19).
+ * A auditoria da 004E mostrou por que o passo 2 não pode ser feito em etapas
+ * separadas na aplicação: duas requisições simultâneas encontravam o mesmo
+ * "sem cache" e a mesma contagem abaixo do teto, e as duas pagavam. O botão
+ * desabilitado do formulário evita duplo clique acidental; não é controle de
+ * concorrência.
  */
 
-/** Janela e teto de chamadas não cacheadas por organização. */
-export const RATE_LIMIT_JANELA_MS = 60 * 60 * 1000;
+/** Teto de tentativas por organização na janela móvel de uma hora. */
 export const RATE_LIMIT_MAX_CHAMADAS = 3;
+
+/**
+ * Validade da reserva.
+ *
+ * Maior que o timeout do adapter (45s), para que uma chamada lenta não perca a
+ * própria reserva; e curta o bastante para que um processo morto não trave o
+ * contexto por muito tempo.
+ */
+export const RESERVA_TTL_SEGUNDOS = 120;
 
 export type ReviewRecord = {
   id: string;
@@ -51,10 +64,12 @@ export type ReviewOutcome =
   /** Já existia revisão para este contexto: nenhuma chamada foi feita. */
   | { kind: "cache"; review: ReviewRecord }
   | { kind: "criada"; review: ReviewRecord }
+  /** Outra requisição já está revisando este mesmo contexto agora. */
+  | { kind: "em-andamento" }
   /** Papel não autoriza gerar custo novo. */
   | { kind: "sem-permissao" }
   /** Teto horário atingido. */
-  | { kind: "limite-atingido"; disponivelEm: string }
+  | { kind: "limite-atingido" }
   /** O provider respondeu, mas o output não passou no grounding/schema. */
   | { kind: "revisao-invalida" }
   | { kind: "erro-tecnico" };
@@ -64,11 +79,10 @@ type Supabase = ReturnType<typeof createSupabasePrivilegedClient>;
 export type DeclaredContextReviewDeps = {
   supabase?: Supabase;
   router?: AIRouter;
-  agora?: () => Date;
 };
 
-/** Papéis que podem gerar custo novo nesta versão. */
-const PAPEIS_QUE_REVISAM = ["owner", "admin"];
+/** SQLSTATE devolvido pela RPC quando o papel não autoriza. */
+const NAO_AUTORIZADO = "42501";
 
 function criarRouterPadrao(supabase: Supabase): AIRouter {
   return criarAIRouter({
@@ -119,43 +133,108 @@ export async function buscarRevisaoPorFingerprint(input: {
   };
 }
 
+type Reserva =
+  | { outcome: "CACHE" }
+  | { outcome: "IN_FLIGHT" }
+  | { outcome: "RATE_LIMITED" }
+  | { outcome: "RESERVED"; attemptId: string }
+  | { outcome: "SEM_PERMISSAO" }
+  | { outcome: "ERRO" };
+
 /**
- * Chamadas não cacheadas da organização na janela corrente.
+ * Adquire — ou não — o direito de chamar o provider.
  *
- * Conta `ai_runs` desta task — qualquer status. Contar só sucesso deixaria o
- * caminho aberto para queimar a cota com falhas: a chamada ao provider já
- * aconteceu, e é ela que custa.
+ * Toda a decisão acontece dentro de uma transação serializada por organização,
+ * no banco. Falha de comunicação vira `ERRO` e **não** libera a chamada: sem
+ * saber se há vaga, permitir mais uma abriria o teto justamente quando o
+ * sistema está cego.
  */
-async function contarChamadasNaJanela(input: {
+async function adquirirReserva(input: {
   supabase: Supabase;
+  userId: string;
   organizationId: string;
-  desde: Date;
-}): Promise<number | null> {
-  const { count, error } = await input.supabase
-    .from("ai_runs")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", input.organizationId)
-    .eq("task_type", DECLARED_CONTEXT_REVIEW_TASK_TYPE)
-    .gte("created_at", input.desde.toISOString());
+  fingerprint: string;
+}): Promise<Reserva> {
+  const { data, error } = await input.supabase.rpc(
+    "acquire_declared_context_review_slot",
+    {
+      p_user_id: input.userId,
+      p_organization_id: input.organizationId,
+      p_input_fingerprint: input.fingerprint,
+      p_task_type: DECLARED_CONTEXT_REVIEW_TASK_TYPE,
+      p_task_version: DECLARED_CONTEXT_REVIEW_TASK_VERSION,
+      p_prompt_version: DECLARED_CONTEXT_REVIEW_PROMPT_VERSION,
+      p_schema_version: DECLARED_CONTEXT_REVIEW_SCHEMA_VERSION,
+      p_max_per_hour: RATE_LIMIT_MAX_CHAMADAS,
+      p_ttl_seconds: RESERVA_TTL_SEGUNDOS,
+    },
+  );
 
-  if (error) return null;
+  if (error) {
+    if (error.code === NAO_AUTORIZADO) return { outcome: "SEM_PERMISSAO" };
 
-  return count ?? 0;
+    console.error("falha ao adquirir reserva de revisao", {
+      code: error.code ?? null,
+    });
+    return { outcome: "ERRO" };
+  }
+
+  // A RPC devolve uma tabela de uma linha.
+  const linha = Array.isArray(data) ? data[0] : data;
+  const outcome = (linha as { outcome?: string } | null)?.outcome;
+
+  if (outcome === "CACHE") return { outcome: "CACHE" };
+  if (outcome === "IN_FLIGHT") return { outcome: "IN_FLIGHT" };
+  if (outcome === "RATE_LIMITED") return { outcome: "RATE_LIMITED" };
+
+  if (outcome === "RESERVED") {
+    const attemptId = (linha as { attempt_id?: string }).attempt_id;
+    if (typeof attemptId === "string") return { outcome: "RESERVED", attemptId };
+  }
+
+  return { outcome: "ERRO" };
+}
+
+/** Fecha a reserva. O desfecho da revisão não depende disto ter dado certo. */
+async function finalizarReserva(input: {
+  supabase: Supabase;
+  attemptId: string;
+  organizationId: string;
+  status: "COMPLETED" | "FAILED";
+  aiRunId?: string | null;
+}): Promise<void> {
+  const { error } = await input.supabase.rpc(
+    "finalize_declared_context_review_attempt",
+    {
+      p_attempt_id: input.attemptId,
+      p_organization_id: input.organizationId,
+      p_status: input.status,
+      p_ai_run_id: input.aiRunId ?? null,
+    },
+  );
+
+  // Reserva não fechada expira sozinha; registrar basta. Derrubar a revisão
+  // por causa disso descartaria um resultado que já foi pago.
+  if (error) {
+    console.error("falha ao finalizar reserva de revisao", {
+      code: error.code ?? null,
+    });
+  }
 }
 
 /**
  * Gera — ou reaproveita — a revisão do contexto declarado.
  *
- * `role` vem da membership resolvida no servidor, nunca do formulário.
+ * `role` chega apenas para a decisão de UI; a autorização que vale é a da RPC,
+ * que lê papel e status da membership no banco.
  */
 export async function revisarContextoDeclarado(input: {
   organizationId: string;
-  role: string;
+  userId: string;
   snapshot: DeclaredContextSnapshot;
   deps?: DeclaredContextReviewDeps;
 }): Promise<ReviewOutcome> {
   const supabase = input.deps?.supabase ?? createSupabasePrivilegedClient();
-  const agora = input.deps?.agora ?? (() => new Date());
 
   const fingerprint = calcularFingerprint({
     snapshot: input.snapshot,
@@ -165,37 +244,40 @@ export async function revisarContextoDeclarado(input: {
     schemaVersion: DECLARED_CONTEXT_REVIEW_SCHEMA_VERSION,
   });
 
-  // Cache primeiro, sempre. Antes do papel, antes do limite: reexibir uma
-  // revisão que já existe não gasta nada e não precisa de permissão de escrita.
-  const existente = await buscarRevisaoPorFingerprint({
+  const buscarCache = () =>
+    buscarRevisaoPorFingerprint({
+      supabase,
+      organizationId: input.organizationId,
+      fingerprint,
+    });
+
+  // Cache primeiro, e fora da reserva: reexibir uma revisão que já existe não
+  // gasta nada e não exige permissão de escrita — um member precisa conseguir
+  // ler o que a organização já revisou.
+  const existente = await buscarCache();
+
+  if (existente) return { kind: "cache", review: existente };
+
+  const reserva = await adquirirReserva({
     supabase,
+    userId: input.userId,
     organizationId: input.organizationId,
     fingerprint,
   });
 
-  if (existente) return { kind: "cache", review: existente };
+  if (reserva.outcome === "SEM_PERMISSAO") return { kind: "sem-permissao" };
+  if (reserva.outcome === "RATE_LIMITED") return { kind: "limite-atingido" };
+  if (reserva.outcome === "IN_FLIGHT") return { kind: "em-andamento" };
+  if (reserva.outcome === "ERRO") return { kind: "erro-tecnico" };
 
-  if (!PAPEIS_QUE_REVISAM.includes(input.role)) return { kind: "sem-permissao" };
-
-  const instante = agora();
-  const desde = new Date(instante.getTime() - RATE_LIMIT_JANELA_MS);
-
-  const chamadas = await contarChamadasNaJanela({
-    supabase,
-    organizationId: input.organizationId,
-    desde,
-  });
-
-  // Falha ao contar não libera a chamada: sem saber quantas já houve, permitir
-  // mais uma é abrir o teto justamente quando o sistema está cego.
-  if (chamadas === null) return { kind: "erro-tecnico" };
-
-  if (chamadas >= RATE_LIMIT_MAX_CHAMADAS) {
-    return {
-      kind: "limite-atingido",
-      disponivelEm: new Date(instante.getTime() + RATE_LIMIT_JANELA_MS).toISOString(),
-    };
+  if (reserva.outcome === "CACHE") {
+    // Corrida perdida por pouco: alguém concluiu a mesma revisão entre a nossa
+    // leitura e a reserva. O resultado dela serve.
+    const agora = await buscarCache();
+    return agora ? { kind: "cache", review: agora } : { kind: "erro-tecnico" };
   }
+
+  const { attemptId } = reserva;
 
   const router = input.deps?.router ?? criarRouterPadrao(supabase);
 
@@ -206,7 +288,17 @@ export async function revisarContextoDeclarado(input: {
     organizationId: input.organizationId,
   });
 
-  if (!resultado.ok) return { kind: "erro-tecnico" };
+  if (!resultado.ok) {
+    await finalizarReserva({
+      supabase,
+      attemptId,
+      organizationId: input.organizationId,
+      status: "FAILED",
+      aiRunId: resultado.runId,
+    });
+
+    return { kind: "erro-tecnico" };
+  }
 
   // Grounding depois do schema: a forma pode estar perfeita e as afirmações
   // ainda assim citarem evidência que não existe. Referência inventada invalida
@@ -214,7 +306,17 @@ export async function revisarContextoDeclarado(input: {
   // tem base (mandato §5.3).
   const grounding = validarGrounding(resultado.output, input.snapshot);
 
-  if (!grounding.ok) return { kind: "revisao-invalida" };
+  if (!grounding.ok) {
+    await finalizarReserva({
+      supabase,
+      attemptId,
+      organizationId: input.organizationId,
+      status: "FAILED",
+      aiRunId: resultado.runId,
+    });
+
+    return { kind: "revisao-invalida" };
+  }
 
   const { data, error } = await supabase
     .from("declared_context_reviews")
@@ -233,14 +335,31 @@ export async function revisarContextoDeclarado(input: {
     .single();
 
   if (error || !data) {
-    // A chamada já custou; o artefato não pôde ser guardado. Reportar como
-    // erro técnico é honesto — devolver a revisão sem persistir faria o
-    // próximo acesso pagar de novo pela mesma resposta.
     console.error("falha ao persistir revisao de contexto", {
       code: (error as { code?: string } | null)?.code ?? null,
     });
+
+    await finalizarReserva({
+      supabase,
+      attemptId,
+      organizationId: input.organizationId,
+      status: "FAILED",
+      aiRunId: resultado.runId,
+    });
+
+    // A chamada já aconteceu e pode ter custado; o artefato não pôde ser
+    // guardado. Devolver a revisão sem persistir faria o próximo acesso pagar
+    // de novo pela mesma resposta.
     return { kind: "erro-tecnico" };
   }
+
+  await finalizarReserva({
+    supabase,
+    attemptId,
+    organizationId: input.organizationId,
+    status: "COMPLETED",
+    aiRunId: resultado.runId,
+  });
 
   return {
     kind: "criada",

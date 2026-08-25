@@ -127,28 +127,66 @@ export type DeclaredContextReview = z.infer<typeof declaredContextReviewSchema>;
 /**
  * Schema enviado ao provider.
  *
- * Escrito à mão, e não derivado do Zod: os provedores aceitam um subconjunto do
- * JSON Schema, e um conversor genérico produz construções (`$ref`,
- * `anyOf` de nullable, `default`) que o Gemini recusa. O Zod continua sendo a
- * validação que vale — este schema só reduz a chance de o modelo errar a forma.
+ * Escrito à mão, e não derivado do Zod: os provedores aceitam um **subconjunto**
+ * do JSON Schema, e um conversor genérico produz construções que a API recusa —
+ * o que faria a primeira chamada paga falhar por contrato antes de produzir
+ * qualquer revisão.
  *
- * `nextQuestion` é declarado `nullable` porque "não tenho pergunta" é uma
- * resposta legítima, e forçá-la produziria pergunta inventada.
+ * O subconjunto oficialmente documentado para `responseJsonSchema` cobre
+ * `type`, `description`, `properties`, `required`, `items`, `minItems`,
+ * `maxItems`, `enum`, `format`, `minimum`, `maximum` e `additionalProperties`.
+ * Duas ausências mudaram este schema (auditoria 004E §2):
+ *
+ * - **`maxLength` não é suportado.** Os limites de texto continuam existindo, e
+ *   valendo, no Zod e na validação server-side: o provider é orientado por
+ *   `description`, mas quem recusa um texto fora do contrato é o schema da
+ *   task, no Router;
+ * - **`nullable` não é suportado.** A ausência de pergunta é representada por
+ *   união de tipos — `["object", "null"]` —, que é a forma que a documentação
+ *   oficial mostra.
+ *
+ * `KEYWORDS_SUPORTADAS` existe para que isso não regrida em silêncio: há teste
+ * que percorre este objeto e falha se aparecer keyword fora da lista.
  */
+export const KEYWORDS_SUPORTADAS = [
+  "type",
+  "description",
+  "properties",
+  "required",
+  "items",
+  "minItems",
+  "maxItems",
+  "enum",
+  "format",
+  "minimum",
+  "maximum",
+  "additionalProperties",
+] as const;
+
 export const declaredContextReviewJsonSchema = {
   type: "object",
   properties: {
-    summary: { type: "string", maxLength: REVIEW_LIMITS.summary },
+    summary: {
+      type: "string",
+      description: `Resumo do que o negócio declarou, em português, com no máximo ${REVIEW_LIMITS.summary} caracteres.`,
+    },
     declaredFacts: {
       type: "array",
       maxItems: REVIEW_LIMITS.maxDeclaredFacts,
+      description:
+        "O que o negócio contou, reorganizado. Cada item cita as refs do contexto que o sustentam.",
       items: {
         type: "object",
         properties: {
-          statement: { type: "string", maxLength: REVIEW_LIMITS.statement },
+          statement: {
+            type: "string",
+            description: `Afirmação curta, até ${REVIEW_LIMITS.statement} caracteres.`,
+          },
           evidenceRefs: {
             type: "array",
+            minItems: 1,
             maxItems: REVIEW_LIMITS.maxEvidenceRefs,
+            description: "Refs exatas do contexto declarado. Nunca inventar.",
             items: { type: "string" },
           },
         },
@@ -158,14 +196,23 @@ export const declaredContextReviewJsonSchema = {
     gaps: {
       type: "array",
       maxItems: REVIEW_LIMITS.maxGaps,
+      description:
+        "O que ainda falta esclarecer. Ausência é ausência: não preencher com suposição.",
       items: {
         type: "object",
         properties: {
-          topic: { type: "string", maxLength: REVIEW_LIMITS.topic },
-          whyItMatters: { type: "string", maxLength: REVIEW_LIMITS.whyItMatters },
+          topic: {
+            type: "string",
+            description: `Tópico ausente, até ${REVIEW_LIMITS.topic} caracteres.`,
+          },
+          whyItMatters: {
+            type: "string",
+            description: `Por que importa, até ${REVIEW_LIMITS.whyItMatters} caracteres.`,
+          },
           evidenceRefs: {
             type: "array",
             maxItems: REVIEW_LIMITS.maxEvidenceRefs,
+            description: "Pode ficar vazio: a lacuna fala do que não está no contexto.",
             items: { type: "string" },
           },
         },
@@ -175,21 +222,30 @@ export const declaredContextReviewJsonSchema = {
     tensions: {
       type: "array",
       maxItems: REVIEW_LIMITS.maxTensions,
+      description:
+        "Possíveis inconsistências entre coisas declaradas. Sempre hipótese que pede confirmação humana.",
       items: {
         type: "object",
         properties: {
-          statement: { type: "string", maxLength: REVIEW_LIMITS.statement },
+          statement: {
+            type: "string",
+            description: `Tensão observada, até ${REVIEW_LIMITS.statement} caracteres.`,
+          },
           interpretation: {
             type: "string",
-            maxLength: REVIEW_LIMITS.interpretation,
+            description: `Interpretação, até ${REVIEW_LIMITS.interpretation} caracteres.`,
           },
           evidenceRefs: {
             type: "array",
             minItems: 2,
             maxItems: REVIEW_LIMITS.maxEvidenceRefs,
+            description: "Os dois lados comparados, pelas refs do contexto.",
             items: { type: "string" },
           },
-          needsHumanConfirmation: { type: "boolean" },
+          needsHumanConfirmation: {
+            type: "boolean",
+            description: "Sempre true: tensão é hipótese, não veredito.",
+          },
         },
         required: [
           "statement",
@@ -200,18 +256,30 @@ export const declaredContextReviewJsonSchema = {
       },
     },
     nextQuestion: {
-      type: "object",
-      nullable: true,
+      // União de tipos no lugar de `nullable`: é a forma suportada, e "não
+      // tenho pergunta" precisa ser uma resposta possível — forçar o objeto
+      // produziria pergunta inventada.
+      type: ["object", "null"],
+      description:
+        "Uma pergunta de esclarecimento, ou null se o contexto já estiver claro.",
       properties: {
-        question: { type: "string", maxLength: REVIEW_LIMITS.question },
-        whyItMatters: { type: "string", maxLength: REVIEW_LIMITS.whyItMatters },
+        question: {
+          type: "string",
+          description: `Pergunta, até ${REVIEW_LIMITS.question} caracteres.`,
+        },
+        whyItMatters: {
+          type: "string",
+          description: `Por que importa, até ${REVIEW_LIMITS.whyItMatters} caracteres.`,
+        },
       },
       required: ["question", "whyItMatters"],
     },
     limitations: {
       type: "array",
       maxItems: REVIEW_LIMITS.maxLimitations,
-      items: { type: "string", maxLength: REVIEW_LIMITS.limitation },
+      description:
+        "Limites desta revisão. Deve deixar claro que usa apenas o que o negócio declarou.",
+      items: { type: "string" },
     },
   },
   required: [

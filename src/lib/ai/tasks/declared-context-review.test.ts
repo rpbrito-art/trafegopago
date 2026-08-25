@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import type { DeclaredContextSnapshot } from "@/lib/review/snapshot";
 
 import {
+  declaredContextReviewJsonSchema,
   declaredContextReviewSchema,
   declaredContextReviewTask,
+  KEYWORDS_SUPORTADAS,
   REVIEW_LIMITS,
   validarGrounding,
   type DeclaredContextReview,
@@ -87,6 +89,90 @@ describe("declaredContextReviewTask — política", () => {
     });
 
     expect(serializada).not.toMatch(/gemini|google|openai|anthropic/i);
+  });
+});
+
+/**
+ * Correção 004E-01 §3.
+ *
+ * O provider aceita um subconjunto do JSON Schema. `maxLength` e `nullable`
+ * estavam no schema enviado e não constam no subconjunto documentado — a
+ * primeira chamada paga poderia ser rejeitada por contrato, antes de produzir
+ * qualquer revisão.
+ *
+ * Esta varredura existe para que a regressão não passe em silêncio: qualquer
+ * keyword fora da allowlist derruba o teste.
+ */
+describe("schema enviado ao provider", () => {
+  function keywordsDe(no: unknown, encontradas: Set<string> = new Set()): Set<string> {
+    if (Array.isArray(no)) {
+      for (const item of no) keywordsDe(item, encontradas);
+      return encontradas;
+    }
+
+    if (typeof no !== "object" || no === null) return encontradas;
+
+    for (const [chave, valor] of Object.entries(no)) {
+      encontradas.add(chave);
+
+      // `properties` e `required` carregam **nomes de campo**, não keywords: o
+      // conteúdo de `properties` é varrido, mas suas chaves não entram na
+      // conta, senão `summary` viraria uma "keyword não suportada".
+      if (chave === "properties") {
+        for (const sub of Object.values(valor as Record<string, unknown>)) {
+          keywordsDe(sub, encontradas);
+        }
+        continue;
+      }
+
+      if (chave === "required" || chave === "enum" || chave === "description") {
+        continue;
+      }
+
+      keywordsDe(valor, encontradas);
+    }
+
+    return encontradas;
+  }
+
+  it("usa apenas keywords do subconjunto suportado", () => {
+    const usadas = [...keywordsDe(declaredContextReviewJsonSchema)];
+    const permitidas = new Set<string>(KEYWORDS_SUPORTADAS);
+
+    const forbiddas = usadas.filter((chave) => !permitidas.has(chave));
+
+    expect(forbiddas).toEqual([]);
+  });
+
+  it("não reintroduz maxLength nem nullable", () => {
+    const serializado = JSON.stringify(declaredContextReviewJsonSchema);
+
+    expect(serializado).not.toContain('"maxLength"');
+    expect(serializado).not.toContain('"nullable"');
+  });
+
+  /** Ausência de pergunta continua possível — agora por união de tipos. */
+  it("representa nextQuestion nulo por união de tipos", () => {
+    const nextQuestion = (
+      declaredContextReviewJsonSchema.properties as Record<
+        string,
+        { type: unknown }
+      >
+    ).nextQuestion;
+
+    expect(nextQuestion.type).toEqual(["object", "null"]);
+  });
+
+  /**
+   * O limite não desaparece por não caber no schema do provider: quem recusa
+   * um texto fora do contrato é o Zod, no Router.
+   */
+  it("os limites de texto continuam valendo no Zod", () => {
+    const longo = "a".repeat(REVIEW_LIMITS.summary + 1);
+
+    expect(
+      declaredContextReviewSchema.safeParse(review({ summary: longo })).success,
+    ).toBe(false);
   });
 });
 

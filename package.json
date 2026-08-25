@@ -16,6 +16,7 @@
     "smoke:auth": "node scripts/smoke-auth.mjs",
     "smoke:recovery": "node scripts/recovery-001f.mjs",
     "e2e:review": "node scripts/e2e-declared-context-review.mjs",
+    "eval:review": "node scripts/eval-declared-context-review.mjs",
     "typecheck:functions": "deno check --config supabase/functions/deno.json supabase/functions/integration-worker/index.ts"
   },
   "dependencies": {

@@ -28,8 +28,18 @@ export type ReviewFormState = {
   message?: string;
 };
 
+/**
+ * Mensagem neutra de propósito.
+ *
+ * A versão anterior prometia que nada havia sido cobrado quando a revisão não
+ * ficava pronta. Isso não é verdade depois que a chamada alcança o provider:
+ * grounding ou persistência podem falhar com a chamada já feita, e abortar do
+ * lado do cliente não cancela necessariamente o processamento no serviço
+ * (auditoria 004E §4). Afirmar gratuidade que não se pode garantir é pior do
+ * que não dizer nada sobre custo.
+ */
 const ERRO_GENERICO =
-  "Não foi possível revisar seu contexto agora. Nada foi cobrado por uma revisão que não ficou pronta — tente novamente em instantes.";
+  "Não foi possível concluir a revisão agora. Tente novamente em instantes.";
 
 /**
  * Sem parâmetros de propósito.
@@ -97,7 +107,7 @@ export async function requestContextReviewAction(): Promise<ReviewFormState> {
 
   const resultado = await revisarContextoDeclarado({
     organizationId: contexto.organizationId,
-    role: contexto.role,
+    userId: user.id,
     snapshot,
   });
 
@@ -112,6 +122,14 @@ export async function requestContextReviewAction(): Promise<ReviewFormState> {
           "Só quem administra o negócio pode pedir uma nova revisão. Você continua podendo ler a revisão existente.",
       };
 
+    case "em-andamento":
+      // Outra requisição já está revisando este mesmo contexto. Não é erro, e
+      // recusar aqui é o que impede a segunda chamada paga.
+      return {
+        message:
+          "Sua revisão já está sendo preparada. Atualize a página em instantes.",
+      };
+
     case "limite-atingido":
       return {
         message:
@@ -121,7 +139,7 @@ export async function requestContextReviewAction(): Promise<ReviewFormState> {
     case "revisao-invalida":
       // O provider respondeu, mas a resposta citou evidência que não existe no
       // contexto enviado. Exibir isso seria apresentar invenção como leitura do
-      // negócio.
+      // negócio. Nada aqui afirma ausência de custo.
       return {
         message:
           "A revisão não passou na nossa verificação de qualidade e foi descartada. Tente novamente em instantes.",
