@@ -123,11 +123,13 @@ Conexão real atual:
 
 Essa conexão deve permanecer intacta até a reautorização controlada.
 
-## 7. Correção 003B-03 — REAUTORIZAÇÃO DE CONEXÃO ATIVA
+## 7. Correção 003B-03 — AUTORIZADA, AGUARDANDO EXECUÇÃO
 
-Planejamento: `rodadas/gpt/CORRECAO_003B_03_REAUTORIZACAO_CONEXAO_ATIVA.md`
+Correção: `rodadas/gpt/CORRECAO_003B_03_REAUTORIZACAO_CONEXAO_ATIVA.md`
 
-Status: **PLANEJADA — AGUARDANDO AUTORIZAÇÃO EXPLÍCITA DO FUNDADOR**.
+Autorização: `rodadas/gpt/AUTORIZACAO_003B_03_REAUTORIZACAO_CONEXAO_ATIVA.md`
+
+Status: **AUTORIZADA PELO FUNDADOR — AGUARDANDO EXECUÇÃO DO CLAUDE**.
 
 Diagnóstico técnico já feito pelo GPT:
 
@@ -138,26 +140,29 @@ Diagnóstico técnico já feito pelo GPT:
 - `activate_meta_connection` substitui token + escopos + identidade + status atomicamente;
 - não é necessária migration nem endpoint novo.
 
-Lacuna encontrada:
+Delta autorizado:
 
-- no estado `permissao-faltando`, `MetaAssetsSection` mostra texto para reconectar, mas **não oferece botão de reautorização**.
+- no estado `permissao-faltando`, renderizar `MetaConnectButton` com rótulo **Atualizar autorização**;
+- ajustar a mensagem em linguagem de negócio;
+- reutilizar integralmente o fluxo OAuth/backend existente;
+- adicionar os testes definidos na correção;
+- não alterar backend, RPC ou migration por conveniência.
 
-Delta planejado, ainda não autorizado:
+Se o Claude provar um bloqueio real no backend que exija mudança arquitetural, deve parar em `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`.
 
-- renderizar `MetaConnectButton` nesse estado com rótulo **Atualizar autorização**;
-- linguagem de negócio, sem expor nomes de escopo;
-- testes focados + regressão;
-- reutilizar integralmente o backend já existente.
+## 8. Próxima ação autorizada
 
-## 8. Próxima ação
+Próximo a agir: **fundador → Claude Code**.
 
-Próximo a agir: **fundador**.
+Na janela do Claude Code aberta na pasta do projeto, executar:
 
-Se aprovar a Correção 003B-03, responder explicitamente **`autorizo`**.
+`/proxima`
 
-Somente depois o GPT marca a correção como autorizada e libera o Claude via `/proxima`.
+Isso deve fazer o Claude ler este `estado.md`, abrir a Correção 003B-03 autorizada, implementar somente o botão/mensagem/testes e parar em **AGUARDANDO AUDITORIA GPT**.
 
-Depois da execução do Claude, o GPT audita antes de qualquer novo OAuth real.
+Depois da execução do Claude, o fundador deve apenas informar ao GPT: **Claude terminou**.
+
+Nenhum novo OAuth real deve ser feito antes da auditoria GPT dessa correção.
 
 ## 9. Continua NÃO autorizado
 
@@ -178,7 +183,7 @@ Depois da execução do Claude, o GPT audita antes de qualquer novo OAuth real.
 
 - harmonização dos canônicos antigos com `PAID_MEDIA_CANONICAL.md` antes da próxima rodada substantiva pós-003B;
 - revisar onboarding final para não depender de configurações manuais desnecessárias no painel Meta;
-- melhorar a mensagem `Falta uma autorização` para explicar a capacidade faltante em linguagem de negócio;
+- melhorar a mensagem `Falta uma autorização` para explicar a capacidade faltante em linguagem de negócio — incluído na Correção 003B-03;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
 - leaked-password protection antes de produção;
 - SMTP/domínio de produção;
