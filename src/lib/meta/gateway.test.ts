@@ -57,11 +57,21 @@ let appTokenSaudavel = true;
 /** Instante fixo — o marcador de remoção pendente é só "existe ou não". */
 const AGORA = "2026-08-24T12:00:00.000Z";
 /** Desfecho do endpoint de revogação. */
-let revogacaoResponde: "sucesso" | "erro190" | "erro100" | "http500" = "sucesso";
+let revogacaoResponde:
+  | "sucesso"
+  | "boolean-true"
+  | "boolean-false"
+  | "objeto-sem-success"
+  | "corpo-ilegivel"
+  | "erro190"
+  | "erro100"
+  | "http500" = "sucesso";
 let erroRpc: Record<string, { code: string } | null> = {};
 
 const rpcCalls: { fn: string; args: Record<string, unknown> }[] = [];
 const fetchCalls: string[] = [];
+/** Init de cada chamada, na mesma ordem de `fetchCalls`. */
+const fetchInits: (RequestInit | undefined)[] = [];
 
 /**
  * O gateway toca `meta_oauth_intents` duas vezes: primeiro o SELECT do hash,
@@ -172,14 +182,16 @@ beforeEach(() => {
   erroRpc = {};
   rpcCalls.length = 0;
   fetchCalls.length = 0;
+  fetchInits.length = 0;
   acessosAIntents = 0;
   supabaseFalso.from.mockClear();
   supabaseFalso.rpc.mockClear();
 
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url: URL | string) => {
+    vi.fn(async (url: URL | string, init?: RequestInit) => {
       fetchCalls.push(String(url));
+      fetchInits.push(init);
       const alvo = String(url);
 
       if (alvo.includes("/oauth/access_token")) {
@@ -220,6 +232,23 @@ beforeEach(() => {
       if (alvo.includes("/permissions")) {
         if (revogacaoResponde === "sucesso") {
           return { ok: true, json: async () => ({ success: "true" }) } as Response;
+        }
+        if (revogacaoResponde === "boolean-true") {
+          return { ok: true, json: async () => true } as unknown as Response;
+        }
+        if (revogacaoResponde === "boolean-false") {
+          return { ok: true, json: async () => false } as unknown as Response;
+        }
+        if (revogacaoResponde === "objeto-sem-success") {
+          return { ok: true, json: async () => ({ resultado: "talvez" }) } as Response;
+        }
+        if (revogacaoResponde === "corpo-ilegivel") {
+          return {
+            ok: true,
+            json: async () => {
+              throw new Error("corpo ilegível");
+            },
+          } as unknown as Response;
         }
         if (revogacaoResponde === "http500") {
           return { ok: false, json: async () => ({}) } as Response;
@@ -268,6 +297,23 @@ beforeEach(() => {
       if (alvo.includes("/oauth/revoke")) {
         if (revogacaoResponde === "sucesso") {
           return { ok: true, json: async () => ({ success: "true" }) } as Response;
+        }
+        if (revogacaoResponde === "boolean-true") {
+          return { ok: true, json: async () => true } as unknown as Response;
+        }
+        if (revogacaoResponde === "boolean-false") {
+          return { ok: true, json: async () => false } as unknown as Response;
+        }
+        if (revogacaoResponde === "objeto-sem-success") {
+          return { ok: true, json: async () => ({ resultado: "talvez" }) } as Response;
+        }
+        if (revogacaoResponde === "corpo-ilegivel") {
+          return {
+            ok: true,
+            json: async () => {
+              throw new Error("corpo ilegível");
+            },
+          } as unknown as Response;
         }
         if (revogacaoResponde === "http500") {
           return { ok: false, json: async () => ({}) } as Response;
@@ -578,6 +624,7 @@ describe("disconnectMeta", () => {
       for (const valor of [null, 123, {}, []]) {
         corpoDoMe = { id: "999", client_business_id: valor };
         fetchCalls.length = 0;
+  fetchInits.length = 0;
         rpcCalls.length = 0;
         // A sequência de `is_valid` é consumida por chamada: sem reiniciar, a
         // segunda volta do laço já leria o token como inativo.
@@ -733,6 +780,71 @@ describe("disconnectMeta", () => {
       expect(r).toEqual({ ok: true });
       expect(fetchCalls.some((u) => u.includes("/999/permissions"))).toBe(true);
       expect(fetchCalls.some((u) => u.includes("/oauth/revoke"))).toBe(false);
+    });
+
+    it("JSON literal `true` é sucesso do endpoint de revogação", async () => {
+      // Este endpoint responde sucesso em mais de uma forma. Aceitar só o
+      // objeto fazia a revogação real ser lida como falha, e a conexão local
+      // sobrevivia a uma credencial que a Meta já tinha invalidado
+      // (Correção 003B-09 §2.2).
+      revogacaoResponde = "boolean-true";
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: true });
+      expect(rpcUsados()).toContain("revoke_meta_connection");
+    });
+
+    it("objeto com `success` continua sendo sucesso", async () => {
+      revogacaoResponde = "sucesso";
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: true });
+    });
+
+    it("JSON literal `false` não limpa nada", async () => {
+      revogacaoResponde = "boolean-false";
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("objeto sem `success` não limpa nada", async () => {
+      revogacaoResponde = "objeto-sem-success";
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("corpo ilegível não vira sucesso silencioso", async () => {
+      // Não saber ler a resposta é o contrário de ter prova de encerramento.
+      revogacaoResponde = "corpo-ilegivel";
+
+      const r = await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      expect(r).toEqual({ ok: false, reason: "PROVIDER_REVOKE_FAILED" });
+      expect(rpcUsados()).not.toContain("revoke_meta_connection");
+    });
+
+    it("o token não viaja na URL do DELETE", async () => {
+      // URL de request aparece em log de proxy, de erro e de rede. Credencial
+      // ali é credencial vazada.
+      await disconnectMeta({ userId: USER_A, organizationId: ORG_A });
+
+      const indice = fetchCalls.findIndex((u) => u.includes("/999/permissions"));
+      expect(indice).toBeGreaterThanOrEqual(0);
+      expect(fetchCalls[indice]).not.toContain("access_token");
+
+      const init = fetchInits[indice];
+      expect(init?.method).toBe("DELETE");
+      expect(
+        (init?.headers as Record<string, string> | undefined)?.Authorization,
+      ).toContain("Bearer ");
     });
 
     it("revoga na Meta ANTES de limpar o estado local", async () => {

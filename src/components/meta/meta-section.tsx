@@ -28,10 +28,21 @@ export type MetaResultado =
 export function MetaSection({
   state,
   resultado,
+  credencialRecusada = false,
 }: {
   state: MetaConnectionState;
   /** Desfecho da última ação, se houver. */
   resultado?: MetaResultado;
+  /**
+   * A descoberta acabou de ouvir da Meta que esta credencial não serve mais.
+   *
+   * O estado persistido ainda diz `ACTIVE` — ele só muda quando uma
+   * desconexão é comprovada, e é assim que deve ser. Mas quem fala com a Meta
+   * agora é a descoberta, e afirmar "Meta conectada" ao lado de "a conexão
+   * precisa da sua atenção" é uma contradição na mesma tela
+   * (Correção 003B-09 §2.3).
+   */
+  credencialRecusada?: boolean;
 }) {
   if (state.kind === "erro-tecnico") {
     return (
@@ -87,6 +98,11 @@ export function MetaSection({
   }
 
   if (state.kind === "conectado") {
+    // A descoberta é a fonte mais recente sobre a credencial. Quando ela
+    // recusa, esta seção cala: quem assume a tela é o estado acionável da
+    // descoberta, que oferece reconectar e recomeçar do zero.
+    if (credencialRecusada) return null;
+
     // Redundante com o estado persistido no caminho normal, e de propósito: o
     // redirect chega antes de qualquer releitura, e uma janela em que a tela
     // diz "conectado" logo após o clique seria exatamente a confusão que o
@@ -120,10 +136,6 @@ export function MetaSection({
           {state.conectadaEm
             ? `Conectada em ${formatarData(state.conectadaEm)}.`
             : null}
-        </p>
-        <p className="text-sm text-neutral-600">
-          Ainda não trazemos publicações nem métricas — isso vem na próxima
-          etapa.
         </p>
         <MetaDisconnectButton organizationId={state.organizationId} />
       </Bloco>

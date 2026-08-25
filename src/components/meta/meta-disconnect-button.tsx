@@ -8,8 +8,11 @@ import { disconnectMetaAction } from "@/app/actions/meta";
  */
 export function MetaDisconnectButton({
   organizationId,
+  rotulo = "Desconectar",
 }: {
   organizationId: string;
+  /** O que a ação significa naquela tela. O caminho é sempre o mesmo. */
+  rotulo?: string;
 }) {
   return (
     <form action={disconnectMetaAction}>
@@ -18,7 +21,7 @@ export function MetaDisconnectButton({
         type="submit"
         className="self-start rounded border border-neutral-300 px-3 py-2 text-sm font-medium"
       >
-        Desconectar
+        {rotulo}
       </button>
     </form>
   );
