@@ -201,19 +201,51 @@ Objetivo:
 - aplicar migration 004A remotamente com a versão canônica;
 - executar prova SQL remota e CI final.
 
-## 8. Próxima ação autorizada
+## 8. Correção 004A-01 — EXECUTADA
 
-Próximo a agir: **Claude Code**.
+Mandato: `rodadas/gpt/CORRECAO_004A_01_LEDGER_INVARIANTS_MIGRATION_HISTORY.md`.
 
-Executar `/proxima` na mesma janela do projeto.
+Branch: `claude/rodada-004a-ai-foundation-core` · PR #13.
 
-Claude deve:
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
-1. permanecer na branch 004A;
-2. reconciliar `main` atual;
-3. executar apenas `CORRECAO_004A_01_LEDGER_INVARIANTS_MIGRATION_HISTORY.md`;
-4. se o classificador pedir autorização humana para `db push` ou prova mutável, parar e pedir aprovação ao fundador;
-5. parar em **AGUARDANDO AUDITORIA GPT**.
+Relatório: `rodadas/claude/RELATORIO_CORRECAO_004A_01_LEDGER_INVARIANTS_MIGRATION_HISTORY.md`.
+
+### 8.1 Histórico de migrations reconciliado
+
+Trazido da 003B **apenas** `supabase/migrations/20260824210000_create_meta_asset_selection.sql`, sem edição. `sha256` idêntico na origem e na cópia (`32525c0a4adb3789bfb61efe52285c938e40bf4a76d2b0d288e9c48b3d2362e4`), `diff` vazio, 17.027 bytes. Nenhum outro arquivo da 003B. Sem `migration repair`. A 003B continua estacionada e não promovida.
+
+### 8.2 Correções de código
+
+- **Ledger fail-closed**: `concluir`/`falhar` alcançam só um run `STARTED` da organização informada e exigem exatamente uma linha afetada; `service_role` é BYPASSRLS, então o filtro por `organization_id` é o isolamento. Zero linhas é falha; run terminal não é reescrito; o Router só devolve sucesso com escrita confirmada, e `LEDGER_WRITE_FAILED` cobre o que não pôde ser registrado.
+- **Custo fail-closed**: usage não confiável vira `USAGE_INVALID`, preço ilegível vira `COST_CALCULATION_FAILED`; nada é entregue como sucesso, e `SUCCEEDED` sempre tem custo e moeda. Sem float.
+- **Coerência no banco**: FKs compostas garantem que o provider do run é o daquele modelo e que o preço pertence ao modelo que executou. `ai_price_version_id` passou a `not null`.
+- **Invariantes de estado**: `SUCCEEDED` exige custo, moeda e `completed_at`; `FAILED` exige `error_class` e `completed_at`; `STARTED` exige `completed_at` nulo. Nenhum CHECK compara relógios distintos.
+- **Vigência**: `listarCandidatos(em)` aplica `effective_from`/`effective_to` com o mesmo relógio injetável do Router.
+- **Input**: `INPUT_SCHEMA_INVALID` como classe própria, antes de catálogo e sem abrir run pago.
+- **Adapter ausente**: falha com o run já aberto — `FAILED / ADAPTER_NOT_REGISTERED`, `runId` devolvido, zero chamadas externas. `PRODUCTION_ADAPTERS` segue vazio.
+
+### 8.3 Provas locais
+
+`npx vitest run` → **734/734** em 31 arquivos; camada de IA **86** (pricing 17, router 48, ledger 14, fronteiras 7). `tsc --noEmit`, `lint` e `typecheck:functions` limpos.
+
+### 8.4 Aplicação remota e prova SQL
+
+`supabase db push --linked` aplicou **somente** `20260825140000_create_ai_foundation_core.sql`. Remoto passou de 15 para 16 migrations; `20260824210000` reconhecida como já aplicada e **não** reaplicada; versão canônica registrada.
+
+`npx supabase db query --linked --file scripts/sql/ai-foundation-004a-proof.sql` → **34 casos, 34 passaram, 0 falharam**, transacional com `rollback`.
+
+Provado: RLS habilitado nas quatro tabelas e zero policies; `anon`/`authenticated` sem grant algum; `service_role` sem UPDATE/DELETE em `ai_price_versions` e sem DELETE em `ai_runs`; tier 0, status inválido, capability vazia, preço negativo, moeda não-ISO e vigência invertida recusados; segunda price version aberta recusada; provider de outro modelo e preço de outro modelo recusados; run sem price version recusado; tokens/custo negativos, custo sem moeda e confidence fora de 0..1 recusados; todas as invariantes de estado recusadas quando violadas; fallback cross-tenant recusado e no mesmo tenant aceito; modelo expirado fora da janela vigente.
+
+A prova de grants é feita pela ACL, não por tentativa: o script roda como owner, que ignora grant.
+
+Resíduo após rollback: zero em todas as quatro tabelas; 1 organização (a original); nenhuma fixture.
+
+### 8.5 Nada introduzido
+
+Sem provider real, API key, SDK, chamada paga, fallback entre providers, tool calling, embeddings, UI administrativa ou feature de IA de negócio. Nenhum catálogo real inserido. Nenhum segredo novo. Branding não migrado.
+
+Próximo a agir: **GPT** — reauditar a 004A.
 
 ## 9. Continua NÃO autorizado
 
