@@ -153,22 +153,35 @@ Em 2026-08-25 o fundador apresentou duas provas visuais oficiais da Meta mostran
 
 Portanto não alterar acesso da Página.
 
-## 8. Próxima ação autorizada — COMPLEMENTAÇÃO READ-ONLY MÍNIMA
-
-Próximo a agir: **Claude Code**.
+## 8. Complemento 003B-05 — EXECUTADO
 
 Mandato: `rodadas/gpt/COMPLEMENTO_003B_05_PAGE_DIRECT_READONLY.md`.
 
-Executar **somente** a prova direta da Page conhecida `1356474050873300`:
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
-1. `GET /1356474050873300?fields=id,name`;
-2. apenas se a primeira retornar HTTP 200, `GET /1356474050873300?fields=id,name,instagram_business_account`.
+Relatórios: `rodadas/claude/RELATORIO_INVESTIGACAO_003B_05_PAGE_ZERO.md` e `rodadas/claude/RELATORIO_COMPLEMENTO_003B_05_PAGE_DIRECT.md`.
 
-Não repetir `debug_token`, `/me`, `/me/accounts` ou `/me/adaccounts`.
+Sondas read-only: `scripts/meta-user-token-page-zero-probe.mjs` e `scripts/meta-page-direct-003b-05-probe.mjs`. Token pelo caminho server-side, header `Authorization`, saída sanitizada.
 
-Objetivo: distinguir entre token que não consegue ler diretamente a Page e token que lê a Page, mas cujo `/me/accounts` não a enumera.
+Prova direta da Page `1356474050873300`, com o mesmo token da conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 
-Depois entregar relatório curto em `rodadas/claude/` e parar aguardando auditoria GPT.
+- `GET /1356474050873300?fields=id,name`: **HTTP 200**, `id=1356474050873300`, `name=Quoron`;
+- `GET /1356474050873300?fields=id,name,instagram_business_account`: **HTTP 200**, `instagram_business_account.id=17841429590351285`.
+
+Nenhum erro nas duas chamadas. `debug_token`, `/me`, `/me/accounts` e `/me/adaccounts` não foram repetidos.
+
+Consequências factuais:
+
+- a alternativa "o token não consegue ler diretamente a Page" está **REPROVADA**;
+- o token **lê a Page Quoron por ID** e **resolve a conta profissional vinculada** — o vínculo Página↔Instagram existe e é visível para este token;
+- o problema está **isolado no edge `/me/accounts`**, que não enumera uma Page que o próprio token lê;
+- confirma-se a alternativa 2 do complemento: o token lê a Page; `/me/accounts` é que não a lista.
+
+Não determinado aqui, por ser escolha de arquitetura: por que a enumeração falha e qual caminho adotar — configuração com seleção de ativos, retorno ao BISU com portfólio proprietário, descoberta por ID conhecido em vez de `/me/accounts`, ou outro. Nenhuma dessas opções foi testada.
+
+Claude declarou `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`.
+
+Próximo a agir: **GPT** — auditar o complemento e decidir o caminho. Nenhum novo OAuth, nenhuma mudança de configuração Meta e nenhuma ampliação de escopo antes dessa decisão.
 
 ## 9. Continua NÃO autorizado
 
