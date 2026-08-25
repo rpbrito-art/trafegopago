@@ -31,11 +31,11 @@ Mandato: `rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
 
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
-PR #12: **draft, open, não mergeado, mergeable=true**.
+PR #12: **draft, open, não mergeado**.
 
-HEAD reconciliado e auditado: `377756b08b02895b900cad04c6bf7ec13e6e0fd5`.
+Último HEAD auditado antes da 003B-09: `ed44cb8abab86cb28087d410ae5c0fe75b26d2be`.
 
-CI final auditada antes da 003B-08: `32848304161` — **success**.
+CI auditada desse HEAD: `32851269642` — **success**.
 
 Já executado/auditado:
 
@@ -49,16 +49,17 @@ Já executado/auditado:
 - complemento IG User + Insights: **EXECUTADO, AUDITADO E APROVADO COMO EVIDÊNCIA READ-ONLY**;
 - Correção 003B-06 credential-aware discovery: **EXECUTADA E AUDITADA; APROVADA NO NÍVEL DE CÓDIGO/ARQUITETURA DOCUMENTADA; NÃO É PROVA E2E BISU**;
 - reconciliação da branch com `main`: **EXECUTADA, AUDITADA E APROVADA**;
-- testes após reconciliação: **228/228** nos módulos Meta/actions/componentes; typecheck e lint limpos;
-- CI do HEAD reconciliado: **verde**.
+- Correção 003B-08 reconexão em `conexao-recusada`: **EXECUTADA, AUDITADA E APROVADA**;
+- testes após 003B-08: **230/230** nos módulos Meta/actions/componentes; typecheck e lint limpos;
+- CI do HEAD `ed44cb8...`: **verde**.
 
 003B continua **NÃO PROMOVIDA**.
 
 Correção vigente:
 
-`rodadas/gpt/CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md`
+`rodadas/gpt/CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`
 
-Status da 003B-08: **AUTORIZADA, AINDA NÃO EXECUTADA/AUDITADA**.
+Status 003B-09: **AUTORIZADA — AGUARDANDO EXECUÇÃO CLAUDE**.
 
 ## 4. Produto — mídia paga
 
@@ -109,26 +110,35 @@ Regra permanente:
 - não inferir a identidade ou estado de recurso Meta por semelhança de nome;
 - não usar empresa/portfolio de terceiro sem decisão explícita do fundador.
 
-## 7. Conexão USER real atual
+## 7. Conexão USER real atual — snapshot após tentativas de reconexão
 
 Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 
-- status ACTIVE;
+- organização `a8f79c4b-b10a-4e01-b12d-2d8e62917009`;
+- usuário/membership `d4ed915a-2fe8-4990-9e73-9a68fbbd1f9d`;
+- status `ACTIVE` no snapshot de 2026-08-25 às 10:12 BRT;
 - `external_user_id=28050226117920563`;
 - `external_business_id=null`;
 - scopes: `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_manage_insights`, `ads_read`, `public_profile`;
-- token no Vault;
 - `instagram_accounts=0`;
 - `ad_accounts=0`.
+
+O GPT auditou as tentativas reais do fundador após a 003B-08:
+
+- várias novas `meta_oauth_intents` foram criadas entre aproximadamente 10h09 e 10h12 BRT;
+- quatro callbacks foram consumidos corretamente;
+- a conexão foi novamente ativada em `2026-08-25T13:12:06.063762+00:00`.
+
+Conclusão: o botão **Conectar novamente** efetivamente chega ao backend e o OAuth concluiu pelo menos uma vez. O problema remanescente é o ciclo incoerente de estado/UX e o reset/desconexão.
 
 Ativos de fixture diagnóstica:
 
 - Page Quoron `1356474050873300`;
 - Instagram profissional `@goquoron` `17841429590351285`.
 
-## 8. Evidência USER consolidada
+## 8. Evidência USER consolidada anterior
 
-Com o mesmo User Access Token:
+Com o User Access Token do experimento:
 
 - token válido, tipo USER, app/identidade esperados;
 - `/me/adaccounts` → HTTP 200, 3 contas;
@@ -160,24 +170,24 @@ Arquitetura aprovada no código:
 
 A execução não deve ser revertida.
 
-## 10. Bug de reconexão observado — 003B-08
+## 10. Defeito de reset/desconexão — 003B-09
 
-Na tela real, o estado `conexao-recusada` mostra:
+O fundador pediu que **conectar, reconectar e desconectar funcionem de forma repetível para poder testar do zero**.
 
-`A Meta não aceitou mais a autorização atual. Conecte novamente para retomar de onde parou.`
+Fato de código:
 
-Mas o componente não oferece o botão correspondente.
+- `revokeUserPermissions()` já chama o edge correto `DELETE /{user-id}/permissions` para USER;
+- porém o parser atual só aceita objeto `{ success: true }`;
+- o endpoint pode responder sucesso como JSON booleano literal `true`;
+- assim, a Meta pode revogar corretamente e o Tráfego Pago classificar o sucesso como erro, deixando o estado local `ACTIVE`.
 
-Causa confirmada no código:
+Evidência primária: SDK oficial `facebook/facebook-nodejs-business-sdk`, objeto `User`, possui `deletePermissions()` no edge `/permissions`.
 
-- `src/components/meta/meta-assets-section.tsx`: ramo `conexao-recusada` não renderiza `MetaConnectButton`;
-- `src/components/meta/meta-assets-section.test.tsx`: teste atual inclusive exige que `conexao-recusada` não tenha botão.
+A 003B-09 deve provar no E2E real a forma exata da resposta atual e corrigir o contrato sem relaxar o fail-closed.
 
-O fluxo de servidor existente já suporta reautorização sem apagar a conexão anterior: `MetaConnectButton` → `connectMetaAction` → `startMetaAuthorization`; no callback, a conexão viva é retomada e o segredo só é substituído após autorização bem-sucedida.
+Também deve eliminar a UX contraditória na qual a mesma página mostra simultaneamente “Meta conectada” e “A conexão precisa da sua atenção”.
 
-A correção autorizada deve apenas disponibilizar **Conectar novamente** nesse ramo e ajustar os testes correspondentes.
-
-## 11. Gate E2E BISU — ESTADO ATUAL
+## 11. Gate E2E BISU — continua separado
 
 Ainda falta E2E real de BISU para provar:
 
@@ -186,55 +196,53 @@ Ainda falta E2E real de BISU para provar:
 3. expansão `instagram_business_account` no retorno real;
 4. descoberta/seleção completa em entidade cliente elegível.
 
-Não há vaga para criar terceiro portfólio. O inventário Meta ainda precisa ser reconstruído corretamente, distinguindo Quoron, Bizzman5po e BizzManiq1 e provando qual papel cada um exerce.
+A Correção 003B-09 é sobre confiabilidade do ciclo conectar/desconectar e sobre o experimento USER atual. **Ela não substitui o gate BISU.**
 
-A 003B-08 é independente desse inventário: ela apenas restaura na UI a ação de reconectar já suportada pelo backend.
+## 12. Próxima ação autorizada
 
-## 12. Correção 003B-08 — EXECUTADA
+Próximo a agir: **Claude Code**.
 
-Mandato: `rodadas/gpt/CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md`.
+Executar somente:
 
-Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+`rodadas/gpt/CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`
 
-Relatório: `rodadas/claude/RELATORIO_CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md`.
+na branch:
 
-Delta, só de UI:
+`claude/rodada-003b-meta-asset-discovery-selection`
 
-- `src/components/meta/meta-assets-section.tsx` — ramo `conexao-recusada` passa a renderizar `MetaConnectButton` com rótulo **Conectar novamente**; mensagem inalterada; nenhum botão `Desconectar` adicionado;
-- `src/components/meta/meta-assets-section.test.tsx` — +2 provas do botão e remoção de `conexao-recusada` da lista de estados que não podem ter botão.
+A autorização inclui **uma desconexão real da conexão USER atual** para deixar o ambiente em estado `REVOKED` e pronto para um novo teste do zero.
 
-Reconectar não passa por desconectar: `begin_meta_connection` retoma a linha viva e `activate_meta_connection` só substitui token, escopos e status depois que a nova autorização conclui.
+Claude deve implementar, testar, executar a prova real de desconexão pelo backend canônico, verificar Supabase, publicar HEAD/CI e parar em `AGUARDANDO AUDITORIA GPT`.
 
-Provas: `meta-assets-section.test.tsx` **26/26** (24 antes) — botão presente, rótulo e organização corretos, tela não sugere desconectar, `connectMetaAction` canônica reutilizada. Suíte Meta/actions/componentes **230/230**. `tsc --noEmit` limpo; `npm run lint` limpo.
-
-Nenhum backend, RPC, migration, Supabase, `.env.local`, Meta App, configuração, escopo ou token tocado. Nenhum OAuth executado, nenhuma seleção automática, conexão persistida preservada.
-
-Próximo a agir: **GPT** — auditar o delta no PR #12. Aprovada a auditoria, o fundador pode recarregar a aplicação local e usar **Conectar novamente**.
+Depois da auditoria GPT, o fundador deverá encontrar a aplicação no estado **Conectar a Meta** e poderá iniciar o próximo OAuth do zero.
 
 ## 13. Continua NÃO autorizado
 
+- alterar `.env.local`;
+- alterar Meta App ou Business Login Configuration;
+- adicionar/remover scopes;
 - criar terceiro Business Portfolio;
-- excluir `Bizzman5po` por tentativa;
-- promover/mergear 003B antes do gate correspondente;
+- excluir `Bizzman5po`;
+- mover/transferir Page, Instagram, Ad Account ou app;
+- usar empresa/portfólio de terceiro;
+- Page Access Token;
+- campanha/anúncio/gasto;
+- importar conteúdo;
+- promover/mergear 003B antes dos gates;
 - iniciar Fase 4;
 - declarar USER arquitetura definitiva;
-- remover BISU;
-- adicionar `business_management`, `ads_management` ou outro scope por tentativa;
-- transferir ownership da Page/Instagram/Ad Account/app;
-- usar empresa/portfólio de terceiro;
-- expor App Secret/token;
-- pedir/imprimir/persistir Page Access Token;
-- campanha/anúncio/gasto;
-- importar conteúdo.
+- tratar 003B-09 como prova BISU.
 
 ## 14. Pendências
 
-- executar/auditar Correção 003B-08;
-- depois reconstruir inventário Meta real sem confundir nomes;
+- executar/auditar 003B-09;
+- deixar a conexão USER atual realmente desconectada e localmente `REVOKED`;
+- fundador testar novo OAuth do zero após auditoria;
+- reconstruir inventário Meta real sem confundir nomes;
 - definir fixture BISU elegível usando recursos existentes, se possível;
 - executar E2E BISU real;
-- se passar, decidir promoção da 003B;
-- corrigir UX que hoje afirma ausência de Page quando API devolve lista vazia;
+- se os gates passarem, decidir promoção da 003B;
+- corrigir UX que hoje afirma ausência de Page quando API devolve lista vazia, se ainda aplicável após E2E;
 - harmonizar canônicos de mídia paga pós-003B;
 - redaction do callback em logs antes de produção;
 - leaked-password protection, SMTP/domínio, App Review/Business Verification quando aplicável.
