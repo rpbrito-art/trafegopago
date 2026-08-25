@@ -315,6 +315,10 @@ Mandato: `rodadas/gpt/CORRECAO_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`.
 
 Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · PR #17 mantido aberto, draft, não mergeado.
 
+HEAD publicado: `dc7d47e` ou posterior — ver PR #17 para o HEAD final; commits após este registro alteram apenas relatório e este arquivo.
+
+CI: `32908302698` — **success**, 983/983 testes, lint/typecheck/Edge Functions/build verdes.
+
 Status: **CORREÇÃO 004E-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT ANTES DO GATE DE CREDENCIAL PAGA**.
 
 Relatório: `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` §7.

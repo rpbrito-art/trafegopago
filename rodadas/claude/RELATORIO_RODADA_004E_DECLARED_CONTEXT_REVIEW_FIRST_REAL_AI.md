@@ -131,6 +131,7 @@ Os advisors apontaram duas FKs do meu próprio delta sem cobertura: eu criara os
 | suíte local | **983/983** em 48 arquivos |
 | advisors | os dois `unindexed_foreign_keys` do delta foram quitados |
 | gate dos scripts | `e2e:review` e `eval:review` param com código 2, sem chamar nada |
+| CI da correção | `32908302698` — success, 983/983 |
 
 Correção durante a execução: a prova tentava simular reserva vencida movendo só `expires_at` para o passado, e a constraint `expires_at > reserved_at` recusou — corretamente, porque é um estado incoerente. A simulação passou a envelhecer a tentativa inteira.
 
