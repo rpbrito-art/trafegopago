@@ -2,9 +2,10 @@ import Link from "next/link";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { ROUTES } from "@/lib/auth/routes";
+import { pageTitle } from "@/lib/brand";
 
 export const metadata = {
-  title: "Link inválido — Tráfego Pago",
+  title: pageTitle("Link inválido"),
 };
 
 /**

@@ -5,9 +5,10 @@ import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { RECOVERY_SESSION_REQUIRED } from "@/lib/auth/errors";
 import { ROUTES } from "@/lib/auth/routes";
 import { getRecoveryUser } from "@/lib/auth/session";
+import { pageTitle } from "@/lib/brand";
 
 export const metadata = {
-  title: "Nova senha — Tráfego Pago",
+  title: pageTitle("Nova senha"),
 };
 
 /**

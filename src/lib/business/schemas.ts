@@ -35,13 +35,33 @@ const optionalText = (max: number) =>
 
 export const MAX_COMMERCIAL_GOAL_LENGTH = 500;
 
+/**
+ * O primeiro formulário pede **apenas o contexto essencial**.
+ *
+ * Público-alvo, diferenciais, objeções, ticket médio, meta comercial e o
+ * antigo `objetivo de aquisição` saíram daqui (mandato 004B §5). O onboarding
+ * é progressivo: pedir dez campos antes de o produto ter entregado qualquer
+ * valor é o desenho que o `GROWTH_INTELLIGENCE_CANONICAL.md` §3.1 rejeita.
+ *
+ * Os campos removidos não foram apagados do banco — continuam existindo em
+ * `business_profiles`, agora aceitando `NULL`, e serão completados em etapas
+ * posteriores. Ausência é `NULL`, nunca string vazia inventada.
+ */
 export const createInitialBusinessSchema = z.object({
   organizationName: requiredText(160, "o nome da empresa"),
   segment: requiredText(120, "o segmento"),
   locationSummary: requiredText(160, "a cidade ou região"),
   primaryOffer: requiredText(280, "o produto, serviço ou oferta principal"),
-  targetAudience: requiredText(280, "o público-alvo"),
-  acquisitionGoal: requiredText(280, "o objetivo de aquisição"),
+});
+
+/**
+ * Schema do contexto progressivo, preenchido depois do bootstrap.
+ *
+ * Vive separado de propósito: são momentos diferentes do produto, e juntá-los
+ * num único schema reintroduziria a tentação de exigir tudo de uma vez.
+ */
+export const progressiveBusinessContextSchema = z.object({
+  targetAudience: optionalText(280),
   differentiators: optionalText(1000),
   knownObjections: optionalText(1000),
   commercialGoal: optionalText(MAX_COMMERCIAL_GOAL_LENGTH),
@@ -84,8 +104,15 @@ export type CreateInitialBusinessInput = z.infer<
   typeof createInitialBusinessSchema
 >;
 
+export type ProgressiveBusinessContextInput = z.infer<
+  typeof progressiveBusinessContextSchema
+>;
+
 export type BusinessFieldErrors = Partial<
-  Record<keyof CreateInitialBusinessInput, string>
+  Record<
+    keyof CreateInitialBusinessInput | keyof ProgressiveBusinessContextInput,
+    string
+  >
 >;
 
 /** Reduz o erro do Zod a no máximo uma mensagem por campo. */
@@ -96,7 +123,7 @@ export function toBusinessFieldErrors(error: z.ZodError): BusinessFieldErrors {
     const field = issue.path[0];
     if (typeof field !== "string") continue;
 
-    const key = field as keyof CreateInitialBusinessInput;
+    const key = field as keyof BusinessFieldErrors;
     if (errors[key] === undefined) errors[key] = issue.message;
   }
 

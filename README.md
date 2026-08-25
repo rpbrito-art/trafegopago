@@ -1,4 +1,4 @@
-# Tráfego Pago
+# Quoron
 
 Plataforma SaaS de inteligência e automação de performance para pequenas empresas, inicialmente focada em Instagram + Meta Ads.
 

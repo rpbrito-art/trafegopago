@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# TRÁFEGO PAGO — CONTRATO CURTO DO EXECUTOR CLAUDE CODE
+# QUORON — CONTRATO CURTO DO EXECUTOR CLAUDE CODE
 
 Este arquivo é carregado automaticamente pelo Claude Code e contém as regras permanentes mínimas de execução. O prompt canônico completo permanece em `.gpt/PROJECT_PROMPT.md`, mas **não deve ser relido a cada `/proxima`**.
 

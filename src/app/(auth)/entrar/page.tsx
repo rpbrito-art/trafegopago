@@ -4,9 +4,10 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { sanitizeRedirect } from "@/lib/auth/redirect";
 import { PASSWORD_RESET_DONE_PARAM, ROUTES } from "@/lib/auth/routes";
+import { pageTitle } from "@/lib/brand";
 
 export const metadata = {
-  title: "Entrar — Tráfego Pago",
+  title: pageTitle("Entrar"),
 };
 
 /** Confirmação mostrada quando o usuário chega vindo da troca de senha. */

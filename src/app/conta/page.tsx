@@ -1,12 +1,15 @@
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { BusinessSection } from "@/components/business/business-section";
 import { MetaSection, type MetaResultado } from "@/components/meta/meta-section";
+import { ObjectiveSection } from "@/components/growth/objective-section";
 import { requireUser } from "@/lib/auth/session";
 import { getAccountBusinessState } from "@/lib/business/account";
 import { getMetaConnectionState } from "@/lib/meta/connection-state";
+import { getObjectiveState } from "@/lib/growth/objective-state";
+import { pageTitle } from "@/lib/brand";
 
 export const metadata = {
-  title: "Sua conta — Tráfego Pago",
+  title: pageTitle("Sua conta"),
 };
 
 /**
@@ -35,6 +38,10 @@ export default async function ContaPage({
   const user = await requireUser();
   const state = await getAccountBusinessState();
   const metaState = await getMetaConnectionState();
+
+  // Objetivo aparece como resumo/CTA aqui; a definição mora em `/objetivo`.
+  // Ausência é estado válido e não bloqueia conta nem conexão.
+  const objectiveState = await getObjectiveState();
 
   // Marcadores pobres de desfecho — nada do provider atravessa a URL. Valor
   // desconhecido é descartado em vez de chegar à tela.
@@ -71,6 +78,8 @@ export default async function ContaPage({
       </dl>
 
       <BusinessSection state={state} />
+
+      <ObjectiveSection state={objectiveState} />
 
       <MetaSection state={metaState} resultado={resultadoMeta} />
 

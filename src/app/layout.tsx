@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 
 import "./globals.css";
+import { APP_NAME } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "Tráfego Pago",
+  title: APP_NAME,
   description:
     "Plataforma de otimização contínua de aquisição por tráfego pago.",
 };

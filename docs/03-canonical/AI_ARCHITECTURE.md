@@ -1,4 +1,4 @@
-# AI ARCHITECTURE — Tráfego Pago MVP
+# AI ARCHITECTURE — Quoron MVP
 
 Status: canônico.
 

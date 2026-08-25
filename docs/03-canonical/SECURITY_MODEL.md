@@ -1,4 +1,4 @@
-# SECURITY MODEL — Tráfego Pago MVP
+# SECURITY MODEL — Quoron MVP
 
 Status: canônico.
 

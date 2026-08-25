@@ -8,7 +8,6 @@ import { DEFAULT_CURRENCY, DEFAULT_TIMEZONE } from "@/lib/business/money";
 import {
   createInitialBusinessSchema,
   toBusinessFieldErrors,
-  toCommercialGoalJson,
   type BusinessFieldErrors,
 } from "@/lib/business/schemas";
 import { createSupabasePrivilegedClient } from "@/lib/supabase/privileged";
@@ -53,17 +52,14 @@ export async function createInitialBusinessAction(
 ): Promise<BusinessFormState> {
   const user = await requireUser();
 
+  // Só os quatro campos essenciais são lidos. Um POST que carregue
+  // `targetAudience` ou `averageTicket` não tem por onde chegar ao SQL: não é
+  // lido aqui, não existe no schema e não é passado à RPC.
   const values = {
     organizationName: text(formData, "organizationName"),
     segment: text(formData, "segment"),
     locationSummary: text(formData, "locationSummary"),
     primaryOffer: text(formData, "primaryOffer"),
-    targetAudience: text(formData, "targetAudience"),
-    acquisitionGoal: text(formData, "acquisitionGoal"),
-    averageTicket: text(formData, "averageTicket"),
-    differentiators: text(formData, "differentiators"),
-    knownObjections: text(formData, "knownObjections"),
-    commercialGoal: text(formData, "commercialGoal"),
   };
 
   const parsed = createInitialBusinessSchema.safeParse(values);
@@ -98,12 +94,15 @@ export async function createInitialBusinessAction(
       p_segment: input.segment,
       p_location_summary: input.locationSummary,
       p_primary_offer: input.primaryOffer,
-      p_target_audience: input.targetAudience,
-      p_acquisition_goal: input.acquisitionGoal,
-      p_average_ticket_minor: input.averageTicket,
-      p_differentiators: input.differentiators,
-      p_known_objections: input.knownObjections,
-      p_commercial_goal_json: toCommercialGoalJson(input.commercialGoal),
+      // Contexto progressivo nasce ausente, e ausência é `NULL` — não string
+      // vazia, que o CHECK `..._not_blank` recusaria e que afirmaria um dado
+      // que ninguém informou.
+      p_target_audience: null,
+      p_acquisition_goal: null,
+      p_average_ticket_minor: null,
+      p_differentiators: null,
+      p_known_objections: null,
+      p_commercial_goal_json: null,
       p_timezone: DEFAULT_TIMEZONE,
       p_currency: DEFAULT_CURRENCY,
     },
@@ -121,7 +120,10 @@ export async function createInitialBusinessAction(
     return { message: GENERIC_ERROR, values };
   }
 
-  redirect(ROUTES.account);
+  // Próximo passo do onboarding: definir o objetivo. Terminar em `/conta`
+  // deixaria a pessoa numa tela de resumo sem dizer o que fazer agora
+  // (mandato 004B §5.2).
+  redirect(ROUTES.objective);
 }
 
 function text(formData: FormData, field: string): string {

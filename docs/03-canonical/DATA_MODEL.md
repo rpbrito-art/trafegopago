@@ -1,4 +1,4 @@
-# DATA MODEL — Tráfego Pago MVP
+# DATA MODEL — Quoron MVP
 
 Status: modelo conceitual canônico. O SQL final será produzido em rodada específica e deve respeitar estes contratos.
 

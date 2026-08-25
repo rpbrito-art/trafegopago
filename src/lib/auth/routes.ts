@@ -28,6 +28,13 @@ export const ROUTES = {
   /** Área protegida mínima desta rodada. Não é o dashboard do produto. */
   account: "/conta",
   /**
+   * Objetivo atual do negócio.
+   *
+   * Próximo passo natural depois de criar o negócio: sem ele, o onboarding
+   * termina numa tela de resumo que não diz o que fazer agora.
+   */
+  objective: "/objetivo",
+  /**
    * Callback do Facebook Login for Business.
    *
    * Precisa bater exatamente com o URI cadastrado no app Meta e com
@@ -57,7 +64,10 @@ export const PASSWORD_RESET_DONE_PARAM = "redefinida";
  * feita server-side na própria rota (`requireUser`). Ver `SECURITY_MODEL.md`
  * §12: esconder a rota não é autorização.
  */
-export const PROTECTED_PREFIXES: readonly string[] = [ROUTES.account];
+export const PROTECTED_PREFIXES: readonly string[] = [
+  ROUTES.account,
+  ROUTES.objective,
+];
 
 /**
  * Rotas de autenticação das quais um usuário já autenticado deve ser tirado.

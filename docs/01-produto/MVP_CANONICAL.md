@@ -1,4 +1,4 @@
-# MVP CANÔNICO — Tráfego Pago
+# MVP CANÔNICO — Quoron
 
 Status: canônico para a primeira construção do produto.
 
@@ -11,7 +11,7 @@ serão revisitadas na fase substantiva de cada uma.
 
 ## 1. Definição
 
-Tráfego Pago é uma plataforma SaaS de inteligência de crescimento assistida por IA. O primeiro produto é restrito ao ecossistema Instagram + Meta e a pequenas empresas que querem entender e melhorar a resposta do mercado ao que publicam e oferecem.
+Quoron é uma plataforma SaaS de inteligência de crescimento assistida por IA. O primeiro produto é restrito ao ecossistema Instagram + Meta e a pequenas empresas que querem entender e melhorar a resposta do mercado ao que publicam e oferecem.
 
 O ciclo canônico é:
 

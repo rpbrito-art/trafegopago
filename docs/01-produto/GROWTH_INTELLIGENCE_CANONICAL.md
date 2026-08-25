@@ -1,4 +1,4 @@
-# GROWTH INTELLIGENCE CANONICAL — Tráfego Pago
+# GROWTH INTELLIGENCE CANONICAL — Quoron
 
 Status: **CANÔNICO PARA PLANEJAMENTO DE PRODUTO FUTURO**
 Data da consolidação: 2026-08-23
@@ -38,7 +38,7 @@ Mídia paga é uma ferramenta desse ciclo, não a única fonte de valor do produ
 
 # 2. LEI DE PRODUTO — SIMPLICIDADE GUIADA
 
-Esta é uma regra inegociável do Tráfego Pago.
+Esta é uma regra inegociável do Quoron.
 
 **A complexidade pertence ao sistema, não ao usuário.**
 
@@ -68,7 +68,7 @@ Em cada momento relevante, o sistema deve procurar apresentar:
 - o usuário deve poder corrigir a interpretação do sistema;
 - estados vazios devem orientar o próximo passo;
 - erros devem dizer o que o usuário pode fazer, não apenas exibir código técnico;
-- não obrigar o usuário a sair do Tráfego Pago para operar rotineiramente o Ads Manager;
+- não obrigar o usuário a sair do Quoron para operar rotineiramente o Ads Manager;
 - detalhes técnicos podem existir em uma camada avançada/auditável, mas não devem dominar o fluxo padrão.
 
 ### 2.2 Simplicidade não significa esconder risco
@@ -180,7 +180,7 @@ Essa resposta orienta:
 O sistema deve manter distinção explícita entre:
 
 - **resultado desejado**: o que o negócio quer que aconteça;
-- **resultado observável**: até onde o Tráfego Pago consegue medir com os dados conectados.
+- **resultado observável**: até onde o Quoron consegue medir com os dados conectados.
 
 Exemplo:
 
@@ -205,7 +205,7 @@ Material produzido ou escolhido para distribuição paga.
 Pode:
 
 - nascer de um conteúdo orgânico já publicado;
-- ser produzido dentro do Tráfego Pago e nunca entrar no feed/perfil orgânico;
+- ser produzido dentro do Quoron e nunca entrar no feed/perfil orgânico;
 - ser uma adaptação de conteúdo existente;
 - ter variantes específicas por placement/público quando permitido.
 
@@ -281,7 +281,7 @@ Exemplos de valor sem gasto:
 
 ### 7.1 Limite estratégico
 
-O Tráfego Pago não deve virar um gerenciador genérico de redes sociais cujo valor principal é agendar post.
+O Quoron não deve virar um gerenciador genérico de redes sociais cujo valor principal é agendar post.
 
 Publicação é meio. O núcleo continua sendo:
 
@@ -371,7 +371,7 @@ Hipótese não deve ser apresentada como causalidade comprovada.
 
 A Meta utiliza cada vez mais automação e expansão de audiência. Informações como idade, gênero, interesses, listas e outros sinais podem funcionar como sugestões para o sistema de entrega, enquanto alguns controles permanecem rígidos conforme o produto/configuração vigente.
 
-Portanto, o Tráfego Pago não deve reduzir o processo a:
+Portanto, o Quoron não deve reduzir o processo a:
 
 `persona → filtros rígidos → anúncio`
 
@@ -396,7 +396,7 @@ O usuário pode precisar, em momentos de configuração, possuir/autorizar:
 - método de pagamento;
 - permissões/scopes necessários.
 
-Depois da conexão, a experiência padrão deve acontecer dentro do Tráfego Pago.
+Depois da conexão, a experiência padrão deve acontecer dentro do Quoron.
 
 ### 11.1 Modelo de decisão simples para conteúdo/criativo
 
@@ -577,7 +577,7 @@ Como Meta/Instagram mudam frequentemente, detalhes de API, objetivos, campos, pe
 
 ## 19. Síntese executiva
 
-O Tráfego Pago não deve ser “um sistema que escolhe posts para impulsionar”.
+O Quoron não deve ser “um sistema que escolhe posts para impulsionar”.
 
 Ele deve ser uma plataforma que aprende continuamente:
 

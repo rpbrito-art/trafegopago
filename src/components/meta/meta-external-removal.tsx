@@ -1,4 +1,5 @@
 import { checkMetaDisconnectionAction } from "@/app/actions/meta";
+import { APP_NAME } from "@/lib/brand";
 
 /**
  * O que fazer quando a Meta é quem encerra o acesso.
@@ -46,7 +47,7 @@ export function MetaExternalRemoval({
         <li>
           vá em <strong>Apps conectados</strong>;
         </li>
-        <li>remova o Tráfego Pago da lista e confirme.</li>
+        <li>remova o {APP_NAME} da lista e confirme.</li>
       </ol>
 
       <p className="text-sm text-neutral-600">
