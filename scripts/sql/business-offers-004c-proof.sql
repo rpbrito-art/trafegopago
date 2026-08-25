@@ -204,13 +204,17 @@ exception when others then
 end $$;
 
 -- Versão apontando para oferta de outro tenant.
+--
+-- `version_no` alto e `superseded_at` preenchido de propósito: com número 1 a
+-- unique de versão dispararia primeiro, e o caso passaria sem nunca ter
+-- exercitado a FK composta que se quer provar.
 do $$
 begin
   insert into public.business_offer_versions (
     organization_id, offer_id, version_no, name, offer_type, price_mode,
-    price_min_minor, currency)
-  values (pg_temp.id('org_b'), pg_temp.id('oferta_a'), 1, 'Cross tenant',
-    'SERVICE', 'FIXED', 100, 'BRL');
+    price_min_minor, currency, superseded_at)
+  values (pg_temp.id('org_b'), pg_temp.id('oferta_a'), 77, 'Cross tenant',
+    'SERVICE', 'FIXED', 100, 'BRL', now());
 
   perform pg_temp.registrar('12 versao aponta para oferta de outro tenant', '23503', 'ACEITOU');
 exception when others then

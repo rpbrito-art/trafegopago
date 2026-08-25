@@ -29,7 +29,7 @@ Promovidas: **000–003A, 004A e 004B**.
 - Fase 6 — AI Foundation: **EM ANDAMENTO; 004A FOUNDATION CORE PROMOVIDA**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - última rodada promovida: **004B — Quoron Branding + Growth Context Foundation**.
-- rodada corrente: **004C — Offer Catalog + Business Context Foundation — PLANEJADA E AUTORIZADA, AINDA NÃO EXECUTADA**.
+- rodada corrente: **004C — Offer Catalog + Business Context Foundation — EXECUTADA, AGUARDANDO AUDITORIA GPT**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -216,53 +216,62 @@ O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes 
 - recriar/trocar Supabase project ref;
 - renomear/mover recursos Meta.
 
-## 8. Rodada corrente 004C — AUTORIZADA PARA EXECUÇÃO
+## 8. Rodada 004C — EXECUTADA, AGUARDANDO AUDITORIA
 
 Mandato:
 
 `rodadas/gpt/RODADA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`
 
-Mandato registrado na `main` em 2026-08-25.
+Branch: `claude/rodada-004c-offer-catalog-business-context`.
 
-Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
+Base: `main` em `bd32e2a`, após a promoção da 004B.
 
-Base: `main` atualizada após 004B e transferência de mandato.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**. Não promovida, não mergeada.
 
-Branch sugerida:
+Relatório: `rodadas/claude/RELATORIO_RODADA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`.
 
-`claude/rodada-004c-offer-catalog-business-context`
+### 8.1 Delta executado
 
-Objetivo resumido:
+- `business_offers` (identidade) separada de `business_offer_versions` (conteúdo versionado);
+- FK composta `(organization_id, offer_id)` impede versão de outro tenant pelo banco;
+- no máximo uma versão corrente por oferta; edição material supersede e cria a próxima na mesma transação;
+- reenvio idêntico idempotente, inclusive na criação;
+- constraints impedem estado contraditório de preço; `QUOTE/FREE/NOT_INFORMED` não persistem número; dinheiro em unidade menor inteira, sem float;
+- `save_business_offer` e `archive_business_offer` server-only, `service_role`, owner/admin, organização e membership ACTIVE, serializadas por organização;
+- moeda vem de `organizations.default_currency`, lida server-side; o browser não escolhe moeda;
+- RLS de leitura por membership ACTIVE; browser sem INSERT/UPDATE/DELETE;
+- rota `/ofertas` em português simples, sem enum, uuid ou número de versão na tela; arquivar com confirmação em duas etapas;
+- multi-organização segue falhando fechado: nenhuma escrita e nenhuma leitura de catálogo em contexto ambíguo;
+- `business_profiles.primary_offer` preservado como sugestão editável, sem conversão automática;
+- harmonização documental da centralidade da mídia paga em `MVP_CANONICAL`, `IMPLEMENTATION_ROADMAP`, `.gpt/PROJECT_PROMPT`, `TECHNICAL_SPEC` e `DATA_MODEL`.
 
-- criar catálogo estruturado de ofertas do negócio;
-- separar identidade da oferta de versões imutáveis do conteúdo;
-- preservar preço/proposta de valor de forma estruturada e historicamente segura;
-- oferecer UI simples em português;
-- manter RLS, tenant e multi-organização fail-closed;
-- não depender de Meta nem de provider real de IA;
-- absorver harmonização documental pontual já devida sobre a centralidade da mídia paga.
+### 8.2 Supabase remoto da 004C
 
-A autorização **não inclui** nenhuma capacidade listada como fora de escopo no mandato.
+Migration aplicada: `20260825210000_create_business_offers`, publicada na branch antes do `db push`.
+
+Snapshot independente:
+
+- RLS habilitado nas duas tabelas, uma policy SELECT em cada;
+- `anon` sem grants; `authenticated` somente SELECT;
+- `service_role` SELECT/INSERT/UPDATE, sem DELETE;
+- RPCs sem EXECUTE para anon/authenticated, com EXECUTE para service_role;
+- zero fixtures residuais;
+- advisors sem FK do delta descoberta; dois INFO `unused_index` de `created_by`, esperados em tabela vazia.
+
+Esta migration **não deve ser reescrita**.
+
+### 8.3 Provas
+
+- `scripts/sql/business-offers-004c-proof.sql` → **51 casos, 51 passaram, 0 falharam**, transacional com rollback e leitura real sob papel `authenticated`;
+- vitest dos arquivos novos e afetados → 87/87;
+- `tsc --noEmit` e `eslint` limpos;
+- suíte completa na CI final do PR.
 
 ## 9. Próxima ação autorizada
 
-Próximo ator: **Claude Code**.
+Próximo ator: **GPT auditor**.
 
-O fundador pode ativá-lo agora pelo fluxo normal do projeto (`/proxima`).
-
-Claude deve:
-
-1. partir da `main` atualizada;
-2. ler `estado.md`;
-3. ler o mandato 004C;
-4. cumprir o READ SET definido no mandato;
-5. criar a branch da rodada e executar somente o delta autorizado;
-6. parar em eventual gate de segurança externo em vez de contornar;
-7. finalizar com relatório, PR, CI e `estado.md` da branch em **EXECUTADA / AGUARDANDO AUDITORIA GPT**.
-
-Claude não deve promover nem mergear a rodada.
-
-Depois da execução, o próximo ator volta a ser o **GPT auditor**.
+Auditar a 004C na branch/PR indicados acima. Claude não promove, não mergeia e não declara a rodada aprovada.
 
 ## 10. Regra de continuidade
 
