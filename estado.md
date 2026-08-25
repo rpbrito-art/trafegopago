@@ -29,7 +29,7 @@ Promovidas: **000–003A, 004A, 004B, 004C e 004D**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - Guided Growth Journey / Focus Foundation: **004D PROMOVIDA**.
 - última rodada promovida: **004D — Guided Growth Journey Foundation**.
-- rodada corrente: **004E — Declared Context Review + First Real AI — IMPLEMENTADA ATÉ GATE, AUDITADA E BLOQUEADA ANTES DA CREDENCIAL PAGA; CORREÇÃO 004E-01 AUTORIZADA**.
+- rodada corrente: **004E — Declared Context Review + First Real AI — IMPLEMENTADA ATÉ GATE, AUDITADA; 004E-01 EXECUTADA E REAUDITADA; 004E-02 AUTORIZADA; CREDENCIAL PAGA AINDA BLOQUEADA**.
 
 ## 3. Promoções recentes incorporadas
 
@@ -169,94 +169,101 @@ Branch:
 
 PR #17: **draft/open/não mergeada**.
 
-HEAD auditado:
+HEAD reauditorado da Correção 004E-01:
 
-`72510c595518aefe72301dd88b4e1362fb8d89b6`
+`70b6176c0e304ab7c2dfa9f58c04eb2de62e6d29`
 
-CI auditada:
+CI do HEAD:
 
-`32904274001` — **success**; 973/973, lint, typecheck, Edge Functions e build verdes.
+`32908387052` — **success**; install, lint, typecheck, Edge Functions, testes e build verdes. Suíte da correção reportada em **983/983**.
 
 Relatório Claude:
 
 `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
 
-Auditoria GPT:
+Auditorias GPT:
 
-`rodadas/gpt/AUDITORIA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
+- `rodadas/gpt/AUDITORIA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`;
+- `rodadas/gpt/AUDITORIA_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`.
 
-Veredito:
+Veredito atual:
 
-**004E IMPLEMENTADA PARCIALMENTE E AUDITADA, MAS NÃO APROVADA NEM PROMOVIDA. CREDENCIAL PAGA AINDA BLOQUEADA.**
+**004E NÃO APROVADA NEM PROMOVIDA. 004E-01 FOI EXECUTADA E REAUDITADA, MAS A CREDENCIAL PAGA CONTINUA BLOQUEADA ATÉ A 004E-02.**
 
-### 7.1 O que já está correto
+### 7.1 O que a 004E/004E-01 já fechou
 
 - task `DECLARED_BUSINESS_CONTEXT_REVIEW@v1`, tenant-scoped, Tier 1;
-- feature continua desacoplada de provider/modelo;
+- feature desacoplada de provider/modelo;
 - adapter nativo `@google/genai` 2.18.0, server-only;
 - provider `google_gemini` e modelo `gemini-2.5-flash-lite` catalogados;
 - preço Standard Paid catalogado: USD 0.10 input / 0.40 output / 0.01 cached input por 1M tokens;
-- snapshot declarado mínimo;
-- grounding por `evidenceRef` fail-closed;
+- snapshot declarado mínimo e grounding por `evidenceRef` fail-closed;
 - `/revisao` com aviso estático de que não observou mercado/Instagram;
 - render não chama provider;
-- migration `20260825250000_create_declared_context_review` aplicada remotamente;
-- `declared_context_reviews` tenant-safe, browser sem escrita e imutável;
-- remoto confirmado com 1 provider, 1 modelo, 1 preço aberto e zero runs/reviews reais da task;
-- nenhuma chave foi configurada e nenhuma chamada Gemini real ocorreu.
+- JSON Schema enviado ao Gemini restrito ao subconjunto oficial, com limites de texto mantidos no Zod;
+- reserva atômica antes do Router, serializada por organização;
+- mesmo fingerprint concorrente não recebe duas reservas ativas;
+- teto de 3 tentativas/h por organização protegido no banco;
+- reserva órfã expira e é recuperável;
+- mensagem falsa de ausência de cobrança removida;
+- E2E preparado para usar o serviço produtivo, persistir artefato, conferir run/custo e provar cache;
+- harness pago de eval preparado com 12 casos sintéticos e sem retry automático.
 
-**A migration `20260825250000` já aplicada não pode ser reescrita.**
+### 7.2 Migrations 004E já aplicadas remotamente — NÃO REESCREVER
 
-### 7.2 Bloqueios da auditoria
+- `20260825250000_create_declared_context_review`;
+- `20260825260000_create_review_attempt_reservation`;
+- `20260825270000_index_review_run_foreign_keys`.
 
-#### A — schema do provider
+Reauditoria GPT confirmou no remoto:
 
-O JSON Schema enviado por `responseJsonSchema` contém `maxLength` e `nullable`, keywords que não constam no subconjunto suportado pela documentação oficial atual do Gemini/SDK. A primeira chamada real pode ser rejeitada.
+- tabela de tentativas e RPCs de reserva/finalização presentes;
+- fronteira do browser fechada;
+- índices finais presentes;
+- `declared_context_review_attempts = 0`;
+- `declared_context_reviews = 0`;
+- `ai_runs` da task = 0;
+- nenhuma chamada Gemini real ocorreu.
 
-#### B — concorrência/custo
-
-Fluxo atual `cache → count → provider → insert` não reserva atomicamente a chamada. Requisições concorrentes podem duplicar custo para o mesmo fingerprint ou ultrapassar o limite de 3/h.
-
-#### C — mensagem de custo falsa
-
-`requestContextReviewAction` afirma que “nada foi cobrado” quando uma revisão não fica pronta. Isso não é garantido após provider chamado, grounding/persistência falhos ou timeout. O SDK informa que abortar no cliente não necessariamente cancela processamento/cobrança no serviço.
-
-#### D — E2E incompleto
-
-`scripts/e2e-declared-context-review.mjs` chama diretamente o Router e não persiste `declared_context_reviews`, embora o §15 exija artefato real.
-
-#### E — eval incompleta
-
-As 12 fixtures atuais avaliam snapshot/fingerprint, não a resposta da task. Falta avaliar schema/refs/fatos externos/lacunas/tensões/prompt injection/linguagem da saída real.
-
-## 8. Correção 004E-01 — AUTORIZADA
+## 8. Correção 004E-02 — AUTORIZADA
 
 Mandato:
 
-`rodadas/gpt/CORRECAO_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`
+`rodadas/gpt/CORRECAO_004E_02_FINAL_PREPAID_INVARIANTS.md`
 
-Objetivo:
+Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
 
-- corrigir JSON Schema para o subconjunto oficial do Gemini;
-- tornar cache + rate limit atômicos contra concorrência antes de qualquer chamada paga;
-- remover promessa falsa de ausência de cobrança;
-- preparar E2E que realmente persista artefato + prove cache;
-- preparar eval real das 12 fixtures;
-- manter **zero chamadas pagas** durante a correção.
+Objetivo estrito: fechar três invariantes finais antes do gate pago.
 
-Se precisar de banco, criar migration aditiva nova; nunca editar `20260825250000` nem anteriores.
+### A — deleção da referência ao `ai_run`
 
-Status esperado do Claude:
+A FK composta atual usa `ON DELETE SET NULL` sem lista de colunas. Como `organization_id` da tentativa é obrigatório, a ação pode tentar zerar também o tenant e quebrar deleção/cleanup.
 
-**CORREÇÃO 004E-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT ANTES DO GATE DE CREDENCIAL PAGA**.
+A 004E-02 deve criar migration **aditiva** que preserve o tenant e zere somente `ai_run_id`, com prova de delete do run e cascade da organização.
+
+### B — custo não pode virar zero por metadado ausente
+
+`normalizarUsage()` ainda pode converter ausência de `promptTokenCount`/`candidatesTokenCount` em zero.
+
+A 004E-02 deve falhar fechado com `USAGE_INVALID` quando essas contagens obrigatórias para uma revisão textual não existirem ou forem zero/inválidas. Nunca estimar custo zero por falta de evidência.
+
+### C — avaliador dos 12 casos precisa reprovar omissões reais
+
+O harness atual ainda pode deixar passar:
+
+- uma ausência esperada quando o modelo devolve `gaps=[]`;
+- o caso de tensão esperada quando o modelo devolve `tensions=[]`.
+
+A 004E-02 deve tornar essas expectativas explícitas e testar localmente a lógica do avaliador, sem chamada paga.
 
 ## 9. Continua NÃO autorizado
 
 ### Gate pago 004E
 
-Até reauditoria GPT da 004E-01:
+Até a reauditoria GPT da 004E-02:
 
 - NÃO criar/configurar/usar `GEMINI_API_KEY` no projeto;
+- NÃO configurar pagamento para a prova por instrução do Claude;
 - NÃO executar chamada Gemini real;
 - NÃO rodar eval paga;
 - NÃO rodar E2E pago;
@@ -302,64 +309,21 @@ Até reauditoria GPT da 004E-01:
 - e-commerce/estoque/SKU/pedidos/pagamentos;
 - score/gamificação.
 
-### Branding técnico externo
+## 10. Próxima ação autorizada
 
-- renomear repositório GitHub;
-- renomear pasta local;
-- recriar/trocar Supabase project ref;
-- renomear/mover recursos Meta.
+Próximo ator: **Claude Code**.
 
-## 10. Correção 004E-01 — EXECUTADA
+Claude deve continuar na mesma branch e no PR #17 e executar **somente**:
 
-Mandato: `rodadas/gpt/CORRECAO_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`.
+`rodadas/gpt/CORRECAO_004E_02_FINAL_PREPAID_INVARIANTS.md`
 
-Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · PR #17 mantido aberto, draft, não mergeado.
+A correção deve ocorrer sem chave Gemini e sem qualquer chamada paga.
 
-HEAD publicado: `dc7d47e` ou posterior — ver PR #17 para o HEAD final; commits após este registro alteram apenas relatório e este arquivo.
+Status esperado do Claude:
 
-CI: `32908302698` — **success**, 983/983 testes, lint/typecheck/Edge Functions/build verdes.
+**CORREÇÃO 004E-02 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**.
 
-Status: **CORREÇÃO 004E-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT ANTES DO GATE DE CREDENCIAL PAGA**.
-
-Relatório: `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` §7.
-
-**Nenhuma chamada paga foi feita.** `GEMINI_API_KEY` continua ausente e não deve ser disponibilizada antes da reauditoria.
-
-### 10.1 Bloqueios fechados
-
-- **A** — o JSON Schema enviado ao provider passou a usar só o subconjunto oficial: `maxLength` e `nullable` removidos, `nextQuestion` como união de tipos `["object","null"]`, limites mantidos no Zod, e teste de allowlist recursiva que falha se alguém reintroduzir keyword;
-- **B** — reserva atômica por RPC serializada por advisory lock decide cache/in-flight/papel/teto num único passo; índice único parcial impede duas reservas do mesmo contexto; reserva órfã expira e é recuperável; tentativa falha continua consumindo cota;
-- **C** — a promessa de que "nada foi cobrado" saiu da UI: depois de chamar o provider não há como garanti-la;
-- **D** — o E2E passou a chamar o serviço produtivo e provar artefato, tenant, modelo, usage, custo reproduzível e cache;
-- **E** — harness de eval avalia a resposta da task nos 12 casos por invariantes, uma execução por caso, sem retry.
-
-Achado próprio: duas FKs do delta 004E estavam sem cobertura porque os índices tinham as colunas invertidas. Migration `20260825270000` corrige.
-
-### 10.2 Supabase remoto
-
-Migrations aplicadas nesta correção, ambas aditivas e publicadas antes do `db push`:
-
-- `20260825260000_create_review_attempt_reservation`;
-- `20260825270000_index_review_run_foreign_keys`.
-
-Nenhuma migration anterior foi reescrita.
-
-Prova: `scripts/sql/review-attempt-reservation-004e01-proof.sql` → **23 casos, 23 passaram, 0 falharam**, transacional com rollback e zero fixtures residuais. Os dois `unindexed_foreign_keys` do delta foram quitados.
-
-### 10.3 Provas locais
-
-- suíte completa **983/983** em 48 arquivos;
-- testes de concorrência com chamadas simultâneas, não sequenciais;
-- `tsc --noEmit` e `eslint` limpos;
-- `npm run e2e:review` e `npm run eval:review` param no gate com código 2, sem chamar nada.
-
-### 10.4 Próxima ação autorizada
-
-Próximo ator: **GPT auditor**.
-
-Reauditar a Correção 004E-01 no PR #17. **Somente após aprovação** o GPT pode orientar o fundador a criar/configurar a credencial Paid Tier e liberar a prova real.
-
-Claude não promove, não mergeia e não pede a chave ao fundador.
+Depois disso o próximo ator volta a ser GPT. Somente uma reauditoria aprovada poderá abrir o gate para o fundador criar/configurar a credencial Paid Tier e executar a primeira prova real.
 
 ## 11. Regra de continuidade
 
