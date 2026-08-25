@@ -88,19 +88,9 @@ Ativos reais do portfólio **Quoron**:
 - Página Facebook: **Quoron**;
 - Instagram profissional: **@goquoron**.
 
-### Diagnóstico de permissões e correção externa
+No primeiro OAuth real 003B, apesar de Página + Instagram terem sido selecionados, o token veio somente com `pages_show_list`, `pages_read_engagement`, `public_profile`. Faltaram `instagram_basic` e `instagram_manage_insights`.
 
-No primeiro OAuth real 003B, apesar de Página + Instagram terem sido selecionados, o token veio somente com:
-
-- `pages_show_list`;
-- `pages_read_engagement`;
-- `public_profile`.
-
-Faltaram `instagram_basic` e `instagram_manage_insights`.
-
-A investigação no Meta for Developers provou que o caso de uso Instagram ainda não estava habilitado no caminho correto. Foi adicionado **Gerenciar mensagens e conteúdo no Instagram** e habilitado **Instagram API setup with Facebook Login**. `instagram_basic` + `instagram_manage_insights` foram salvos na configuração `Quoron Instagram Dev Login`.
-
-O token já emitido não ganha novos escopos retroativamente.
+O caso de uso correto de Instagram com Facebook Login foi habilitado e `instagram_basic` + `instagram_manage_insights` foram salvos na configuração `Quoron Instagram Dev Login`, mas o token já emitido não ganha novos escopos retroativamente.
 
 ## 6. Conexão real atual — PRESERVAR
 
@@ -113,21 +103,19 @@ Conexão real atual:
 - `instagram_accounts`: 0 linhas;
 - `ad_accounts`: 0 linhas.
 
-Auditoria independente após a 003B-03 confirmou que o Claude não alterou essa conexão. A tentativa de reautorização descrita abaixo **não foi concluída**, portanto nenhum novo token foi persistido.
+A tentativa de reautorização posterior não foi concluída, portanto nenhum novo token foi persistido.
 
 ## 7. Gate E2E atual
 
-### 7.1 Bloqueio observado — portfólio dono do app não elegível como cliente
-
-Gate: `rodadas/gpt/GATE_003B_PORTFOLIO_DONO_DO_APP_NAO_ELEGIVEL_COMO_CLIENTE.md`
+### 7.1 Bloqueio do portfólio dono do app
 
 Na reautorização real, o seletor **Portfólio empresarial** exibiu **Quoron** desabilitado com a mensagem literal:
 
 `This Meta Business Account owns the app`
 
-O diálogo selecionou **Criar um portfólio empresarial** e, ao avançar, passou a pedir dados para uma nova empresa/novos ativos, inclusive nome, e-mail, país e site.
-
 Fato consolidado: neste fluxo/configuração, o portfólio que possui o app não pode ocupar também o papel de portfólio cliente integrado.
+
+Gate: `rodadas/gpt/GATE_003B_PORTFOLIO_DONO_DO_APP_NAO_ELEGIVEL_COMO_CLIENTE.md`
 
 ### 7.2 Registro 003B-04 anterior — decisão prematura anulada
 
@@ -139,49 +127,50 @@ Status: **ANULADO COMO DECISÃO**. O fundador estava apenas debatendo e não hav
 
 Autorização: `rodadas/gpt/AUTORIZACAO_003B_04_APP_META_TESTE_SEM_PORTFOLIO.md`
 
-Status: **AUTORIZADO PARA EXPERIMENTO CONTROLADO — NÃO É DECISÃO ARQUITETURAL DEFINITIVA**.
+Resultado: `rodadas/gpt/RESULTADO_003B_04_APP_META_TESTE_SEM_PORTFOLIO.md`
 
-O app **Trafego Pago E2E Test** foi criado com sucesso sem Business Portfolio associado na criação.
+Status: **EXPERIMENTO EXECUTADO — HIPÓTESE BISU REPROVADA**.
 
-Fato novo observado no painel `Adicionar mais casos de uso`:
+Fatos provados pela UI atual da Meta:
 
-- marcar **Autenticar e solicitar dados de usuários com o Login do Facebook** bloqueia **Gerenciar mensagens e conteúdo no Instagram**;
-- marcar o caso de uso do Instagram bloqueia o Login do Facebook genérico;
-- portanto esses dois casos de uso são tratados pela UI atual como incompatíveis no mesmo app.
+- foi criado `Trafego Pago E2E Test` sem Business Portfolio associado;
+- o caso de uso `Gerenciar mensagens e conteúdo no Instagram` expôs `API setup with Facebook login`;
+- o app recebeu `Login do Facebook para Empresas` e permitiu iniciar `Criar configuração`;
+- na etapa `Escolher o token de acesso`, `Token de acesso do usuário` ficou disponível;
+- **`Token de acesso do usuário do sistema` ficou desabilitado** com a mensagem de que a opção não está disponível porque o app não está associado a um portfólio empresarial.
 
-Correção de entendimento do GPT:
+Conclusão limitada: **não é possível reproduzir o contrato BISU vigente usando um app de teste sem portfólio empresarial**.
 
-- o cartão **Autenticar e solicitar dados de usuários com o Login do Facebook** é o Login do Facebook genérico e não deve ser confundido com **Facebook Login for Business**;
-- para a arquitetura vigente do produto, o caminho a investigar é o caso de uso **Gerenciar mensagens e conteúdo no Instagram** e, dentro dele, verificar se a Meta expõe **Instagram API setup with Facebook Login / Facebook Login for Business**, como ocorreu no app oficial;
-- isso é continuidade do experimento, não decisão definitiva de arquitetura.
+Isso **não** autoriza trocar para User Access Token. Essa alternativa altera ciclo de vida, revogação e operação da credencial e exige decisão arquitetural separada.
 
-## 8. Próxima ação autorizada
+Nada foi alterado em `.env.local`; nenhum novo OAuth foi concluído; nenhum token novo foi persistido; o app de teste continua sem portfólio associado.
 
-Próximo a agir: **fundador no Meta for Developers**.
+## 8. Próxima ação
 
-No app `Trafego Pago E2E Test`:
+Status atual:
 
-1. deixar desmarcado **Autenticar e solicitar dados de usuários com o Login do Facebook**;
-2. marcar somente **Gerenciar mensagens e conteúdo no Instagram**;
-3. clicar **Salvar**;
-4. parar quando o painel/fluxo de configuração do Instagram abrir e retornar ao GPT com a tela.
+`DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT/FUNDADOR`
 
-O objetivo do próximo gate é verificar se esse app sem portfólio oferece o setup **Instagram API com Facebook Login / Facebook Login for Business** sem forçar associação proprietária a um Business Portfolio.
+Alternativas em debate, nenhuma ainda promovida como arquitetura:
+
+1. **manter BISU** e aguardar a liberação de um segundo portfólio empresarial elegível para concluir o E2E real exigido pela 003B;
+2. usar **User Access Token apenas como diagnóstico temporário**, sem promover a 003B com base nele, para provar descoberta/leitura de Instagram enquanto o gate BISU permanece aberto;
+3. reavaliar formalmente a arquitetura de autenticação para User Access Token, o que exigiria novo mandato, análise de segurança, ciclo de vida, revogação e impacto em produção.
+
+Até nova decisão, o fundador deve **cancelar/fechar a criação dessa configuração sem selecionar User Access Token**.
 
 ## 9. Continua NÃO autorizado
 
-- associar o novo app de teste ao portfólio Quoron;
+- selecionar `Token de acesso do usuário` como substituição automática do BISU;
+- associar o app de teste ao portfólio Quoron apenas para habilitar BISU;
 - substituir definitivamente o app oficial;
-- alterar ainda `.env.local` para o novo app;
-- criar configuração de Business Login no novo app antes de verificar o próximo painel;
-- marcar o Login do Facebook genérico apenas para contornar o fluxo;
+- alterar `.env.local` para o novo app;
 - criar novo portfólio empresarial;
 - usar conta de terceiro;
 - criar `Quoron 1`;
 - inventar site/domínio;
 - mover Página Quoron ou `@goquoron` entre portfólios;
 - transferir a propriedade do app oficial;
-- trocar BISU por User Access Token sem decisão arquitetural;
 - desconectar a conexão real atual;
 - remover novamente a integração em Apps conectados;
 - apagar a configuração histórica da 003A;
