@@ -226,6 +226,12 @@ Branch: `claude/rodada-004c-offer-catalog-business-context`.
 
 Base: `main` em `bd32e2a`, após a promoção da 004B.
 
+PR #15: **draft, open, não mergeada**, base `main`.
+
+HEAD publicado: `775d96af1eeeeb50521daa2f13f6972c71c19d61`.
+
+CI: `32885622248` — **success**, 864/864 testes, lint/typecheck/Edge Functions/build verdes.
+
 Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**. Não promovida, não mergeada.
 
 Relatório: `rodadas/claude/RELATORIO_RODADA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`.
@@ -265,7 +271,7 @@ Esta migration **não deve ser reescrita**.
 - `scripts/sql/business-offers-004c-proof.sql` → **51 casos, 51 passaram, 0 falharam**, transacional com rollback e leitura real sob papel `authenticated`;
 - vitest dos arquivos novos e afetados → 87/87;
 - `tsc --noEmit` e `eslint` limpos;
-- suíte completa na CI final do PR.
+- suíte completa na CI final do PR: 864/864.
 
 ## 9. Próxima ação autorizada
 
