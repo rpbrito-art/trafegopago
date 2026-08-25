@@ -191,13 +191,15 @@ do $$
 declare
   v_outcome text;
 begin
+  -- Envelhecer a tentativa inteira, e não só `expires_at`: a constraint
+  -- `expires_at > reserved_at` recusa o estado incoerente em que a reserva
+  -- venceria antes de existir. Recuar as duas datas juntas é o que simula uma
+  -- reserva antiga de verdade.
+  --
+  -- A janela do teto também recua, senão o limite mascararia o resultado.
   update public.declared_context_review_attempts
-     set expires_at = now() - interval '1 minute'
-   where id = pg_temp.id('tentativa_1');
-
-  -- A janela do teto também é recuada, senão o limite mascararia o resultado.
-  update public.declared_context_review_attempts
-     set reserved_at = now() - interval '2 hours'
+     set reserved_at = now() - interval '2 hours',
+         expires_at = now() - interval '1 hour 58 minutes'
    where organization_id = pg_temp.id('org_a');
 
   select outcome into v_outcome from public.acquire_declared_context_review_slot(
