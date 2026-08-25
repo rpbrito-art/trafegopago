@@ -14,6 +14,18 @@ describe("isProtectedPath", () => {
     expect(isProtectedPath(`${ROUTES.account}/qualquer`)).toBe(true);
   });
 
+  /**
+   * A entrada guiada e a escolha de prioridade mostram dados do negócio: nascem
+   * protegidas, e não "protegidas na próxima rodada" (Rodada 004D §§9–11).
+   */
+  it("protege a trilha guiada e a escolha de prioridade", () => {
+    expect(isProtectedPath(ROUTES.start)).toBe(true);
+    expect(isProtectedPath(ROUTES.focus)).toBe(true);
+    expect(isProtectedPath(`${ROUTES.start}/qualquer`)).toBe(true);
+    expect(PROTECTED_PREFIXES).toContain(ROUTES.start);
+    expect(PROTECTED_PREFIXES).toContain(ROUTES.focus);
+  });
+
   it.each([
     "/",
     "/entrar",
@@ -30,6 +42,8 @@ describe("isProtectedPath", () => {
   it("não protege rota que apenas começa com o mesmo texto", () => {
     expect(isProtectedPath("/contatos")).toBe(false);
     expect(isProtectedPath("/conta-publica")).toBe(false);
+    expect(isProtectedPath("/iniciativas")).toBe(false);
+    expect(isProtectedPath("/focos-publicos")).toBe(false);
   });
 });
 

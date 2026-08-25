@@ -28,6 +28,18 @@ export const ROUTES = {
   /** Área protegida mínima desta rodada. Não é o dashboard do produto. */
   account: "/conta",
   /**
+   * Entrada autenticada guiada.
+   *
+   * Primeira superfície de **condução**: mostra o próximo passo derivado do
+   * estado real do negócio. Não é o App Shell/Hoje definitivo (Rodada 004D §9).
+   */
+  start: "/inicio",
+  /**
+   * Escolha do que priorizar agora — uma oferta específica ou o negócio como
+   * um todo.
+   */
+  focus: "/foco",
+  /**
    * Objetivo atual do negócio.
    *
    * Próximo passo natural depois de criar o negócio: sem ele, o onboarding
@@ -75,6 +87,8 @@ export const PROTECTED_PREFIXES: readonly string[] = [
   ROUTES.account,
   ROUTES.objective,
   ROUTES.offers,
+  ROUTES.start,
+  ROUTES.focus,
 ];
 
 /**

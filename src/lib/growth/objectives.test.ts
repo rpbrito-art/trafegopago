@@ -28,6 +28,8 @@ const BASE: GrowthObjective = {
   objectiveDetail: null,
   destinationType: "WHATSAPP",
   successEventType: "CONVERSATION_STARTED",
+  focusType: null,
+  focusOfferId: null,
   successEventDetail: null,
   createdAt: "2026-08-25T12:00:00.000Z",
 };

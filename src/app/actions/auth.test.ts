@@ -7,6 +7,7 @@ import {
   PASSWORD_RESET_REQUESTED,
   RECOVERY_SESSION_REQUIRED,
 } from "@/lib/auth/errors";
+import { DEFAULT_AUTHENTICATED_REDIRECT } from "@/lib/auth/redirect";
 import { PASSWORD_RESET_DONE_PARAM, ROUTES } from "@/lib/auth/routes";
 
 type AuthResult = {
@@ -145,14 +146,14 @@ describe("signUpAction", () => {
     });
   });
 
-  it("vai direto para a conta quando o projeto devolve sessão", async () => {
+  it("vai direto para a entrada guiada quando o projeto devolve sessão", async () => {
     signUpResult = { data: { session: { access_token: "t" } }, error: null };
 
     const destino = await capturarRedirect(() =>
       signUpAction(undefined, form({ email: "pessoa@exemplo.com", password: SENHA })),
     );
 
-    expect(destino).toBe(ROUTES.account);
+    expect(destino).toBe(DEFAULT_AUTHENTICATED_REDIRECT);
   });
 
   it("não revela que o e-mail já está cadastrado", async () => {
@@ -189,12 +190,12 @@ describe("signInAction", () => {
     expect(state?.message).toBe(GENERIC_SIGN_IN_ERROR);
   });
 
-  it("leva para a área da conta por padrão", async () => {
+  it("leva para a entrada guiada por padrão", async () => {
     const destino = await capturarRedirect(() =>
       signInAction(undefined, form({ email: "pessoa@exemplo.com", password: SENHA })),
     );
 
-    expect(destino).toBe(ROUTES.account);
+    expect(destino).toBe(DEFAULT_AUTHENTICATED_REDIRECT);
   });
 
   it.each([
@@ -211,7 +212,7 @@ describe("signInAction", () => {
       ),
     );
 
-    expect(destino).toBe(ROUTES.account);
+    expect(destino).toBe(DEFAULT_AUTHENTICATED_REDIRECT);
   });
 
   it("respeita um destino interno da allowlist", async () => {

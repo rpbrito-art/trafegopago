@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_AUTHENTICATED_REDIRECT } from "@/lib/auth/redirect";
 import { ROUTES } from "@/lib/auth/routes";
 
 let verifyResult: { error: { code?: string } | null } = { error: null };
@@ -53,7 +54,7 @@ describe("GET /auth/confirm", () => {
       type: "signup",
       token_hash: "hash-valido",
     });
-    expect(destino).toBe(ROUTES.account);
+    expect(destino).toBe(DEFAULT_AUTHENTICATED_REDIRECT);
   });
 
   it("aceita o tipo email além de signup", async () => {
@@ -121,7 +122,7 @@ describe("GET /auth/confirm", () => {
       `?token_hash=h&type=signup&next=${encodeURIComponent(next)}`,
     );
 
-    expect(destino).toBe(ROUTES.account);
+    expect(destino).toBe(DEFAULT_AUTHENTICATED_REDIRECT);
   });
 
   it("respeita next interno da allowlist", async () => {

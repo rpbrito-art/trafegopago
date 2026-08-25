@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { DEFAULT_AUTHENTICATED_REDIRECT } from "@/lib/auth/redirect";
 import { isAuthEntryPath, isProtectedPath, ROUTES } from "@/lib/auth/routes";
 import {
   redirectPreservingCookies,
@@ -29,7 +30,11 @@ export async function proxy(request: NextRequest) {
   }
 
   if (userId && isAuthEntryPath(pathname)) {
-    return redirectPreservingCookies(request, response, ROUTES.account);
+    return redirectPreservingCookies(
+      request,
+      response,
+      DEFAULT_AUTHENTICATED_REDIRECT,
+    );
   }
 
   return response;
