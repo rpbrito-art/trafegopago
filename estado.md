@@ -28,7 +28,7 @@ Promovidas: **000–003A, 004A, 004B e 004C**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - última rodada promovida: **004C — Offer Catalog + Business Context Foundation**.
-- rodada corrente: **004D — Guided Growth Journey Foundation — EXECUTADA, AUDITADA E BLOQUEADA; CORREÇÃO 004D-01 AUTORIZADA**.
+- rodada corrente: **004D — Guided Growth Journey Foundation — CORREÇÃO 004D-01 EXECUTADA, AGUARDANDO REAUDITORIA GPT**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -300,24 +300,40 @@ Regra crítica: **não reescrever migrations já aplicadas**. A correção deve 
 - recriar/trocar Supabase project ref;
 - renomear/mover recursos Meta.
 
-## 11. Próxima ação autorizada
+## 11. Correção 004D-01 — EXECUTADA
 
-Próximo ator: **Claude Code**.
+Mandato: `rodadas/gpt/CORRECAO_004D_01_IMUTABILIDADE_GROWTH_OBJECTIVES.md`.
 
-Executar somente a **Correção 004D-01** na mesma branch da 004D.
+Branch: `claude/rodada-004d-guided-growth-journey` · PR #16 mantido aberto, draft, não mergeado.
 
-Claude deve:
+Status: **CORREÇÃO 004D-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
 
-1. atualizar a branch com a `main` documental sem perder o delta da 004D;
-2. ler `estado.md` e `rodadas/gpt/CORRECAO_004D_01_IMUTABILIDADE_GROWTH_OBJECTIVES.md`;
-3. criar migration aditiva, sem editar migrations aplicadas;
-4. reduzir UPDATE de `service_role` ao mínimo necessário para `status`/`archived_at`;
-5. adicionar guarda persistida de imutabilidade que permita apenas `ACTIVE/NULL -> ARCHIVED/timestamp` sem mudança de conteúdo;
-6. provar que `set_active_growth_objective` e `set_growth_objective_focus` continuam funcionando;
-7. manter PR #16 aberto, draft e não mergeado;
-8. finalizar em **CORREÇÃO 004D-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
+Relatório: `rodadas/claude/RELATORIO_RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md` §6.
 
-Depois disso, o próximo ator volta a ser o **GPT auditor**.
+Branch atualizada com a `main` documental por merge, preservando o delta da 004D. Único conflito: `estado.md`, resolvido pela versão da `main`.
+
+### 11.1 Delta da correção
+
+Migration aditiva `20260825240000_enforce_growth_objective_immutability`. As migrations `20260825180000`, `20260825230000` e demais aplicadas **não foram reescritas**.
+
+- `service_role` perde o UPDATE de tabela em `growth_objectives` e recebe UPDATE apenas de `status` e `archived_at`;
+- trigger `growth_objectives_immutable` recusa UPDATE em linha já arquivada, UPDATE que não leve a `ARCHIVED` com `archived_at` preenchido, e qualquer alteração de conteúdo, inclusive acompanhada do arquivamento;
+- a guarda vale também para quem ignora grants, que é o ponto do bloqueio da auditoria;
+- `set_active_growth_objective` e `set_growth_objective_focus` seguem com supersede + nova versão atômicos e idempotência;
+- UI, motor de jornada, foco, ofertas, Meta e IA intactos.
+
+### 11.2 Provas da correção
+
+- `scripts/sql/growth-objectives-immutability-004d01-proof.sql` → **30 casos, 30 passaram, 0 falharam**;
+- regressão `scripts/sql/growth-objective-focus-004d-proof.sql` reexecutada → **32/32**;
+- pós-estado remoto: `has_table_privilege('service_role', 'growth_objectives', 'UPDATE')` agora **false**; UPDATE por coluna restrito a `status` e `archived_at`; trigger habilitada; `anon` sem grants; `authenticated` só SELECT; RLS ativa; zero fixtures residuais;
+- advisors idênticos ao baseline.
+
+### 11.3 Próxima ação autorizada
+
+Próximo ator: **GPT auditor**.
+
+Reauditar a 004D com a Correção 004D-01 no PR #16. Claude não promove, não mergeia e não declara a rodada aprovada.
 
 ## 12. Regra de continuidade
 

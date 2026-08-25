@@ -4,7 +4,9 @@ Mandato: `rodadas/gpt/RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`
 
 Branch: `claude/rodada-004d-guided-growth-journey` · base: `main` em `b389e2d`, após a promoção da 004C.
 
-Status: **004D EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+Status: **CORREÇÃO 004D-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
+
+Auditoria da 004D: `rodadas/gpt/AUDITORIA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md` — bloqueada por imutabilidade de `growth_objectives`. Correção: `rodadas/gpt/CORRECAO_004D_01_IMUTABILIDADE_GROWTH_OBJECTIVES.md`, executada nesta mesma branch e registrada na §6 abaixo.
 
 ## 1. Preflight
 
@@ -81,8 +83,44 @@ Advisors: um novo INFO `unused_index` em `growth_objectives_focus_offer_idx`, es
 
 Sem Meta, sem provider de IA, sem prompt ou chamada ao Router, sem CRM, sem Ads, sem App Shell, sem seletor multi-organização, sem múltiplos focos e sem score de maturidade. `BASE_ESTRATEGICA_PRONTA` não oferece link para integração bloqueada — há teste que falha se um aparecer.
 
-## 6. Handoff
+## 6. Correção 004D-01 — imutabilidade de `growth_objectives`
 
-Branch `claude/rodada-004d-guided-growth-journey`, HEAD publicado em `origin`. PR #16, draft, base `main`. CI `32892914249` — success. `estado.md` da branch em **004D EXECUTADA — AGUARDANDO AUDITORIA GPT**. Working tree limpa.
+### 6.1 Defeito
 
-Nenhuma pendência técnica. Próximo ator: **GPT auditor**.
+A auditoria confirmou por prova independente: `has_table_privilege('service_role', 'growth_objectives', 'UPDATE') = true` e zero trigger customizada. A memória estratégica dependia da disciplina de quem chamava — um caminho privilegiado fora das RPCs podia reescrever objetivo, jornada, sucesso, foco, tenant, autoria ou datas sem criar versão nova.
+
+### 6.2 Delta — `supabase/migrations/20260825240000_enforce_growth_objective_immutability.sql`
+
+Aditiva; nenhuma migration aplicada foi tocada.
+
+- `revoke update` de tabela para `service_role`, seguido de `grant update (status, archived_at)` — o papel da aplicação escreve exatamente as duas colunas que o supersede altera;
+- trigger `growth_objectives_immutable` (`before update … for each row`): recusa UPDATE em linha já arquivada, UPDATE que não leve a `ARCHIVED` com `archived_at` preenchido, e qualquer alteração de conteúdo mesmo acompanhada do arquivamento.
+
+A forma é deliberadamente a mesma da correção 004C-01: duas entidades históricas com invariantes divergentes seriam duas regras para lembrar em vez de uma. A comparação é da linha inteira via `to_jsonb`, com `status` e `archived_at` neutralizados — campo a campo, `focus_type` e `focus_offer_id` teriam nascido fora da guarda quando a 004D os acrescentou.
+
+### 6.3 Provas da correção
+
+`scripts/sql/growth-objectives-immutability-004d01-proof.sql` → **30 casos, 30 passaram, 0 falharam**, transacional com rollback.
+
+Cobre: as duas RPCs continuam criando, trocando e mantendo idempotência, com histórico e um único `ACTIVE`; `service_role` recusado com `42501` ao alterar objetivo/jornada/sucesso, foco, tenant/autoria/data e conteúdo de versão arquivada; dono do banco recusado com `55000` nos mesmos casos, mais reativação de arquivada, alteração junto do arquivamento e `archived_at` sem arquivar; a transição permitida continua funcionando para os dois papéis; e a fronteira do browser inalterada.
+
+Regressão: `scripts/sql/growth-objective-focus-004d-proof.sql` reexecutado após a mudança → **32/32**, sem falhas. Reexecutado por ter sido alterado um primitive compartilhado (grants e gatilho da tabela) — as demais provas não foram repetidas.
+
+Pós-estado remoto: `has_table_privilege('service_role', …, 'UPDATE')` agora **false**; UPDATE por coluna restrito a `status` e `archived_at`; trigger habilitada; função sem EXECUTE para `anon`/`authenticated`; `authenticated` só SELECT; zero fixtures residuais. Advisors idênticos ao baseline.
+
+Nada de UI, motor de jornada, foco, ofertas, Meta ou IA foi alterado — o delta é exclusivamente de privilégio e guarda de banco.
+
+## 7. Handoff
+
+Branch `claude/rodada-004d-guided-growth-journey`, HEAD publicado em `origin`. PR #16 mantido **aberto, draft, base `main`, não mergeado**.
+
+Branch atualizada com a `main` documental por merge, preservando o delta da 004D; o único conflito foi `estado.md`, resolvido pela versão da `main`, que é o estado soberano.
+
+Migrations aplicadas nesta branch, nenhuma reescrita:
+
+- `20260825230000_add_growth_objective_focus` (004D);
+- `20260825240000_enforce_growth_objective_immutability` (004D-01).
+
+`estado.md` da branch em **CORREÇÃO 004D-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**. Working tree limpa.
+
+Nenhuma pendência técnica. Próximo ator: **GPT auditor**, para reauditoria.
