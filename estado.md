@@ -281,6 +281,10 @@ Mandato: `rodadas/gpt/CORRECAO_004C_01_IMUTABILIDADE_VERSOES_OFERTA.md`.
 
 Branch: `claude/rodada-004c-offer-catalog-business-context` · PR #15 mantido aberto, draft, não mergeado.
 
+HEAD publicado: `a1f70213` (ver PR #15 para o HEAD final; commits posteriores a este registro alteram apenas relatório e este arquivo).
+
+CI: `32887912322` — **success**, 864/864 testes, lint/typecheck/Edge Functions/build verdes.
+
 Status: **CORREÇÃO 004C-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
 
 Relatório: `rodadas/claude/RELATORIO_RODADA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md` §7.
