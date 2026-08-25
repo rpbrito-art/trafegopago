@@ -29,6 +29,7 @@ Promovidas: **000–003A, 004A e 004B**.
 - Fase 6 — AI Foundation: **EM ANDAMENTO; 004A FOUNDATION CORE PROMOVIDA**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - última rodada promovida: **004B — Quoron Branding + Growth Context Foundation**.
+- rodada corrente: **004C — Offer Catalog + Business Context Foundation — PLANEJADA E AUTORIZADA, AINDA NÃO EXECUTADA**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -170,7 +171,7 @@ Decisão:
 
 O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes podem continuar a partir da `main`.
 
-## 7. Continua NÃO autorizado sem nova rodada/decisão
+## 7. Continua NÃO autorizado fora do mandato 004C
 
 ### Meta
 
@@ -197,14 +198,16 @@ O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes 
 - IA inferir automaticamente objetivo do usuário;
 - qualquer capacidade de IA executar gasto.
 
-### Produto
+### Produto fora da 004C
 
+- vínculo oferta → `growth_objectives`;
 - seletor multi-organização;
 - Content Intelligence/Oportunidades;
 - Financial Approval;
 - CRM/leads;
 - App Shell/Hoje definitivo;
-- qualquer nova rodada substantiva antes de novo mandato GPT.
+- e-commerce, estoque, SKU, pedidos ou pagamentos;
+- qualquer nova capacidade substantiva além do escopo explícito da 004C.
 
 ### Branding técnico externo
 
@@ -213,33 +216,53 @@ O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes 
 - recriar/trocar Supabase project ref;
 - renomear/mover recursos Meta.
 
-## 8. Transferência de mandato
+## 8. Rodada corrente 004C — AUTORIZADA PARA EXECUÇÃO
 
-O fundador solicitou trocar de chat **após o fechamento da 004B**.
+Mandato:
 
-Status: **004B FECHADA E PROMOVIDA; TRANSFERÊNCIA DE CHAT É A PRÓXIMA AÇÃO.**
+`rodadas/gpt/RODADA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`
 
-Próximo ator: **novo GPT planejador/auditor**.
+Mandato registrado na `main` em 2026-08-25.
 
-Não existe nova rodada substantiva autorizada para Claude Code neste momento.
+Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
 
-O novo GPT deve:
+Base: `main` atualizada após 004B e transferência de mandato.
 
-1. executar o bootstrap reforçado de transferência previsto em `.gpt/PROJECT_PROMPT.md`;
-2. ler o HANDOFF formal produzido pelo chat anterior;
-3. apresentar `COMPROVAÇÃO DE CONTINUIDADE` antes de agir;
-4. reconciliar este `estado.md`, documentação canônica e `main`;
-5. somente então decidir/planejar a próxima capacidade independente da Meta.
+Branch sugerida:
 
-Claude Code **não deve receber `/proxima`** até que o novo GPT publique novo mandato autorizado.
+`claude/rodada-004c-offer-catalog-business-context`
 
-## 9. Direção de retomada, não autorização
+Objetivo resumido:
 
-O próximo GPT deve avaliar qual é a próxima capacidade substantiva independente da Meta usando o roadmap e os canônicos atuais.
+- criar catálogo estruturado de ofertas do negócio;
+- separar identidade da oferta de versões imutáveis do conteúdo;
+- preservar preço/proposta de valor de forma estruturada e historicamente segura;
+- oferecer UI simples em português;
+- manter RLS, tenant e multi-organização fail-closed;
+- não depender de Meta nem de provider real de IA;
+- absorver harmonização documental pontual já devida sobre a centralidade da mídia paga.
 
-Não assumir automaticamente a ordem histórica das fases, pois a antecipação da AI Foundation já foi decisão documentada.
+A autorização **não inclui** nenhuma capacidade listada como fora de escopo no mandato.
 
-A definição de produto vigente é: Quoron é uma plataforma de inteligência de crescimento para pequenas empresas, orientada a transformar contexto, objetivo, jornada, conteúdo/mídia e resultados em aprendizagem e próxima ação, mantendo a complexidade técnica no sistema e decisões sensíveis sob controle humano.
+## 9. Próxima ação autorizada
+
+Próximo ator: **Claude Code**.
+
+O fundador pode ativá-lo agora pelo fluxo normal do projeto (`/proxima`).
+
+Claude deve:
+
+1. partir da `main` atualizada;
+2. ler `estado.md`;
+3. ler o mandato 004C;
+4. cumprir o READ SET definido no mandato;
+5. criar a branch da rodada e executar somente o delta autorizado;
+6. parar em eventual gate de segurança externo em vez de contornar;
+7. finalizar com relatório, PR, CI e `estado.md` da branch em **EXECUTADA / AGUARDANDO AUDITORIA GPT**.
+
+Claude não deve promover nem mergear a rodada.
+
+Depois da execução, o próximo ator volta a ser o **GPT auditor**.
 
 ## 10. Regra de continuidade
 
