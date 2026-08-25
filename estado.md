@@ -297,6 +297,12 @@ Branch: `claude/rodada-004e-declared-context-review-first-real-ai`.
 
 Base: `main` em `0ad811f`.
 
+PR #17: **draft, open, não mergeada**, base `main`.
+
+HEAD publicado: `a9a8883` (ver PR #17 para o HEAD final; commits posteriores alteram apenas relatório e este arquivo).
+
+CI: `32904274001` — **success**, 973/973 testes, lint/typecheck/Edge Functions/build verdes.
+
 Status: **004E IMPLEMENTADA ATÉ GATE DE CREDENCIAL PAGA — AGUARDANDO AÇÃO GPT/FUNDADOR PARA PROVA E2E REAL**.
 
 Relatório: `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`.

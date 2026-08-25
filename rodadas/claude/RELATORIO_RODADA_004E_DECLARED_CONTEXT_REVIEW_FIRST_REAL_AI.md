@@ -64,6 +64,7 @@ Nesta ordem: cache por fingerprint → papel (owner/admin) → teto de 3 chamada
 | suíte local | `npx vitest run` | **973/973** em 48 arquivos |
 | tipos e lint | `tsc --noEmit`, `eslint` | limpos |
 | advisors | MCP Supabase, security | idênticos ao baseline |
+| CI final | `32904274001` no PR #17 | **success**, 973/973, lint/typecheck/Edge Functions/build verdes |
 | **E2E real paga** | — | **bloqueada pelo gate de credencial** |
 
 A eval não exige frase literal: prova invariantes — ausência vira ausência, campo vazio não vira fato, texto com prompt injection viaja como valor de campo, e o fingerprint muda quando e só quando o contexto muda.
@@ -80,6 +81,10 @@ Migration aplicada: `20260825250000_create_declared_context_review`, publicada n
 
 Sem Meta, sem segundo provider, sem fallback multi-provider, sem tool calling, sem embeddings, sem geração de conteúdo, sem Content Intelligence, sem CRM, sem App Shell. A `nextQuestion` é orientação: nada do output altera automaticamente objetivo, foco, preço ou oferta.
 
-## 6. Pendências
+## 6. Handoff
+
+Branch publicada; PR #17 aberto, draft, base `main`, não mergeado. CI `32904274001` — success. `estado.md` da branch no status de gate. Working tree limpa.
+
+## 7. Pendências
 
 Uma, e é o gate: **prova E2E real paga**. Depende de `GEMINI_API_KEY` de projeto no Paid Tier existir no runtime. Próximo ator: **GPT**, para conduzir a disponibilização da credencial; depois disso, a prova roda por `npm run e2e:review` e a rodada pode ser fechada.
