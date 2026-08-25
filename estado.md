@@ -123,13 +123,13 @@ Conexão real atual:
 
 Essa conexão deve permanecer intacta até a reautorização controlada.
 
-## 7. Correção 003B-03 — AUTORIZADA, AGUARDANDO EXECUÇÃO
+## 7. Correção 003B-03 — EXECUTADA
 
 Correção: `rodadas/gpt/CORRECAO_003B_03_REAUTORIZACAO_CONEXAO_ATIVA.md`
 
 Autorização: `rodadas/gpt/AUTORIZACAO_003B_03_REAUTORIZACAO_CONEXAO_ATIVA.md`
 
-Status: **AUTORIZADA PELO FUNDADOR — AGUARDANDO EXECUÇÃO DO CLAUDE**.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
 Diagnóstico técnico já feito pelo GPT:
 
@@ -148,21 +148,30 @@ Delta autorizado:
 - adicionar os testes definidos na correção;
 - não alterar backend, RPC ou migration por conveniência.
 
-Se o Claude provar um bloqueio real no backend que exija mudança arquitetural, deve parar em `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`.
+### 7.1 Execução
+
+O diagnóstico do GPT foi conferido antes de implementar: **nenhum bloqueio arquitetural**. `startMetaAuthorization` só cria a intenção; `completeMetaAuthorization` só chama `begin_meta_connection` depois de a troca do `code` ter dado certo; `begin_meta_connection` retoma a linha viva preservando o token anterior; `activate_meta_connection` substitui segredo, escopos, identidade e status numa transação. Backend, RPC e migration **não foram tocados**.
+
+Delta aplicado, só de UI:
+
+- ramo `permissao-faltando` explica que a conexão existe e falta ampliar o acesso ao Instagram, avisa que a conexão atual continua valendo, e renderiza `MetaConnectButton` com o rótulo **Atualizar autorização**;
+- o aviso de desfecho `sem-permissao` passou ao mesmo vocabulário, para não mandar reconectar de um lado e ampliar do outro.
+
+Provas: `vitest run src/components/meta/meta-assets-section.test.tsx` 24/24 — botão presente com rótulo e organização corretos, `connectMetaAction` reutilizada, tela não sugere desconectar, nenhum outro estado ganha botão. Regressão do módulo Meta e actions 260/260; typecheck e lint limpos.
+
+Preservado: conexão `655da6e6-9056-456d-a81d-5e2570da5faf` continua **ACTIVE** com os escopos antigos; nenhum token apagado, nenhuma integração removida, nenhum OAuth repetido, nada tocado no painel Meta.
 
 ## 8. Próxima ação autorizada
 
-Próximo a agir: **fundador → Claude Code**.
+Status: **003B-03 EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
-Na janela do Claude Code aberta na pasta do projeto, executar:
+Próximo a agir: **GPT** — auditar o delta da 003B-03 no PR #12.
 
-`/proxima`
+Aprovada a auditoria, o gate humano da §5 da correção é: fundador clica **Atualizar autorização** no localhost, seleciona portfólio Quoron, Página Quoron e `@goquoron`, conclui o consentimento; o GPT audita os escopos do novo token; a descoberta então deve oferecer `@goquoron`.
 
-Isso deve fazer o Claude ler este `estado.md`, abrir a Correção 003B-03 autorizada, implementar somente o botão/mensagem/testes e parar em **AGUARDANDO AUDITORIA GPT**.
+Claude Code retoma depois disso para provar a linha em `instagram_accounts` e rodar `node scripts/meta-assets-003b-probe.mjs`, parando em `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT` se a sonda apontar Page Access Token ou `ads_management`.
 
-Depois da execução do Claude, o fundador deve apenas informar ao GPT: **Claude terminou**.
-
-Nenhum novo OAuth real deve ser feito antes da auditoria GPT dessa correção.
+Nenhum novo OAuth real antes da auditoria.
 
 ## 9. Continua NÃO autorizado
 

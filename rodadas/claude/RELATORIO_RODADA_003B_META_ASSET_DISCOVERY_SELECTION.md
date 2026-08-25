@@ -5,9 +5,9 @@ Mandato: `rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
 Autorização: `rodadas/gpt/AUTORIZACAO_003B_EXECUCAO.md`
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
-Correção aplicada: `rodadas/gpt/CORRECAO_003B_01_FAIL_CLOSED_METADATA_E_MEMBERSHIP.md`
+Correções aplicadas: **003B-01** (aprovada) e **003B-03**.
 
-Status: **003B — CONFIGURAÇÃO LOCAL PRONTA — AGUARDANDO OAUTH REAL CONDUZIDO PELO GPT**.
+Status: **003B-03 EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
 ## 1. Preflight
 
@@ -36,7 +36,7 @@ Status: **003B — CONFIGURAÇÃO LOCAL PRONTA — AGUARDANDO OAUTH REAL CONDUZI
 - **Paginação por cursor reconstruído** contra host/base/versão controlados. `paging.next` do provider nunca é seguido — seria deixar um terceiro escolher o destino de um request feito com o token em mãos.
 - **`190` não muta nada**: vira `CONNECTION_REJECTED` (estado de tela). A decisão da 003A — `190` genérico não prova revogação — continua valendo.
 - **`ads_management` não entra como requisito**. A condição documentada (papel da Página via Business Manager) é hipótese a provar no E2E, não requisito fixo.
-- **Ausência de `ads_read` é capacidade inexistente, não erro**: a UI omite o ramo pago em silêncio, sem transformar escolha legítima em pendência.
+- **Capacidade ausente não é conexão quebrada**: sem `ads_read` concedido, `ads_discovery` é falsa e a UI omite o ramo pago em vez de exibir erro. A centralidade de mídia paga (`PAID_MEDIA_CANONICAL.md`) não muda isso: permissão técnica, criar campanha e aprovar gasto continuam sendo coisas distintas.
 
 ## 4. Provas
 
@@ -51,7 +51,7 @@ Status: **003B — CONFIGURAÇÃO LOCAL PRONTA — AGUARDANDO OAUTH REAL CONDUZI
 | banco: grants, RLS exercida como `authenticated`, cross-tenant, constraints, idempotência | `supabase db query --file scripts/sql/meta-assets-003b-proof.sql` | **41/41, nenhuma falha** |
 | advisors de segurança | MCP Supabase `get_advisors` | nenhum alerta novo pelas tabelas da 003B |
 
-Provas de banco incluídas: membro lê a seleção da própria org e **não** a de outra; browser não escreve (42501); FK composta recusa conexão de outra org (23503); função recusa conexão revogada; reenvio devolve a mesma linha; troca mantém uma única conta vigente e preserva a anterior; ausência de conta de anúncios é estado válido.
+Inclui: membro lê a seleção da própria org e **não** a de outra; browser não escreve (42501); FK composta recusa conexão de outra org (23503); função recusa conexão revogada; reenvio devolve a mesma linha; troca preserva a anterior; ausência de conta de anúncios é estado válido.
 
 ## 5. Migration remota
 
@@ -67,35 +67,34 @@ Dois bloqueios da auditoria pré-gate, corrigidos sem tocar em migration, schema
 
 **Bloqueio B — membership só era conferida antes das chamadas externas.** A gravação usa `service_role`, então RLS não a barra. `selectInstagramAccount` e `selectAdAccount` passam a reconferir membership **imediatamente antes** da RPC de seleção, depois do intervalo de duração indeterminada gasto na Meta — o mesmo raciocínio que a 003A aplica no callback OAuth.
 
-| prova | fonte/comando | resultado |
-| --- | --- | --- |
-| metadata 400/190, 403/10, 403/200, 500, rede, corpo ilegível → fail-closed sem RPC | `vitest run src/lib/meta/assets.test.ts` | 39/39 |
-| 2xx com campos ausentes → candidato válido com nulos; conta ilegível derruba a lista inteira | idem | passa |
-| log da recusa sem token e sem URL | idem | passa |
-| membership removida durante a redescoberta → nenhuma RPC (IG e Ads); caminho normal grava com duas checagens | idem | passa |
+Provado em `vitest run src/lib/meta/assets.test.ts` (39/39): metadata 400/190, 403/10, 403/200, 500, rede e corpo ilegível falham fechado sem RPC; 2xx com campos ausentes mantém o candidato; conta ilegível derruba a lista inteira; o log da recusa não carrega token nem URL; membership removida durante a redescoberta não gera RPC em nenhum dos dois ramos, e o caminho normal grava com exatamente duas checagens.
 
 Nada de banco mudou: a prova SQL de §4 continua válida e não foi repetida.
 
+## 5.2 Correção 003B-03 — reautorizar sem desconectar
+
+O primeiro OAuth real da 003B trouxe apenas `pages_show_list`, `pages_read_engagement` e `public_profile`: a configuração Meta ainda não expunha o caso de uso Instagram. Ele foi habilitado pelo caminho **Instagram API setup with Facebook Login**, e `instagram_basic` + `instagram_manage_insights` entraram na configuração — mas o token já emitido não ganha escopo retroativamente.
+
+Confirmei o diagnóstico do GPT antes de implementar: o backend já suporta reautorização sobre conexão viva. `startMetaAuthorization` só cria a intenção; `completeMetaAuthorization` só chama `begin_meta_connection` depois de a troca do `code` ter dado certo; `begin_meta_connection` retoma a linha viva preservando o token anterior; `activate_meta_connection` substitui segredo, escopos, identidade e status numa transação. **Nenhum bloqueio arquitetural** — nada de backend, RPC ou migration foi tocado.
+
+A lacuna era de tela. O ramo `permissao-faltando` agora explica que a conexão existe e falta ampliar o acesso, avisa que a conexão atual continua valendo, e oferece `MetaConnectButton` com o rótulo **Atualizar autorização**. O aviso de desfecho `sem-permissao` passou ao mesmo vocabulário. Mandar desconectar antes destruiria uma credencial funcional para tentar obter outra que pode nem ser concedida.
+
+Provado em `vitest run src/components/meta/meta-assets-section.test.tsx` (24/24): `permissao-faltando` oferece o botão com o rótulo de ampliação e a organização do próprio estado; o botão reutiliza `connectMetaAction`, sem caminho novo de token; a tela diz que a conexão atual continua valendo e não sugere desconectar; nenhum outro estado ganha botão de conexão. Regressão do módulo Meta e actions — gateway e atomicidade incluídos — 260/260; typecheck e lint limpos.
+
 ## 6. Gate
 
-**003B-01 aprovada pelo GPT. Gate externo executado. Configuração local pronta.**
+**Aguardando auditoria da 003B-03 antes do novo consentimento.**
 
-O GPT conduziu o fundador e criou `Quoron Instagram Dev Login` (Configuration ID `38307908848822330`, variação General, token BISU, ativos Pages + Instagram Accounts) com `pages_show_list`, `pages_read_engagement`, `instagram_basic` e `instagram_manage_insights`.
+Configuração externa em uso: `Quoron Instagram Dev Login` (`38307908848822330`), ativos Pages + Instagram Accounts, com `pages_show_list`, `pages_read_engagement`, `instagram_basic` e `instagram_manage_insights`. `META_LOGIN_CONFIG_ID` já aponta para ela no `.env.local` (gate local da sessão anterior).
 
-**`ads_read` ficou de fora por decisão do gate**: toda permissão marcada nessa tela é obrigatória no login, e exigi-la contradiria o contrato de que mídia paga é capacidade, não obrigação. Nenhum código muda por isso — `ads_discovery` simplesmente será falsa, e a UI omite o ramo pago em silêncio, que é o comportamento já provado em teste.
+Conexão real `655da6e6-9056-456d-a81d-5e2570da5faf` continua **ACTIVE e intacta**, com os escopos antigos. Nada foi desconectado, nenhum token apagado, nenhum OAuth repetido.
 
-Gate local executado nesta sessão: `META_LOGIN_CONFIG_ID` atualizado de `1549901823029730` (003A) para `38307908848822330` no `.env.local` — arquivo não versionado, coberto pelo `.gitignore`. O `next dev` foi reiniciado e subiu lendo `.env.local` (`Ready in 2.4s`); `/conta` responde normalmente. Nenhum segredo foi impresso e o backup temporário do arquivo foi removido.
+Sequência restante, após a auditoria: fundador clica **Atualizar autorização** → seleciona portfólio Quoron, Página Quoron e `@goquoron` → GPT audita os escopos do novo token → descoberta oferece `@goquoron` → `node scripts/meta-assets-003b-probe.mjs` roda as sondas read-only de IG User e Insights.
 
-A confirmação de que o diálogo usa o ID novo acontece na própria URL de autorização, montada num único lugar a partir dessa variável — ou seja, no OAuth real, que é o passo do GPT.
+A sonda sinaliza os dois gates arquiteturais previstos: se o token não ler o IG User (Page Access Token) ou se Insights exigir `ads_management`, o desfecho é `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`.
 
-Sequência restante: OAuth real conduzido pelo GPT → `/conta` lista os candidatos → fundador escolhe o Instagram → `node scripts/meta-assets-003b-probe.mjs` roda as sondas read-only de IG User e Insights.
+## 7. Fora de escopo e pendências
 
-A sonda sinaliza os dois gates arquiteturais previstos: se o token da conexão não ler o IG User (Page Access Token) ou se Insights exigir `ads_management`, o desfecho é `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`, sem ampliar permissão nem persistir segredo novo.
+Nenhuma importação de post, nenhum snapshot de métrica, nenhum Page Access Token pedido ou persistido, nenhuma mutação publicitária, nenhum App ID novo, nenhuma ampliação de escopo por conta própria, nenhuma mudança para Instagram Login.
 
-## 7. Fora de escopo — confirmado
-
-Nenhuma importação de post, nenhum snapshot de métrica, nenhum Page Access Token pedido ou persistido, nenhuma mutação publicitária, nenhum App ID novo, nenhuma ampliação de escopo, nenhuma mudança para Instagram Login.
-
-## 8. Pendências
-
-As da `main` permanecem: redaction de callback/log, leaked-password protection (WARN nos advisors), SMTP/domínio, ACL residual inerte, App Review/Business Verification.
+Pendências da `main` permanecem: harmonização dos canônicos com `PAID_MEDIA_CANONICAL.md`, redaction de callback/log, leaked-password protection, SMTP/domínio, ACL residual inerte, App Review/Business Verification.

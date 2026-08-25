@@ -1,9 +1,17 @@
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
+import { connectMetaAction } from "@/app/actions/meta";
+import { MetaConnectButton } from "@/components/meta/meta-connect-button";
 import type { MetaAdsState, MetaAssetState } from "@/lib/meta/asset-state";
 
 import { MetaAssetsSection, type AtivoResultado } from "./meta-assets-section";
+
+/**
+ * Folhas do percurso: componentes cuja presença e props importam, mas cuja
+ * renderização não é o assunto deste arquivo.
+ */
+const FOLHAS: readonly unknown[] = [MetaConnectButton];
 
 /**
  * Percorre a árvore sem DOM, como em `meta-section.test.tsx`.
@@ -23,7 +31,7 @@ function walk(node: ReactNode, visit: (element: ReactElement) => void): void {
 
   visit(node);
 
-  if (typeof node.type === "function") {
+  if (typeof node.type === "function" && !FOLHAS.includes(node.type)) {
     const render = node.type as (props: unknown) => ReactNode;
     walk(render(node.props), visit);
     return;
@@ -47,6 +55,23 @@ function textOf(node: ReactNode): string {
   });
 
   return partes.join("");
+}
+
+function usa(componente: unknown, node: ReactNode): boolean {
+  let encontrado = false;
+  walk(node, (element) => {
+    if (element.type === componente) encontrado = true;
+  });
+  return encontrado;
+}
+
+/** Props com que um componente-folha foi chamado. */
+function propsDe(componente: unknown, node: ReactNode): Record<string, unknown> | null {
+  let props: Record<string, unknown> | null = null;
+  walk(node, (element) => {
+    if (element.type === componente) props = element.props as Record<string, unknown>;
+  });
+  return props;
 }
 
 /** Valores que viajam em campo oculto, e só ali. */
@@ -140,10 +165,15 @@ describe("MetaAssetsSection — estados vazios são distinguíveis", () => {
     expect(texto).toContain("vinculada a ela");
   });
 
-  it("permissão faltando manda reconectar, não reclamar de erro", () => {
-    const texto = textOf(render({ kind: "permissao-faltando", organizationId: ORG }));
+  it("permissão faltando oferece ampliar a autorização, sem mandar desconectar", () => {
+    const arvore = render({ kind: "permissao-faltando", organizationId: ORG });
+    const texto = textOf(arvore);
 
-    expect(texto).toContain("Conecte novamente");
+    expect(texto).toContain("está conectada");
+    expect(texto).toContain("acesso necessário ao Instagram");
+    // Desconectar primeiro destruiria uma credencial que ainda funciona.
+    expect(texto).not.toContain("Desconect");
+    expect(usa(MetaConnectButton, arvore)).toBe(true);
   });
 
   it("credencial recusada pede reconexão sem culpar o usuário", () => {
@@ -160,6 +190,68 @@ describe("MetaAssetsSection — estados vazios são distinguíveis", () => {
 
   it("sem conexão a seção não aparece", () => {
     expect(render({ kind: "sem-conexao" })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Correção 003B-03 — reautorizar sem desconectar
+// ---------------------------------------------------------------------------
+
+describe("ampliar autorização de uma conexão viva", () => {
+  const FALTANDO: MetaAssetState = {
+    kind: "permissao-faltando",
+    organizationId: ORG,
+  };
+
+  it("oferece o botão com o rótulo de ampliação", () => {
+    const props = propsDe(MetaConnectButton, render(FALTANDO));
+
+    expect(props?.rotulo).toBe("Atualizar autorização");
+  });
+
+  it("o botão usa a organização do próprio estado", () => {
+    const props = propsDe(MetaConnectButton, render(FALTANDO));
+
+    expect(props?.organizationId).toBe(ORG);
+  });
+
+  it("reutiliza a action canônica de conexão, sem caminho novo de token", () => {
+    // O mesmo fluxo OAuth da 003A: `begin_meta_connection` retoma a linha viva
+    // e só troca o segredo depois que o novo token chega.
+    const form = MetaConnectButton({ organizationId: ORG, rotulo: "Atualizar autorização" });
+
+    let action: unknown = null;
+    walk(form, (element) => {
+      if (element.type === "form") action = (element.props as { action?: unknown }).action;
+    });
+
+    expect(action).toBe(connectMetaAction);
+  });
+
+  it("diz que a conexão atual continua valendo", () => {
+    // Se a tela sugerisse desconectar antes, a pessoa destruiria uma
+    // credencial funcional para tentar obter outra que pode nem ser concedida.
+    expect(textOf(render(FALTANDO))).toContain("não perde a conexão atual");
+  });
+
+  it("nenhum outro estado ganha botão de conexão", () => {
+    const outros: MetaAssetState[] = [
+      { kind: "escolher-instagram", organizationId: ORG, opcoes: [OPCAO] },
+      { kind: "sem-pagina", organizationId: ORG },
+      { kind: "sem-instagram-vinculado", organizationId: ORG },
+      { kind: "conexao-recusada", organizationId: ORG },
+      { kind: "indisponivel", organizationId: ORG },
+      {
+        kind: "instagram-selecionado",
+        organizationId: ORG,
+        instagram: { username: "quoron", nome: "Quoron", selecionadoEm: null },
+        ads: { kind: "nao-autorizado" },
+      },
+    ];
+
+    for (const estado of outros) {
+      expect(usa(MetaConnectButton, render(estado))).toBe(false);
+    }
   });
 });
 
@@ -230,8 +322,10 @@ describe("MetaAssetsSection — desfechos e vocabulário", () => {
     expect(texto).toContain("Usar esta conta");
   });
 
-  it("permissão faltando no desfecho manda reconectar", () => {
-    expect(textOf(render(ESCOLHER, "sem-permissao"))).toContain("Conecte novamente");
+  it("permissão faltando no desfecho usa o mesmo vocabulário de ampliar", () => {
+    expect(textOf(render(ESCOLHER, "sem-permissao"))).toContain(
+      "Atualize a autorização",
+    );
   });
 
   it("sucesso não deixa aviso de erro na tela", () => {

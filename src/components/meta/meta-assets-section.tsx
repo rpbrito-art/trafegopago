@@ -4,6 +4,7 @@ import {
   selectAdAccountAction,
   selectInstagramAccountAction,
 } from "@/app/actions/meta-assets";
+import { MetaConnectButton } from "@/components/meta/meta-connect-button";
 import type {
   MetaAdsState,
   MetaAssetState,
@@ -106,13 +107,30 @@ export function MetaAssetsSection({
     );
   }
 
+  // Conexão viva, capacidade incompleta.
+  //
+  // Não é caso de desconectar: `begin_meta_connection` retoma a linha viva e
+  // preserva o token atual até a nova autorização ser trocada com sucesso, e
+  // `activate_meta_connection` substitui segredo, escopos e status numa única
+  // transação. Mandar desconectar primeiro destruiria uma credencial que ainda
+  // funciona para trocá-la por uma que talvez nem seja concedida
+  // (Correção 003B-03 §2).
   if (state.kind === "permissao-faltando") {
     return (
-      <Bloco tom="atencao" titulo="Falta uma autorização">
+      <Bloco tom="atencao" titulo="Falta liberar o acesso ao Instagram">
+        <Aviso resultado={resultado} />
         <p className="text-sm text-amber-900">
-          Você não liberou tudo o que precisamos para encontrar o seu Instagram.
-          Conecte novamente e mantenha as opções sugeridas marcadas.
+          Sua conta da Meta está conectada, mas ainda falta liberar o acesso
+          necessário ao Instagram. Atualize a autorização para continuar.
         </p>
+        <p className="text-sm text-neutral-600">
+          Você não perde a conexão atual: ela continua valendo até a nova
+          autorização ser concluída.
+        </p>
+        <MetaConnectButton
+          organizationId={state.organizationId}
+          rotulo="Atualizar autorização"
+        />
       </Bloco>
     );
   }
@@ -255,10 +273,12 @@ function Aviso({ resultado }: { resultado?: AtivoResultado }) {
   }
 
   if (resultado === "sem-permissao") {
+    // Mesmo vocabulário do ramo `permissao-faltando`: a conexão não caiu, o
+    // que falta é ampliar o que ela pode fazer.
     return (
       <p role="alert" className="text-sm text-amber-900">
-        Falta uma autorização para concluir. Conecte novamente mantendo as
-        opções sugeridas marcadas.
+        Falta liberar o acesso necessário para concluir. Atualize a autorização
+        e mantenha as opções sugeridas marcadas.
       </p>
     );
   }
