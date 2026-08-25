@@ -68,6 +68,8 @@ const OBJETIVO: GrowthObjective = {
   objectiveDetail: null,
   destinationType: "WHATSAPP",
   successEventType: "BOOKING_CONFIRMED",
+  focusType: null,
+  focusOfferId: null,
   successEventDetail: null,
   createdAt: "2026-08-25T12:00:00.000Z",
 };

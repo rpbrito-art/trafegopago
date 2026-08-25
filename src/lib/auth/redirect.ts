@@ -2,8 +2,12 @@ import { ROUTES } from "./routes";
 
 /**
  * Destino padrão após autenticação bem-sucedida.
+ *
+ * A partir da 004D é `/inicio`, e não `/conta`: quem entra deve encontrar o
+ * próximo passo do negócio, não uma tela de configuração onde precisa deduzir
+ * sozinho o que fazer. `/conta` continua existindo como conta/configuração.
  */
-export const DEFAULT_AUTHENTICATED_REDIRECT: string = ROUTES.account;
+export const DEFAULT_AUTHENTICATED_REDIRECT: string = ROUTES.start;
 
 /**
  * Allowlist estrita de destinos aceitos em `?next=`.
@@ -15,6 +19,8 @@ export const DEFAULT_AUTHENTICATED_REDIRECT: string = ROUTES.account;
  * forma explícita, nunca por heurística.
  */
 export const ALLOWED_REDIRECT_PATHS: readonly string[] = [
+  ROUTES.start,
+  ROUTES.focus,
   ROUTES.account,
   ROUTES.home,
 ];

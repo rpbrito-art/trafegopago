@@ -48,6 +48,16 @@ Contexto empresarial usado por regras e IA: público, ticket, objetivos e limite
 
 `business_profiles` é a **primeira camada** desse contexto, não sua forma final (`GROWTH_INTELLIGENCE_CANONICAL.md` §3.1). O que a empresa oferece vive em `business_offers` + `business_offer_versions`, e o objetivo atual em `growth_objectives`; `business_profiles.primary_offer` permanece como texto legado e não é a fonte canônica da oferta.
 
+O objetivo registra também o **foco atual** — uma oferta específica ou o negócio como um todo. Definir ou trocar o foco arquiva a versão vigente do objetivo e cria a próxima, preservando o histórico.
+
+### 3.3.1 Guided Growth Journey
+
+Fronteira server-only que deriva o **próximo passo** do estado real do negócio: contexto de organização, objetivo, catálogo de ofertas e foco.
+
+A decisão é determinística — Tier 0 de `AI_ARCHITECTURE.md` §3 — e separada da coleta de dados: a função que escolhe o estado é pura e não conhece Supabase. Nenhuma recomendação é persistida nesta camada e nenhum provider de IA participa.
+
+A entrada autenticada padrão é `/inicio`, que apresenta um passo por vez em linguagem de negócio. `/conta` permanece como superfície de conta/configuração. Não é o App Shell definitivo.
+
 ### 3.4 Meta Auth
 
 Autorização, conexões, ativos vinculados, escopos, expiração/renovação e saúde da integração.

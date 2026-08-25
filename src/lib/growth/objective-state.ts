@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import {
   isDestinationType,
+  isFocusType,
   isObjectiveType,
   isSuccessEventType,
   type GrowthObjective,
@@ -71,7 +72,7 @@ export async function getObjectiveState(): Promise<ObjectiveState> {
   const { data, error } = await supabase
     .from("growth_objectives")
     .select(
-      "id, objective_type, objective_detail, destination_type, success_event_type, success_event_detail, created_at",
+      "id, objective_type, objective_detail, destination_type, success_event_type, success_event_detail, focus_type, focus_offer_id, created_at",
     )
     .eq("organization_id", organizationId)
     .eq("status", "ACTIVE")
@@ -94,6 +95,14 @@ export async function getObjectiveState(): Promise<ObjectiveState> {
     return { kind: "erro-tecnico" };
   }
 
+  // Foco ausente é `null` — estado legítimo de objetivo ainda não priorizado.
+  // Já um valor presente e desconhecido é dado inconsistente, e vira erro
+  // visível em vez de virar "sem foco", que mandaria o usuário decidir de novo
+  // algo que ele talvez já tenha decidido.
+  if (data.focus_type !== null && !isFocusType(data.focus_type)) {
+    return { kind: "erro-tecnico" };
+  }
+
   return {
     kind: "definido",
     organizationId,
@@ -105,6 +114,8 @@ export async function getObjectiveState(): Promise<ObjectiveState> {
       destinationType: data.destination_type,
       successEventType: data.success_event_type,
       successEventDetail: texto(data.success_event_detail),
+      focusType: data.focus_type,
+      focusOfferId: texto(data.focus_offer_id),
       createdAt: data.created_at as string,
     },
   };

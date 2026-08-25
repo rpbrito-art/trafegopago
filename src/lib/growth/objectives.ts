@@ -56,6 +56,22 @@ export const OBJECTIVE_STATUSES = ["ACTIVE", "ARCHIVED"] as const;
 
 export type ObjectiveStatus = (typeof OBJECTIVE_STATUSES)[number];
 
+/**
+ * O que o objetivo está priorizando agora (Rodada 004D §4).
+ *
+ * `BUSINESS` e `OFFER` são estados diferentes de uma mesma decisão; a ausência
+ * de foco é um terceiro estado, representado por `null` e não por um valor da
+ * taxonomia. Inventar um `NONE` faria "ainda não decidi" parecer uma escolha
+ * estratégica registrada.
+ */
+export const FOCUS_TYPES = ["BUSINESS", "OFFER"] as const;
+
+export type FocusType = (typeof FOCUS_TYPES)[number];
+
+export function isFocusType(value: unknown): value is FocusType {
+  return (FOCUS_TYPES as readonly unknown[]).includes(value);
+}
+
 // ---------------------------------------------------------------------------
 // Tradução para linguagem de negócio
 // ---------------------------------------------------------------------------
@@ -120,6 +136,10 @@ export type GrowthObjective = {
   destinationType: DestinationType;
   successEventType: SuccessEventType;
   successEventDetail: string | null;
+  /** `null` enquanto o usuário não confirmar o que priorizar. */
+  focusType: FocusType | null;
+  /** Identidade da oferta priorizada; nunca uma versão de oferta. */
+  focusOfferId: string | null;
   createdAt: string;
 };
 

@@ -84,6 +84,23 @@ describe("sanitizeRedirect", () => {
     expect(sanitizeRedirect("/conta?token=abc#x")).toBe(ROUTES.account);
   });
 
+  /**
+   * O destino padrão passa a ser a entrada guiada: quem acaba de entrar deve
+   * encontrar o próximo passo do negócio, não uma tela de configuração
+   * (Rodada 004D §11).
+   */
+  it("leva à entrada guiada quando não há next seguro", () => {
+    expect(DEFAULT_AUTHENTICATED_REDIRECT).toBe(ROUTES.start);
+    expect(sanitizeRedirect(null)).toBe(ROUTES.start);
+    expect(sanitizeRedirect("https://evil.com")).toBe(ROUTES.start);
+  });
+
+  it("aceita a trilha guiada e a escolha de prioridade como destino interno", () => {
+    expect(sanitizeRedirect(ROUTES.start)).toBe(ROUTES.start);
+    expect(sanitizeRedirect(ROUTES.focus)).toBe(ROUTES.focus);
+    expect(sanitizeRedirect(ROUTES.account)).toBe(ROUTES.account);
+  });
+
   it("respeita um fallback explícito", () => {
     expect(sanitizeRedirect("https://evil.com", ROUTES.signIn)).toBe(
       ROUTES.signIn,
@@ -94,9 +111,12 @@ describe("sanitizeRedirect", () => {
     const entradas = [
       ...OPEN_REDIRECT_VECTORS,
       "/conta",
+      "/inicio",
+      "/foco",
       "/",
       "/qualquer",
       "/conta%2f..%2fadmin",
+      "/inicio%2f..%2fadmin",
     ];
 
     for (const entrada of entradas) {

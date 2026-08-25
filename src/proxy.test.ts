@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_AUTHENTICATED_REDIRECT } from "@/lib/auth/redirect";
 import { ROUTES } from "@/lib/auth/routes";
 
 /**
@@ -107,7 +108,7 @@ describe("proxy — rotas públicas", () => {
 
       expect(response.status).toBe(307);
       expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
-        ROUTES.account,
+        DEFAULT_AUTHENTICATED_REDIRECT,
       );
     }
   });

@@ -9,7 +9,10 @@ import {
   PASSWORD_CHANGED_SESSIONS_KEPT,
   RECOVERY_SESSION_REQUIRED,
 } from "@/lib/auth/errors";
-import { sanitizeRedirect } from "@/lib/auth/redirect";
+import {
+  DEFAULT_AUTHENTICATED_REDIRECT,
+  sanitizeRedirect,
+} from "@/lib/auth/redirect";
 import { PASSWORD_RESET_DONE_PARAM, ROUTES } from "@/lib/auth/routes";
 import {
   newPasswordSchema,
@@ -68,8 +71,9 @@ export async function signUpAction(
     return { message: describeSignUpError(error), email: parsed.data.email };
   }
 
+  // Cadastro que já nasce com sessão entra pela trilha guiada, como o login.
   if (data.session) {
-    redirect(ROUTES.account);
+    redirect(DEFAULT_AUTHENTICATED_REDIRECT);
   }
 
   redirect(ROUTES.checkEmail);
