@@ -143,36 +143,36 @@ Na reautorização real, o seletor **Portfólio empresarial** exibiu **Quoron** 
 
 O diálogo selecionou **Criar um portfólio empresarial** e, ao avançar, passou a pedir dados para uma nova empresa/novos ativos, inclusive nome, e-mail, país e site.
 
-Fato consolidado: neste fluxo/configuração, o portfólio que possui o app não pode ocupar também o papel de portfólio cliente integrado. Criar `Quoron 1` seria contorno incorreto e permanece proibido.
+Fato consolidado: neste fluxo/configuração, o portfólio que possui o app não pode ocupar também o papel de portfólio cliente integrado. Criar `Quoron 1` seria contorno incorreto e permanece proibido enquanto não houver decisão posterior.
 
-### 7.2 Decisão 003B-04 — separar provedor e cliente de teste
+### 7.2 Registro 003B-04 — decisão prematura anulada
 
-Decisão: `rodadas/gpt/DECISAO_003B_04_SEPARAR_PROVEDOR_E_CLIENTE_FIXTURE.md`
+Arquivo de trilha: `rodadas/gpt/DECISAO_003B_04_SEPARAR_PROVEDOR_E_CLIENTE_FIXTURE.md`
 
-Status: **DECIDIDA PELO FUNDADOR — VIGENTE**.
+Status correto: **ANULADO COMO DECISÃO — HIPÓTESE EM DEBATE, NÃO AUTORIZADA PELO FUNDADOR**.
 
-Regra:
+O GPT havia registrado prematuramente como decisão a alternativa de separar o portfólio provedor/dono do app e o portfólio cliente de teste. O fundador corrigiu que estava apenas debatendo a alternativa.
 
-- Quoron permanece empresa provedora/dona do app e marca do SaaS;
-- o E2E de cliente da 003B usará um portfólio empresarial distinto, que não seja dono do app;
-- o objetivo de usar o próprio Quoron dentro do software no futuro permanece válido;
-- a rota a validar depois é acesso de parceiro/compartilhamento oficial de ativos entre portfólios, preservando a propriedade do app e dos ativos Quoron;
-- não assumir que esse compartilhamento resolve o Business Login sem E2E real.
+Logo:
 
-## 8. Próxima ação autorizada
+- nenhuma fixture distinta foi escolhida ou autorizada;
+- nenhuma criação de novo portfólio/conta/ativo está autorizada;
+- permanece em debate qual estrutura de teste reproduz melhor o cenário real sem impedir que o próprio Quoron use o software no futuro;
+- acesso de parceiro/compartilhamento entre portfólios é apenas hipótese a investigar, não decisão.
 
-Próximo a agir: **fundador + GPT na escolha da fixture cliente**.
+## 8. Próxima ação
 
-O fundador deve informar qual outro portfólio empresarial real sob seu controle pode ser usado como cliente de teste.
+Próximo a agir: **GPT + fundador em debate arquitetural/operacional**.
 
-Critérios desejáveis:
+Questão aberta: escolher a estrutura de teste correta considerando que:
 
-- não possuir o app Meta;
-- ter Página Facebook;
-- ter Instagram profissional ligado à Página;
-- idealmente ter conta de anúncios utilizável para gates futuros de mídia paga.
+- o perfil pessoal do fundador pode administrar ativos/portfólios sem ser ele próprio o portfólio empresarial;
+- o portfólio Quoron é dono do app e ficou inelegível como cliente neste fluxo;
+- existe o portfólio `BizzMan5po`, mas a Meta o sinalizou como não qualificado para publicidade;
+- o fundador não possui atualmente outro portfólio/conta profissional pronto para uso;
+- criar uma nova conta profissional sob o mesmo perfil pessoal não é, por si só, equivalente a usar o mesmo portfólio Quoron; a propriedade/associação ao **portfólio empresarial** é que precisa ser definida e provada.
 
-Nenhum novo OAuth está autorizado até o GPT validar a fixture escolhida e orientar a preparação dos ativos.
+Nenhum novo OAuth ou criação de ativos está autorizado até a discussão terminar e, quando aplicável, o fundador autorizar explicitamente a ação escolhida.
 
 ## 9. Continua NÃO autorizado
 
@@ -181,10 +181,11 @@ Nenhum novo OAuth está autorizado até o GPT validar a fixture escolhida e orie
 - mover Página Quoron ou `@goquoron` entre portfólios por tentativa;
 - transferir a propriedade do app por tentativa;
 - assumir que partner access resolverá o Business Login sem prova real;
+- criar nova Página/Instagram profissional como fixture sem decisão/autorização;
 - trocar BISU por User Access Token sem decisão arquitetural;
 - desconectar a conexão real atual;
 - remover novamente a integração em Apps conectados;
-- repetir OAuth antes da validação da nova fixture;
+- repetir OAuth antes da decisão sobre a fixture;
 - Claude alterar painel Meta;
 - apagar a configuração histórica da 003A;
 - criar novo Meta App ID;
@@ -197,7 +198,7 @@ Nenhum novo OAuth está autorizado até o GPT validar a fixture escolhida e orie
 
 ## 10. Pendências não bloqueantes
 
-- validar posteriormente o uso dos ativos Quoron via acesso de parceiro a um portfólio operacional distinto, sem transferir propriedade;
+- investigar, sem presumir resultado, como o próprio Quoron poderá usar o SaaS sendo o portfólio dono do app;
 - harmonização dos canônicos antigos com `PAID_MEDIA_CANONICAL.md` antes da próxima rodada substantiva pós-003B;
 - revisar onboarding final para não depender de configurações manuais desnecessárias no painel Meta;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
