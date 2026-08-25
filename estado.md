@@ -83,24 +83,25 @@ Experimento USER:
 - User Access Token;
 - evidência diagnóstica válida, mas **não canônica**.
 
-## 6. Limite real de Business Portfolios da conta — RESTRIÇÃO OPERACIONAL
+## 6. Limite real de Business Portfolios — RESTRIÇÃO OPERACIONAL
 
-Fato operacional recuperado do histórico e agora incorporado ao estado canônico:
+Fatos confirmados:
 
-- o fundador já possui **dois Meta Business Portfolios**;
-- a conta atingiu o limite atual de criação de portfolios;
-- um deles é **Quoron**, que possui o app canônico;
-- o outro é **BizzManiq1**;
-- `BizzManiq1` está **bloqueado/inutilizável** no estado atual;
-- portanto **não é possível criar um terceiro Business Portfolio** nessa conta agora.
+- a conta do fundador já atingiu o limite atual de **dois Meta Business Portfolios**;
+- portanto **não é possível criar um terceiro Business Portfolio** nessa conta agora;
+- o portfólio que está **bloqueado/inutilizável é `Bizzman5po`**;
+- **`Bizzman5po` e `BizzManiq1` são identidades distintas e não podem ser confundidas**;
+- `BizzManiq1` **não está comprovado como bloqueado** e seu papel atual precisa ser reconstruído por evidência antes de qualquer uso;
+- Quoron possui o app canônico; no fluxo BISU observado apareceu desabilitado como cliente do próprio app com `This Meta Business Account owns the app`.
 
-Regra permanente até mudança observada na Meta:
+A decisão anterior de criar `Tráfego Pago Cliente Teste` está **RETRATADA — NÃO EXECUTAR**.
+
+Regra permanente:
 
 - não instruir criação de terceiro portfolio;
-- não excluir `BizzManiq1` por tentativa apenas para liberar vaga;
+- não excluir `Bizzman5po` por tentativa apenas para liberar vaga;
+- não inferir a identidade ou estado de recurso Meta por semelhança de nome;
 - não usar empresa/portfolio de terceiro sem decisão explícita do fundador.
-
-A decisão anterior `DECISAO_003B_07_FIXTURE_BISU_CLIENTE_PROPRIO.md`, que propôs criar `Tráfego Pago Cliente Teste`, foi **RETRATADA — NÃO EXECUTAR**.
 
 ## 7. Conexão USER real atual
 
@@ -153,7 +154,7 @@ Arquitetura aprovada no código:
 
 A execução não deve ser revertida.
 
-## 10. Gate E2E BISU — próximo caminho real
+## 10. Gate E2E BISU — ESTADO ATUAL
 
 Ainda falta E2E real de BISU para provar:
 
@@ -162,30 +163,25 @@ Ainda falta E2E real de BISU para provar:
 3. expansão `instagram_business_account` no retorno real;
 4. descoberta/seleção completa em entidade cliente elegível.
 
-Quoron não serve como cliente do próprio app: no fluxo anterior apareceu desabilitado com `This Meta Business Account owns the app`.
-
-Como não há vaga para terceiro portfolio, a primeira alternativa própria é **recuperar/reativar BizzManiq1**, se a Meta permitir.
-
-Só se BizzManiq1 for formalmente irrecuperável será investigada uma fixture criada por API (`owned_businesses`/mecanismo equivalente). Essa alternativa NÃO está aprovada como elegível para Facebook Login for Business até prova oficial específica.
+Não há vaga para criar terceiro portfólio. Antes de escolher uma fixture existente, o inventário Meta deve ser reconstruído corretamente, distinguindo Quoron, Bizzman5po e BizzManiq1 e provando quais deles contam para o limite e qual papel cada um exerce.
 
 ## 11. Próxima ação autorizada
 
-Próximo a agir: **GPT + fundador para inspeção read-only do bloqueio de BizzManiq1**.
+Próximo a agir: **GPT**.
 
-Única ação manual permitida agora:
+GPT deve reconstruir o inventário Meta real antes de nova instrução manual:
 
-- abrir a área de suporte/qualidade da Meta e inspecionar o motivo/status de restrição de `BizzManiq1`;
-- não solicitar exclusão;
-- não alterar ativos;
-- não executar OAuth;
-- não criar portfolio.
+1. identificar exatamente os dois Business Portfolios que contam para o limite;
+2. confirmar o papel/estado de `BizzManiq1`;
+3. confirmar o estado/restrição de `Bizzman5po`;
+4. determinar se algum recurso existente pode funcionar legitimamente como cliente do E2E BISU.
 
-Com o status exato, o GPT deve escolher e conduzir imediatamente o caminho de revisão/recuperação suportado, se existir.
+Até essa reconstrução, **nenhuma nova ação manual do fundador está autorizada**.
 
 ## 12. Continua NÃO autorizado
 
 - criar terceiro Business Portfolio;
-- excluir `BizzManiq1` por tentativa;
+- excluir `Bizzman5po` por tentativa;
 - promover/mergear 003B antes do E2E BISU;
 - iniciar Fase 4;
 - declarar USER arquitetura definitiva;
@@ -200,10 +196,8 @@ Com o status exato, o GPT deve escolher e conduzir imediatamente o caminho de re
 
 ## 13. Pendências
 
-- identificar bloqueio exato de `BizzManiq1`;
-- tentar recuperação/revisão suportada, se disponível;
-- se recuperado, usar BizzManiq1 como cliente do E2E BISU;
-- se formalmente irrecuperável, investigar fixture por API com prova oficial de elegibilidade;
+- reconstruir inventário Meta real sem confundir nomes;
+- definir fixture BISU elegível usando recursos existentes, se possível;
 - executar E2E BISU real;
 - se passar, decidir promoção da 003B;
 - corrigir UX que hoje afirma ausência de Page quando API devolve lista vazia;
@@ -217,4 +211,5 @@ Com o status exato, o GPT deve escolher e conduzir imediatamente o caminho de re
 - explicar toda ação manual em linguagem simples;
 - não fragmentar sequência lógica conhecida;
 - não tratar hipótese sobre comportamento da Meta como fato antes de prova;
-- antes de instrução manual dependente de limite/capacidade externa, conferir o estado específico da conta já conhecido no histórico.
+- antes de instrução manual dependente de limite/capacidade externa, conferir o estado específico da conta já conhecido no histórico;
+- nomes de recursos Meta só podem ser associados a estado/função quando essa identidade estiver comprovada.
