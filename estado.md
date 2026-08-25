@@ -28,6 +28,7 @@ Promovidas: **000–003A, 004A, 004B e 004C**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - última rodada promovida: **004C — Offer Catalog + Business Context Foundation**.
+- rodada corrente: **004D — Guided Growth Journey Foundation — PLANEJADA E AUTORIZADA, AINDA NÃO EXECUTADA**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -206,7 +207,34 @@ Status:
 
 Só retomar depois que o fundador informar que resolveu o problema do portfólio empresarial restrito ou que existe nova condição operacional comprovadamente utilizável. Antes de nova implementação, o GPT deve rever a documentação oficial Meta vigente e decidir a arquitetura comercial de onboarding.
 
-## 9. Continua NÃO autorizado sem novo mandato
+## 9. Rodada corrente 004D — AUTORIZADA PARA EXECUÇÃO
+
+Mandato:
+
+`rodadas/gpt/RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`
+
+Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
+
+Base: `main` após a promoção da 004C e consolidação do `AGENTIC_PRODUCT_CANONICAL.md`.
+
+Branch sugerida:
+
+`claude/rodada-004d-guided-growth-journey`
+
+Objetivo resumido:
+
+- criar o **foco atual** do objetivo: uma oferta específica ou o negócio como um todo;
+- preservar histórico ao definir/mudar foco, sem reescrever objetivo vigente silenciosamente;
+- criar motor determinístico de próximo passo, sem IA real;
+- criar `/inicio` como entrada autenticada guiada inicial, sem ser App Shell/Hoje definitivo;
+- criar escolha simples de foco;
+- conduzir `negócio → objetivo → ofertas → foco → base estratégica pronta`;
+- manter multi-organização fail-closed, RLS e escrita server-side segura;
+- não tocar Meta, provider real de IA, Ads, CRM ou demais capacidades externas.
+
+A 004D é a primeira rodada autorizada a criar o vínculo oferta → objetivo, exclusivamente por meio do conceito de **foco** definido no mandato.
+
+## 10. Continua NÃO autorizado fora do mandato 004D
 
 ### Meta
 
@@ -230,31 +258,58 @@ Só retomar depois que o fundador informar que resolveu o problema do portfólio
 - tool calling;
 - embeddings/RAG;
 - geração real de copy/imagem;
-- IA inferir automaticamente objetivo do usuário;
+- IA inferir automaticamente objetivo, foco ou próximo passo;
 - qualquer capacidade de IA executar gasto.
 
-### Produto
+### Produto fora da 004D
 
-- vínculo oferta → `growth_objectives`;
 - seletor multi-organização;
 - Content Intelligence/Oportunidades;
+- personas/públicos;
+- crítica/geração real de conteúdo;
 - Financial Approval;
+- Ads/experimentos/scale;
 - CRM/leads;
+- WhatsApp/e-mail automatizado;
+- pesquisas com clientes;
+- conversões;
+- Strategic Insights;
 - App Shell/Hoje definitivo;
+- notificações;
+- múltiplos focos simultâneos;
 - e-commerce, estoque, SKU, pedidos ou pagamentos;
-- qualquer nova rodada substantiva sem novo mandato GPT.
+- score de maturidade/gamificação;
+- qualquer capacidade substantiva além do escopo explícito da 004D.
 
-## 10. Próxima ação
+### Branding técnico externo
 
-004C está fechada e promovida.
+- renomear repositório GitHub;
+- renomear pasta local;
+- recriar/trocar Supabase project ref;
+- renomear/mover recursos Meta.
 
-Próximo ator: **GPT planejador/auditor**.
+## 11. Próxima ação autorizada
 
-Não existe nova rodada substantiva autorizada para Claude Code neste momento.
+Próximo ator: **Claude Code**.
 
-Claude Code **não deve receber `/proxima`** até que o GPT avalie a próxima capacidade, publique novo mandato e a autorize explicitamente.
+O fundador pode ativá-lo pelo fluxo normal do projeto (`/proxima`).
 
-## 11. Regra de continuidade
+Claude deve:
+
+1. partir da `main` atualizada;
+2. ler `estado.md`;
+3. ler `rodadas/gpt/RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`;
+4. cumprir integralmente o READ SET obrigatório do mandato;
+5. criar `claude/rodada-004d-guided-growth-journey` e executar somente o delta autorizado;
+6. publicar migration/provas antes de eventual mutação remota e parar em qualquer gate humano/de segurança;
+7. manter Meta e IA real intocados;
+8. finalizar com relatório, PR, CI e `estado.md` da branch em **004D EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+
+Claude não deve promover nem mergear a rodada.
+
+Depois da execução, o próximo ator volta a ser o **GPT auditor**.
+
+## 12. Regra de continuidade
 
 - distinguir planejado, autorizado, executado, auditado, aprovado e promovido;
 - estado efetivamente incorporado = `main + estado.md + promoção real`;
