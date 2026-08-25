@@ -165,13 +165,50 @@ Base obrigatória:
 - não continuar da branch 003B;
 - criar branch `claude/rodada-004a-ai-foundation-core`.
 
-## 9. Próxima ação autorizada
+## 9. Rodada 004A — EXECUTADA EM CÓDIGO, MIGRATION REMOTA BLOQUEADA
 
-Próximo a agir: **Claude Code**.
+Mandato: `rodadas/gpt/RODADA_004A_AI_FOUNDATION_CORE.md`.
 
-Executar `/proxima` e seguir `RODADA_004A_AI_FOUNDATION_CORE.md`.
+Branch: `claude/rodada-004a-ai-foundation-core`, criada a partir da `main` (`5e03418`).
 
-Se a migration da 004A exigir aplicação remota e o classificador do Claude pedir aprovação humana, parar no gate e pedir aprovação ao fundador; não contornar o classificador.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**, com a prova remota do §11 **não executada**.
+
+Relatório: `rodadas/claude/RELATORIO_RODADA_004A_AI_FOUNDATION_CORE.md`.
+
+### 9.1 Entregue
+
+Migration `20260825140000_create_ai_foundation_core.sql` — `ai_providers`, `ai_models`, `ai_price_versions`, `ai_runs`; RLS habilitado, zero policies, `anon`/`authenticated` sem grant, `service_role` no mínimo. `ai_price_versions` sem UPDATE/DELETE; `ai_runs` sem DELETE. Tier 1..3, preços/tokens não negativos, moeda ISO, índice único parcial para uma só versão de preço aberta por modelo, e FK composta `(fallback_from_run_id, organization_id)` impedindo fallback cross-tenant.
+
+Módulo `src/lib/ai/`: `contracts`, `pricing`, `task-registry`, `adapter-registry`, `catalog`, `run-ledger`, `router`. Fake adapter em `test/support/`, fora de `src/`. Nenhuma dependência nova — `bigint` cobriu o requisito decimal do §8.
+
+Registros de produção **vazios** de propósito: sem adapter, o Router falha com `ADAPTER_NOT_REGISTERED` e registra, em vez de cair em fake.
+
+### 9.2 Provas locais
+
+`npx vitest run` → **710/710** em 30 arquivos. Da 004A: pricing 17, router 38, boundaries 7. `tsc --noEmit` e `lint` limpos.
+
+Cobrem os 15 itens do §10. `boundaries.test.ts` inspeciona o próprio código: nenhum arquivo produtivo faz `fetch`, cita marca de provider, lê chave/token ou usa `NEXT_PUBLIC_`.
+
+### 9.3 Bloqueio — decisão do GPT
+
+`supabase db push --linked` recusou com `LegacyDbPushMissingLocalError`: o remoto tem 15 migrations e a última, `20260824210000_create_meta_asset_selection`, é da **003B não promovida** — não existe nesta branch, que parte da `main` como o §3 exige.
+
+Saídas, todas com consequência duradoura:
+
+- **(a)** `migration repair` — proibido sem mandato explícito;
+- **(b)** copiar o arquivo da migration 003B para esta branch — o PR da 004A passaria a carregar a migration da 003B, e promover a 004A antes levaria schema Meta para a `main` sem a 003B aprovada;
+- **(c)** aplicar por MCP `apply_migration` — não toca na 003B, mas a versão gerada pelo servidor não bateria com `20260825140000`, deixando divergência permanente entre repositório e histórico do banco;
+- **(d)** promover a 003B antes — não autorizado.
+
+`DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`
+
+Consequência: as provas remotas do §11 não foram executadas — dependem das tabelas existirem no remoto.
+
+### 9.4 Não tocado
+
+Sem provider real, API key, SDK, chamada paga, fallback entre providers, tool calling, embeddings ou UI administrativa. Nenhum catálogo real inserido. Nada de Meta/Instagram/Ads, e a branch não carrega código da 003B. Nenhum segredo novo.
+
+Próximo a agir: **GPT** — auditar o delta e decidir como reconciliar o histórico de migrations.
 
 ## 10. Continua NÃO autorizado
 
