@@ -15,8 +15,11 @@ Natureza: **investigação read-only**. Não é correção de código, não é d
    - `ads_read`
    - `public_profile`
 3. A descoberta 003B chamou `/me/accounts` e recebeu `data=[]` / `pagesFound=0`.
-4. A Página Facebook **Quoron existe** e pertence ao portfólio Quoron.
-5. Em 2026-08-25 o fundador comprovou na própria tela **Acesso à Página** do Facebook que `Rafael Brito` aparece em **Pessoas com controle total — Acesso total** para a Página Quoron. Portanto a hipótese anterior de “Página não atribuída diretamente ao perfil / acesso insuficiente” está **REPROVADA**.
+4. A Página Facebook **Quoron existe**, pertence ao portfólio Quoron e tem ID **`1356474050873300`**.
+5. Em 2026-08-25 o fundador comprovou em duas telas oficiais da Meta que o perfil usado no OAuth possui acesso direto e total à Página:
+   - tela **Acesso à Página**: `Rafael Brito — Acesso total` em `Pessoas com controle total`;
+   - **Business Settings → Contas → Páginas → Quoron**: `1 pessoa está atribuída a essa Página do Facebook` e `Rafael Brito (You) — Acesso total`.
+   Portanto a hipótese anterior de “Página não atribuída diretamente ao perfil / acesso insuficiente” está **REPROVADA**.
 6. A documentação oficial Meta/Postman para Instagram API with Facebook Login mostra User Access Token em `GET /me/accounts` para listar Pages gerenciadas e obter `instagram_business_account`/Page Access Token.
 
 ## Objetivo
@@ -73,7 +76,24 @@ Para cada chamada registrar:
 
 Isso deve provar se o vazio é do edge `/me/accounts` em si ou se nasce da expansão `instagram_business_account`.
 
-### D. Ads como controle independente
+### D. Prova direta da Page conhecida
+
+Usando o ID já comprovado pela UI Meta, executar somente leitura:
+
+1. `GET /1356474050873300?fields=id,name`
+2. se a primeira for HTTP 200, `GET /1356474050873300?fields=id,name,instagram_business_account`
+
+Registrar apenas HTTP e os campos pedidos. Em erro, registrar apenas `code`, `error_subcode`, `type`.
+
+Objetivo: distinguir entre:
+
+- token sem acesso ao objeto Page;
+- token que consegue ler a Page diretamente, mas `/me/accounts` não a enumera;
+- expansão `instagram_business_account` como ponto específico de falha.
+
+Nenhum Page Access Token deve ser extraído ou persistido.
+
+### E. Ads como controle independente
 
 Como `ads_read` foi concedido, executar `GET /me/adaccounts?fields=id,name,account_status` (somente leitura). Registrar quantidade e IDs/nomes/status, sem qualquer ação de escrita.
 
@@ -84,7 +104,7 @@ Objetivo: saber se o User Token enxerga outros ativos Meta mesmo quando `/me/acc
 Entregar relatório curto em `rodadas/claude/` com:
 
 1. comandos/sondas executados em forma sanitizada;
-2. resultados A–D;
+2. resultados A–E;
 3. conclusão factual, sem escolher arquitetura;
 4. se houver ambiguidade material, escrever literalmente:
 
