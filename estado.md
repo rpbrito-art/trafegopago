@@ -29,7 +29,7 @@ Promovidas: **000–003A, 004A e 004B**.
 - Fase 6 — AI Foundation: **EM ANDAMENTO; 004A FOUNDATION CORE PROMOVIDA**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - última rodada promovida: **004B — Quoron Branding + Growth Context Foundation**.
-- rodada corrente: **004C — Offer Catalog + Business Context Foundation — PLANEJADA E AUTORIZADA, AINDA NÃO EXECUTADA**.
+- rodada corrente: **004C — Offer Catalog + Business Context Foundation — EXECUTADA, AUDITADA E BLOQUEADA; CORREÇÃO 004C-01 AUTORIZADA**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -108,8 +108,6 @@ Snapshot final de auditoria:
 - zero grants browser de INSERT/UPDATE/DELETE;
 - RPC sem EXECUTE para anon/authenticated e com EXECUTE para service_role;
 - zero fixtures 004B/RLS residuais no snapshot final.
-
-O relatório da correção registra prova RLS real 7/7 com papel `authenticated` e rollback. O conector GPT do Supabase não conseguiu repetir mutação transacional por operar read-only; o script foi inspecionado e os pós-estados remotos foram confirmados independentemente.
 
 ## 5. Rodada 003B — ESTACIONADA, NÃO PROMOVIDA
 
@@ -194,9 +192,9 @@ A implementação só pode ser retomada depois que o fundador informar que resol
 
 A existência da 003B/BISU/System User não torna essa arquitetura comercial definitiva.
 
-Este bloqueio **não altera nem suspende a 004C**, que continua independente da Meta e autorizada.
+Este bloqueio não impede a Correção 004C-01, que é independente da Meta.
 
-## 7. Continua NÃO autorizado fora do mandato 004C
+## 7. Continua NÃO autorizado fora da Correção 004C-01
 
 ### Meta
 
@@ -224,7 +222,7 @@ Este bloqueio **não altera nem suspende a 004C**, que continua independente da 
 - IA inferir automaticamente objetivo do usuário;
 - qualquer capacidade de IA executar gasto.
 
-### Produto fora da 004C
+### Produto fora da correção
 
 - vínculo oferta → `growth_objectives`;
 - seletor multi-organização;
@@ -233,7 +231,7 @@ Este bloqueio **não altera nem suspende a 004C**, que continua independente da 
 - CRM/leads;
 - App Shell/Hoje definitivo;
 - e-commerce, estoque, SKU, pedidos ou pagamentos;
-- qualquer nova capacidade substantiva além do escopo explícito da 004C.
+- qualquer nova capacidade substantiva além da imutabilidade de versões da 004C.
 
 ### Branding técnico externo
 
@@ -242,53 +240,58 @@ Este bloqueio **não altera nem suspende a 004C**, que continua independente da 
 - recriar/trocar Supabase project ref;
 - renomear/mover recursos Meta.
 
-## 8. Rodada corrente 004C — AUTORIZADA PARA EXECUÇÃO
+## 8. Rodada 004C — EXECUTADA, AUDITADA E BLOQUEADA
 
 Mandato:
 
 `rodadas/gpt/RODADA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`
 
-Mandato registrado na `main` em 2026-08-25.
-
-Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
-
-Base: `main` atualizada após 004B e transferência de mandato.
-
-Branch sugerida:
+Branch:
 
 `claude/rodada-004c-offer-catalog-business-context`
 
-Objetivo resumido:
+PR #15: **draft, open, não mergeada**.
 
-- criar catálogo estruturado de ofertas do negócio;
-- separar identidade da oferta de versões imutáveis do conteúdo;
-- preservar preço/proposta de valor de forma estruturada e historicamente segura;
-- oferecer UI simples em português;
-- manter RLS, tenant e multi-organização fail-closed;
-- não depender de Meta nem de provider real de IA;
-- absorver harmonização documental pontual já devida sobre a centralidade da mídia paga.
+HEAD auditado: `bff3aaea804de90e8d03a7586f262d6060b5cad0`.
 
-A autorização **não inclui** nenhuma capacidade listada como fora de escopo no mandato.
+CI do HEAD auditado: `32885900669` — **success**; lint, typecheck, Edge Functions, testes e build verdes.
+
+Auditoria:
+
+`rodadas/gpt/AUDITORIA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`
+
+Veredito:
+
+**004C EXECUTADA E AUDITADA, MAS NÃO APROVADA NEM PROMOVIDA.**
+
+Bloqueio:
+
+- `business_offer_versions` é usada como memória histórica, porém `service_role` possui UPDATE amplo e não existe guarda persistida que impeça reescrita direta de conteúdo fora da RPC;
+- isso permite quebrar o versionamento sem criar nova versão.
+
+Correção autorizada:
+
+`rodadas/gpt/CORRECAO_004C_01_IMUTABILIDADE_VERSOES_OFERTA.md`
+
+Regra crítica: **não reescrever** a migration já aplicada `20260825210000_create_business_offers.sql`; a correção deve ser aditiva.
 
 ## 9. Próxima ação autorizada
 
 Próximo ator: **Claude Code**.
 
-O fundador pode ativá-lo agora pelo fluxo normal do projeto (`/proxima`).
+Executar somente a **Correção 004C-01** na mesma branch da 004C.
 
 Claude deve:
 
-1. partir da `main` atualizada;
-2. ler `estado.md`;
-3. ler o mandato 004C;
-4. cumprir o READ SET definido no mandato;
-5. criar a branch da rodada e executar somente o delta autorizado;
-6. parar em eventual gate de segurança externo em vez de contornar;
-7. finalizar com relatório, PR, CI e `estado.md` da branch em **EXECUTADA / AGUARDANDO AUDITORIA GPT**.
+1. atualizar a branch com a `main` documental sem perder o delta da 004C;
+2. ler `estado.md` e `rodadas/gpt/CORRECAO_004C_01_IMUTABILIDADE_VERSOES_OFERTA.md`;
+3. criar migration aditiva, sem editar a migration já aplicada;
+4. provar no banco que conteúdo de versão não pode ser reescrito e que apenas a transição `superseded_at: NULL -> timestamp` permanece válida;
+5. manter o fluxo normal de criação/edição/idempotência funcionando;
+6. manter PR #15 aberto e não mergeado;
+7. finalizar em **CORREÇÃO 004C-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
 
-Claude não deve promover nem mergear a rodada.
-
-Depois da execução, o próximo ator volta a ser o **GPT auditor**.
+Depois disso, o próximo ator volta a ser o **GPT auditor**.
 
 ## 10. Regra de continuidade
 
