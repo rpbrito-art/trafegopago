@@ -24,11 +24,12 @@ Promovidas: **000–003A, 004A, 004B, 004C e 004D**.
 - Fase 1 — Supabase, Auth e Tenancy: **ENCERRADA**.
 - Fase 2 — Operations, Audit, Queues e Segurança Base: **ENCERRADA**.
 - Fase 3 — Meta Connection Foundation: **EM ANDAMENTO / 003B ESTACIONADA / GATE EXTERNO PENDENTE**.
-- Fase 6 — AI Foundation: **EM ANDAMENTO; 004A FOUNDATION CORE PROMOVIDA**.
+- Fase 6 — AI Foundation: **EM ANDAMENTO; 004A FOUNDATION CORE PROMOVIDA; 004E PRIMEIRO PROVIDER/FEATURE REAL AUTORIZADA, AINDA NÃO EXECUTADA**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - Guided Growth Journey / Focus Foundation: **004D PROMOVIDA**.
 - última rodada promovida: **004D — Guided Growth Journey Foundation**.
+- rodada corrente: **004E — Declared Context Review + First Real AI — PLANEJADA E AUTORIZADA, AINDA NÃO EXECUTADA**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -48,7 +49,7 @@ Incorporado:
 - RLS/ACL server-only;
 - fake adapter somente em teste.
 
-Ainda não existe provider real, API key, SDK, chamada paga, fallback real, tool calling, embeddings/RAG ou feature de IA de negócio.
+Ainda não existe provider real, API key, SDK, chamada paga, fallback real, tool calling, embeddings/RAG ou feature de IA de negócio no estado promovido até a 004D.
 
 ## 4. Promoção 004B — Quoron Branding + Growth Context
 
@@ -274,7 +275,7 @@ A correção garante no banco:
 - `service_role` não possui mais UPDATE amplo em `growth_objectives`;
 - o servidor só pode atualizar `status` e `archived_at` no supersede legítimo;
 - trigger `growth_objectives_immutable` protege a linha inclusive contra caminho privilegiado que ignore grants;
-- objetivo, jornada, sucesso, foco, tenant, autoria e datas não podem ser reescritos em place;
+- objetivo, jornada, sucesso, foco, tenant, autoria e datas não podem ser reescritos in place;
 - linha arquivada não pode ser alterada nem reativada;
 - alterar conteúdo enquanto arquiva também é recusado;
 - a transição válida permanece `ACTIVE/NULL → ARCHIVED/timestamp`.
@@ -286,7 +287,59 @@ Provas do Claude:
 
 Reauditoria GPT independente no Supabase remoto confirmou migration aplicada, perda do UPDATE amplo, atualização restrita às colunas de arquivamento, trigger presente e guarda indisponível ao browser.
 
-## 10. Continua NÃO autorizado sem novo mandato
+## 10. Rodada 004E — AUTORIZADA PARA EXECUÇÃO
+
+Mandato:
+
+`rodadas/gpt/RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
+
+Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
+
+Branch sugerida:
+
+`claude/rodada-004e-declared-context-review-first-real-ai`
+
+Objetivo resumido:
+
+- criar primeira revisão por IA do **contexto declarado** do negócio, sem afirmar observação de mercado inexistente;
+- criar `/revisao` e integrar o próximo passo determinístico da 004D sem chamada automática de provider;
+- persistir artefato de revisão com snapshot/evidence refs/fingerprint/cache tenant-safe;
+- validar grounding e falhar fechado em referência inventada;
+- implementar controle de custo/abuso: ação explícita, cache e 3 chamadas não cacheadas por organização por hora;
+- inaugurar o primeiro provider real atrás do Router 004A;
+- provider autorizado: **Google Gemini Developer API, Paid Tier**;
+- modelo inicial autorizado: `gemini-2.5-flash-lite`;
+- usar SDK oficial `@google/genai` fixado em versão exata;
+- catalogar provider/modelo/preço por migration aditiva com preço oficial verificado em 2026-08-25;
+- executar prova E2E real apenas com dado sintético e ledger/custo auditáveis;
+- manter Meta, Ads, CRM, Content Intelligence e demais capacidades externas fora do escopo.
+
+### 10.1 Decisão de privacidade/custo
+
+Para dados reais de clientes, **Free Tier do Gemini não é autorizado**. A documentação oficial vigente consultada pelo GPT informa que o Free Tier usa conteúdo para melhoria de produtos, enquanto o Paid Tier não.
+
+Preço Standard Paid verificado para `gemini-2.5-flash-lite`, por 1M tokens:
+
+- input: USD 0.10;
+- output: USD 0.40;
+- cached input: USD 0.01 quando aplicável.
+
+Se preço/modelo/documentação oficial mudar materialmente durante a execução, Claude deve parar e devolver a decisão ao GPT; não substituir silenciosamente.
+
+### 10.2 Gate de credencial paga
+
+Secret previsto: `GEMINI_API_KEY`, exclusivamente server-side.
+
+A disponibilidade atual de uma chave Paid Tier segura **ainda não foi presumida nem comprovada pelo GPT**.
+
+Claude deve executar todo o delta que não dependa da chave. Quando chegar à prova paga real:
+
+- se a credencial segura já estiver disponível no runtime, executar somente a prova sintética prevista;
+- se não estiver, parar sem improvisar e registrar: **004E IMPLEMENTADA ATÉ GATE DE CREDENCIAL PAGA — AGUARDANDO AÇÃO GPT/FUNDADOR PARA PROVA E2E REAL**.
+
+Claude não deve pedir que o fundador cole chave em chat, GitHub, SQL ou comando compartilhado. O GPT conduz eventual ação manual.
+
+## 11. Continua NÃO autorizado fora do mandato 004E
 
 ### Meta
 
@@ -300,24 +353,26 @@ Reauditoria GPT independente no Supabase remoto confirmou migration aplicada, pe
 - usar terceiro;
 - campanha/anúncio/gasto.
 
-### IA
+### IA fora da 004E
 
-- provider real;
-- API key;
-- chamada paga;
-- SDK de provider;
-- fallback real;
+- segundo provider real;
+- fallback real multi-provider;
+- provider/modelo escolhido diretamente por feature;
+- web search/grounding do provider;
 - tool calling;
 - embeddings/RAG;
 - geração real de copy/imagem;
-- IA inferir automaticamente objetivo, foco ou próximo passo;
-- qualquer capacidade de IA executar gasto.
+- análise de conteúdo/Instagram;
+- IA alterar automaticamente objetivo, foco, preço, oferta ou qualquer fato do negócio;
+- IA inferir automaticamente próximo passo estratégico material fora do contrato da revisão;
+- qualquer capacidade de IA executar gasto ou ação externa;
+- uso do Free Tier Gemini com dados reais de clientes.
 
-### Produto
+### Produto fora da 004E
 
 - seletor multi-organização;
 - Content Intelligence/Oportunidades;
-- personas/públicos;
+- personas/públicos observados;
 - crítica/geração real de conteúdo;
 - Financial Approval;
 - Ads/experimentos/scale;
@@ -331,7 +386,8 @@ Reauditoria GPT independente no Supabase remoto confirmou migration aplicada, pe
 - múltiplos focos simultâneos;
 - e-commerce, estoque, SKU, pedidos ou pagamentos;
 - score de maturidade/gamificação;
-- qualquer nova rodada substantiva sem novo mandato GPT.
+- persistir automaticamente resposta à `nextQuestion` como novo fato do negócio;
+- qualquer nova capacidade substantiva além do mandato 004E.
 
 ### Branding técnico externo
 
@@ -340,17 +396,30 @@ Reauditoria GPT independente no Supabase remoto confirmou migration aplicada, pe
 - recriar/trocar Supabase project ref;
 - renomear/mover recursos Meta.
 
-## 11. Próxima ação
+## 12. Próxima ação autorizada
 
-004D está fechada e promovida.
+Próximo ator: **Claude Code**.
 
-Próximo ator: **GPT planejador/auditor**.
+O fundador pode ativá-lo pelo fluxo normal do projeto (`/proxima`).
 
-Não existe nova rodada substantiva autorizada para Claude Code neste momento.
+Claude deve:
 
-Claude Code **não deve receber `/proxima`** até que o GPT avalie a próxima capacidade, publique novo mandato e a autorize explicitamente.
+1. partir da `main` atualizada;
+2. ler `estado.md`;
+3. ler `rodadas/gpt/RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`;
+4. cumprir somente o READ SET obrigatório e abrir itens sob demanda quando houver dependência concreta;
+5. criar `claude/rodada-004e-declared-context-review-first-real-ai`;
+6. executar somente o delta autorizado;
+7. manter 003B/Meta intocados;
+8. nunca usar Free Tier com dado real de cliente;
+9. parar no gate da credencial paga se a prova E2E real não puder ser feita com secret seguro já disponível;
+10. finalizar com relatório, PR, CI e `estado.md` da branch no status real definido pelo mandato.
 
-## 12. Regra de continuidade
+Claude não deve promover nem mergear a rodada.
+
+Depois da execução completa ou do gate de credencial, o próximo ator volta a ser o **GPT auditor/orquestrador**.
+
+## 13. Regra de continuidade
 
 - distinguir planejado, autorizado, executado, auditado, aprovado e promovido;
 - estado efetivamente incorporado = `main + estado.md + promoção real`;
