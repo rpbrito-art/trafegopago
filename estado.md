@@ -29,7 +29,7 @@ Promovidas: **000–003A, 004A e 004B**.
 - Fase 6 — AI Foundation: **EM ANDAMENTO; 004A FOUNDATION CORE PROMOVIDA**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - última rodada promovida: **004B — Quoron Branding + Growth Context Foundation**.
-- rodada corrente: **004C — Offer Catalog + Business Context Foundation — EXECUTADA, AGUARDANDO AUDITORIA GPT**.
+- rodada corrente: **004C — Offer Catalog + Business Context Foundation — EXECUTADA, AUDITADA E BLOQUEADA; CORREÇÃO 004C-01 AUTORIZADA**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -109,8 +109,6 @@ Snapshot final de auditoria:
 - RPC sem EXECUTE para anon/authenticated e com EXECUTE para service_role;
 - zero fixtures 004B/RLS residuais no snapshot final.
 
-O relatório da correção registra prova RLS real 7/7 com papel `authenticated` e rollback. O conector GPT do Supabase não conseguiu repetir mutação transacional por operar read-only; o script foi inspecionado e os pós-estados remotos foram confirmados independentemente.
-
 ## 5. Rodada 003B — ESTACIONADA, NÃO PROMOVIDA
 
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`.
@@ -171,12 +169,38 @@ Decisão:
 
 O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes podem continuar a partir da `main`.
 
-## 7. Continua NÃO autorizado fora do mandato 004C
+### 6.1 Onboarding Meta guiado — requisito central, execução bloqueada
+
+Canônico:
+
+`docs/01-produto/META_ONBOARDING_CANONICAL.md`.
+
+Decisão do fundador:
+
+- a experiência futura de conexão Meta deve esconder do pequeno negócio a complexidade técnica sempre que possível;
+- o usuário deve lidar principalmente com login, consentimento, propriedade dos próprios ativos e decisões financeiras;
+- o Quoron deve conduzir descoberta de ativos, permissões, pendências e recuperação por fluxo guiado e oficial;
+- o usuário não deve precisar dominar Business Portfolio, System User, tokens, scopes, IDs ou APIs para o fluxo normal;
+- ativos e gasto permanecem sob controle do cliente;
+- `Permissão Meta ≠ Campanha ≠ Aprovação financeira ≠ Gasto`.
+
+Status desta capacidade:
+
+**REQUISITO CANÔNICO / PLANEJADO, MAS NÃO AUTORIZADO PARA IMPLEMENTAÇÃO E BLOQUEADO PELO GATE EXTERNO META.**
+
+A implementação só pode ser retomada depois que o fundador informar que resolveu o problema atual do portfólio empresarial restrito no Facebook/Meta ou que existe nova condição operacional comprovadamente utilizável. Nesse momento, o GPT deve primeiro verificar a documentação oficial Meta vigente e decidir a arquitetura comercial de onboarding antes de autorizar Claude Code.
+
+A existência da 003B/BISU/System User não torna essa arquitetura comercial definitiva.
+
+Este bloqueio não impede a Correção 004C-01, que é independente da Meta.
+
+## 7. Continua NÃO autorizado fora da Correção 004C-01
 
 ### Meta
 
 - promover/mergear 003B;
 - iniciar importação/publicação real Instagram dependente da arquitetura ainda bloqueada;
+- implementar o onboarding Meta guiado antes da abertura explícita do gate do §6.1;
 - declarar USER arquitetura definitiva;
 - remover BISU;
 - alterar scopes/app/Business Login Configuration;
@@ -198,7 +222,7 @@ O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes 
 - IA inferir automaticamente objetivo do usuário;
 - qualquer capacidade de IA executar gasto.
 
-### Produto fora da 004C
+### Produto fora da correção
 
 - vínculo oferta → `growth_objectives`;
 - seletor multi-organização;
@@ -207,7 +231,7 @@ O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes 
 - CRM/leads;
 - App Shell/Hoje definitivo;
 - e-commerce, estoque, SKU, pedidos ou pagamentos;
-- qualquer nova capacidade substantiva além do escopo explícito da 004C.
+- qualquer nova capacidade substantiva além da imutabilidade de versões da 004C.
 
 ### Branding técnico externo
 
@@ -216,70 +240,58 @@ O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes 
 - recriar/trocar Supabase project ref;
 - renomear/mover recursos Meta.
 
-## 8. Rodada 004C — EXECUTADA, AGUARDANDO AUDITORIA
+## 8. Rodada 004C — EXECUTADA, AUDITADA E BLOQUEADA
 
 Mandato:
 
 `rodadas/gpt/RODADA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`
 
-Branch: `claude/rodada-004c-offer-catalog-business-context`.
+Branch:
 
-Base: `main` em `bd32e2a`, após a promoção da 004B.
+`claude/rodada-004c-offer-catalog-business-context`
 
-PR #15: **draft, open, não mergeada**, base `main`.
+PR #15: **draft, open, não mergeada**.
 
-HEAD com o delta completo: `775d96af1eeeeb50521daa2f13f6972c71c19d61`.
+HEAD auditado: `bff3aaea804de90e8d03a7586f262d6060b5cad0`.
 
-O HEAD final da branch é um commit posterior que altera **apenas** relatório e este arquivo; o PR #15 aponta para ele.
+CI do HEAD auditado: `32885900669` — **success**; lint, typecheck, Edge Functions, testes e build verdes.
 
-CI: `32885622248` (delta) e `32885781773` (HEAD final) — ambas **success**, 864/864 testes, lint/typecheck/Edge Functions/build verdes.
+Auditoria:
 
-Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**. Não promovida, não mergeada.
+`rodadas/gpt/AUDITORIA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`
 
-Relatório: `rodadas/claude/RELATORIO_RODADA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`.
+Veredito:
 
-### 8.1 Delta executado
+**004C EXECUTADA E AUDITADA, MAS NÃO APROVADA NEM PROMOVIDA.**
 
-- `business_offers` (identidade) separada de `business_offer_versions` (conteúdo versionado);
-- FK composta `(organization_id, offer_id)` impede versão de outro tenant pelo banco;
-- no máximo uma versão corrente por oferta; edição material supersede e cria a próxima na mesma transação;
-- reenvio idêntico idempotente, inclusive na criação;
-- constraints impedem estado contraditório de preço; `QUOTE/FREE/NOT_INFORMED` não persistem número; dinheiro em unidade menor inteira, sem float;
-- `save_business_offer` e `archive_business_offer` server-only, `service_role`, owner/admin, organização e membership ACTIVE, serializadas por organização;
-- moeda vem de `organizations.default_currency`, lida server-side; o browser não escolhe moeda;
-- RLS de leitura por membership ACTIVE; browser sem INSERT/UPDATE/DELETE;
-- rota `/ofertas` em português simples, sem enum, uuid ou número de versão na tela; arquivar com confirmação em duas etapas;
-- multi-organização segue falhando fechado: nenhuma escrita e nenhuma leitura de catálogo em contexto ambíguo;
-- `business_profiles.primary_offer` preservado como sugestão editável, sem conversão automática;
-- harmonização documental da centralidade da mídia paga em `MVP_CANONICAL`, `IMPLEMENTATION_ROADMAP`, `.gpt/PROJECT_PROMPT`, `TECHNICAL_SPEC` e `DATA_MODEL`.
+Bloqueio:
 
-### 8.2 Supabase remoto da 004C
+- `business_offer_versions` é usada como memória histórica, porém `service_role` possui UPDATE amplo e não existe guarda persistida que impeça reescrita direta de conteúdo fora da RPC;
+- isso permite quebrar o versionamento sem criar nova versão.
 
-Migration aplicada: `20260825210000_create_business_offers`, publicada na branch antes do `db push`.
+Correção autorizada:
 
-Snapshot independente:
+`rodadas/gpt/CORRECAO_004C_01_IMUTABILIDADE_VERSOES_OFERTA.md`
 
-- RLS habilitado nas duas tabelas, uma policy SELECT em cada;
-- `anon` sem grants; `authenticated` somente SELECT;
-- `service_role` SELECT/INSERT/UPDATE, sem DELETE;
-- RPCs sem EXECUTE para anon/authenticated, com EXECUTE para service_role;
-- zero fixtures residuais;
-- advisors sem FK do delta descoberta; dois INFO `unused_index` de `created_by`, esperados em tabela vazia.
-
-Esta migration **não deve ser reescrita**.
-
-### 8.3 Provas
-
-- `scripts/sql/business-offers-004c-proof.sql` → **51 casos, 51 passaram, 0 falharam**, transacional com rollback e leitura real sob papel `authenticated`;
-- vitest dos arquivos novos e afetados → 87/87;
-- `tsc --noEmit` e `eslint` limpos;
-- suíte completa na CI final do PR: 864/864.
+Regra crítica: **não reescrever** a migration já aplicada `20260825210000_create_business_offers.sql`; a correção deve ser aditiva.
 
 ## 9. Próxima ação autorizada
 
-Próximo ator: **GPT auditor**.
+Próximo ator: **Claude Code**.
 
-Auditar a 004C na branch/PR indicados acima. Claude não promove, não mergeia e não declara a rodada aprovada.
+Executar somente a **Correção 004C-01** na mesma branch da 004C.
+
+Claude deve:
+
+1. atualizar a branch com a `main` documental sem perder o delta da 004C;
+2. ler `estado.md` e `rodadas/gpt/CORRECAO_004C_01_IMUTABILIDADE_VERSOES_OFERTA.md`;
+3. criar migration aditiva, sem editar a migration já aplicada;
+4. provar no banco que conteúdo de versão não pode ser reescrito e que apenas a transição `superseded_at: NULL -> timestamp` permanece válida;
+5. manter o fluxo normal de criação/edição/idempotência funcionando;
+6. manter PR #15 aberto e não mergeado;
+7. finalizar em **CORREÇÃO 004C-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
+
+Depois disso, o próximo ator volta a ser o **GPT auditor**.
 
 ## 10. Regra de continuidade
 
