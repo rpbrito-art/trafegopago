@@ -309,21 +309,51 @@ Até a reauditoria GPT da 004E-02:
 - e-commerce/estoque/SKU/pedidos/pagamentos;
 - score/gamificação.
 
-## 10. Próxima ação autorizada
+## 10. Correção 004E-02 — EXECUTADA
 
-Próximo ator: **Claude Code**.
+Mandato: `rodadas/gpt/CORRECAO_004E_02_FINAL_PREPAID_INVARIANTS.md`.
 
-Claude deve continuar na mesma branch e no PR #17 e executar **somente**:
+Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · PR #17 mantido aberto, draft, não mergeado.
 
-`rodadas/gpt/CORRECAO_004E_02_FINAL_PREPAID_INVARIANTS.md`
+Status: **CORREÇÃO 004E-02 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**.
 
-A correção deve ocorrer sem chave Gemini e sem qualquer chamada paga.
+Relatório: `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` §8.
 
-Status esperado do Claude:
+**Nenhuma chamada paga foi feita.** `GEMINI_API_KEY` continua ausente e só deve ser disponibilizada após a reauditoria desta correção.
 
-**CORREÇÃO 004E-02 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**.
+### 10.1 Invariantes fechadas
 
-Depois disso o próximo ator volta a ser GPT. Somente uma reauditoria aprovada poderá abrir o gate para o fundador criar/configurar a credencial Paid Tier e executar a primeira prova real.
+- **A** — a FK composta da tentativa passou a usar `on delete set null (ai_run_id)`: apagar o run zera só a referência e preserva `organization_id`, que é a coluna que sustenta toda a autorização da tabela;
+- **B** — `normalizarUsage()` deixou de converter contagem ausente em zero. `promptTokenCount` e `candidatesTokenCount` são obrigatórios e positivos; ausência, zero, negativo ou fracionário viram `USAGE_INVALID`. Cache ausente continua sendo "não informado" (`null`), e raciocínio ausente é zero;
+- **C** — o avaliador da eval saiu do script para módulo importável e testável em CI. Ausência esperada com `gaps` vazio agora reprova — antes a checagem era pulada nesse caso —, e a tensão esperada virou metadado explícito da fixture, com âncora exigida nas refs que divergem.
+
+Achado no caminho: o detector de afirmações externas exigia adjacência e usava `\w`, que não casa letra acentuada; "o preço está alto" passava. Padrões corrigidos, com caso de teste para cada um.
+
+### 10.2 Supabase remoto
+
+Migration aplicada nesta correção, aditiva e publicada antes do `db push`:
+
+- `20260825280000_fix_review_attempt_run_delete_action`.
+
+Nenhuma migration anterior foi reescrita.
+
+Prova: `scripts/sql/review-attempt-run-delete-004e02-proof.sql` → **13 casos, 13 passaram, 0 falharam**, transacional com rollback. Cobre catálogo da FK, deleção do run com tenant preservado, cross-tenant recusado e cascade da organização sem resíduo.
+
+### 10.3 Provas locais
+
+- suíte completa **1007/1007** em 49 arquivos;
+- 22 casos de usage no adapter, incluindo metadata vazia, contagem faltante e zerada;
+- 17 casos do avaliador da eval, com outputs sintéticos determinísticos;
+- `tsc --noEmit` e `eslint` limpos;
+- `npm run e2e:review` e `npm run eval:review` param no gate com código 2, sem chamar nada.
+
+### 10.4 Próxima ação autorizada
+
+Próximo ator: **GPT auditor**.
+
+Reauditar a Correção 004E-02 no PR #17. **Somente após aprovação** o GPT pode orientar o fundador a criar/configurar a credencial Paid Tier e liberar a primeira prova real.
+
+Claude não promove, não mergeia e não pede a chave ao fundador.
 
 ## 11. Regra de continuidade
 

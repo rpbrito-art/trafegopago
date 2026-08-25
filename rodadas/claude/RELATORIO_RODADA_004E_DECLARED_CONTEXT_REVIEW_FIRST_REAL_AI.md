@@ -4,7 +4,7 @@ Mandato: `rodadas/gpt/RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
 
 Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · base: `main` em `0ad811f`.
 
-Status: **CORREÇÃO 004E-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT ANTES DO GATE DE CREDENCIAL PAGA**.
+Status: **CORREÇÃO 004E-02 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**.
 
 Auditoria: `rodadas/gpt/AUDITORIA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` — cinco bloqueios. Correção: `rodadas/gpt/CORRECAO_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`, executada nesta mesma branch e registrada na §7 abaixo.
 
@@ -135,18 +135,54 @@ Os advisors apontaram duas FKs do meu próprio delta sem cobertura: eu criara os
 
 Correção durante a execução: a prova tentava simular reserva vencida movendo só `expires_at` para o passado, e a constraint `expires_at > reserved_at` recusou — corretamente, porque é um estado incoerente. A simulação passou a envelhecer a tentativa inteira.
 
-## 8. Handoff
+## 8. Correção 004E-02 — invariantes finais pré-pagas
+
+Três achados da reauditoria, todos fechados sem nenhuma chamada ao provider.
+
+### 8.1 A — a FK não pode zerar o tenant
+
+A FK composta usava `on delete set null` **sem lista de colunas**. Sem a lista, o Postgres zera todas as colunas referenciadoras — e uma delas é `organization_id`, que é `not null`. Apagar um run referenciado falharia, o cascade da organização poderia travar junto, e a intenção nunca foi perder o tenant: era perder só a referência ao run.
+
+Migration aditiva `20260825280000` recria a constraint com `on delete set null (ai_run_id)`. A prova confere o catálogo (`confdeltype` e `confdelsetcols`) e o comportamento: o run é apagado, a tentativa sobrevive com `ai_run_id` nulo e `organization_id` intacto, cross-tenant continua recusado, e o cascade da organização não trava nem deixa resíduo.
+
+### 8.2 B — usage ausente não vira custo zero
+
+`normalizarUsage()` fazia `?? 0`, o que convertia "o provider não informou" em "custou nada" — e uma chamada paga entraria no ledger como gratuita. Numa task que envia prompt não vazio e exige JSON não vazio de volta, entrada ou saída zero são impossíveis: se aparecem, o metadado não é confiável.
+
+`promptTokenCount` e `candidatesTokenCount` passaram a ser obrigatórios e positivos; ausência, zero, negativo ou fracionário resultam em `USAGE_INVALID`. `cachedContentTokenCount` ausente continua significando "não informado" — zero na subtração, `null` no contrato. `thoughtsTokenCount` ausente é legitimamente zero. Nenhuma estimativa por tamanho de texto.
+
+### 8.3 C — a eval precisa reprovar omissão
+
+Duas falhas do avaliador anterior. A checagem de ausência era condicionada a `gaps.length > 0`, então devolver **zero** lacunas — a pior omissão — escapava de toda a verificação. E a expectativa de tensão era inferida do nome do caso, o que quebraria em silêncio numa renomeação.
+
+O avaliador saiu do script para `src/lib/review/eval-criteria.ts`, importável e com teste próprio em CI — a versão anterior só podia ser exercitada junto com a chamada paga, que é como as duas falhas passaram. Ausência esperada com `gaps` vazio agora reprova; tensão virou `esperaTensao` explícito na fixture, com `refsDaTensao` exigindo que a tensão esteja ancorada nos lados que de fato divergem.
+
+Achado no caminho: o detector de afirmações externas exigia adjacência, então "o preço **está** alto" passava; e `\w` não casa letra acentuada. Os padrões foram corrigidos e cada um tem caso de teste.
+
+### 8.4 Provas da correção
+
+| prova | resultado |
+| --- | --- |
+| `scripts/sql/review-attempt-run-delete-004e02-proof.sql` | **13 casos, 13 passaram, 0 falharam** |
+| usage obrigatório e opcionais | `src/lib/ai/adapters/gemini.test.ts` — 22 casos |
+| avaliador da eval | `src/lib/review/eval-criteria.test.ts` — 17 casos |
+| suíte local | **1007/1007** em 49 arquivos |
+| gate dos scripts pagos | `e2e:review` e `eval:review` seguem parando com código 2 |
+
+Correção durante a execução: a fixture da prova criava `ai_runs` com status `SUCCEEDED` sem custo, e a constraint `ai_runs_succeeded_requires_cost` da 004A recusou — corretamente, porque é exatamente a invariante que impede uma chamada paga entrar no ledger como gratuita. A fixture passou a registrar custo, que é o cenário real.
+
+## 9. Handoff
 
 Branch publicada; PR #17 mantido aberto, draft, base `main`, não mergeado.
 
 Branch atualizada com a `main` documental por merge; único conflito em `estado.md`, resolvido pela versão da `main`.
 
-Migrations aplicadas nesta branch, nenhuma reescrita: `20260825250000`, `20260825260000` e `20260825270000`.
+Migrations aplicadas nesta branch, nenhuma reescrita: `20260825250000`, `20260825260000`, `20260825270000` e `20260825280000`.
 
-`estado.md` da branch em **CORREÇÃO 004E-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT ANTES DO GATE DE CREDENCIAL PAGA**. Working tree limpa.
+`estado.md` da branch em **CORREÇÃO 004E-02 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**. Working tree limpa.
 
-## 9. Pendências
+## 10. Pendências
 
-Uma, e continua sendo o gate: **prova E2E real paga e eval real**. Ambas dependem de `GEMINI_API_KEY` de projeto no Paid Tier.
+Uma, e continua sendo o gate: **prova E2E real paga e eval real**. Ambas dependem de `GEMINI_API_KEY` de projeto no Paid Tier, que continua ausente.
 
-Próximo ator: **GPT auditor**, para reauditar esta correção. Só depois da aprovação a credencial deve ser disponibilizada; então `npm run e2e:review` e `npm run eval:review` fecham a rodada.
+Próximo ator: **GPT auditor**, para reauditar a Correção 004E-02. Só depois da aprovação a credencial deve ser disponibilizada; então `npm run e2e:review` e `npm run eval:review` fecham a rodada.

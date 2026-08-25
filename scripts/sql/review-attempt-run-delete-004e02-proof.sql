@@ -100,18 +100,25 @@ begin
   from public.ai_price_versions v
   where v.ai_model_id = v_model and v.effective_to is null;
 
+  -- Run concluído **com custo**: a constraint `ai_runs_succeeded_requires_cost`
+  -- da 004A recusa `SUCCEEDED` sem custo registrado, e é justamente essa
+  -- invariante que impede uma chamada paga entrar no ledger como gratuita.
   insert into public.ai_runs (
     organization_id, correlation_id, task_type, task_version, provider_id,
-    ai_model_id, ai_price_version_id, tier, prompt_version, schema_version, status)
+    ai_model_id, ai_price_version_id, tier, prompt_version, schema_version,
+    status, input_tokens, output_tokens, estimated_cost, currency, completed_at)
   values (v_org, gen_random_uuid(), 'DECLARED_BUSINESS_CONTEXT_REVIEW', 'v1',
-          v_provider, v_model, v_price, 1, 'v1', 'v1', 'SUCCEEDED')
+          v_provider, v_model, v_price, 1, 'v1', 'v1',
+          'SUCCEEDED', 1200, 300, 0.000240000000, 'USD', now())
   returning id into v_run;
 
   insert into public.ai_runs (
     organization_id, correlation_id, task_type, task_version, provider_id,
-    ai_model_id, ai_price_version_id, tier, prompt_version, schema_version, status)
+    ai_model_id, ai_price_version_id, tier, prompt_version, schema_version,
+    status, input_tokens, output_tokens, estimated_cost, currency, completed_at)
   values (v_org_b, gen_random_uuid(), 'DECLARED_BUSINESS_CONTEXT_REVIEW', 'v1',
-          v_provider, v_model, v_price, 1, 'v1', 'v1', 'SUCCEEDED')
+          v_provider, v_model, v_price, 1, 'v1', 'v1',
+          'SUCCEEDED', 1200, 300, 0.000240000000, 'USD', now())
   returning id into v_run_b;
 
   -- Tentativa já concluída, apontando para o run do mesmo tenant.
@@ -200,9 +207,11 @@ begin
   -- Novo run e nova tentativa, para o cascade ter o que remover.
   insert into public.ai_runs (
     organization_id, correlation_id, task_type, task_version, provider_id,
-    ai_model_id, ai_price_version_id, tier, prompt_version, schema_version, status)
+    ai_model_id, ai_price_version_id, tier, prompt_version, schema_version,
+    status, input_tokens, output_tokens, estimated_cost, currency, completed_at)
   values (pg_temp.id('org'), gen_random_uuid(), 'DECLARED_BUSINESS_CONTEXT_REVIEW', 'v1',
-          v_provider, v_model, v_price, 1, 'v1', 'v1', 'SUCCEEDED')
+          v_provider, v_model, v_price, 1, 'v1', 'v1',
+          'SUCCEEDED', 1200, 300, 0.000240000000, 'USD', now())
   returning id into v_run;
 
   insert into public.declared_context_review_attempts (
