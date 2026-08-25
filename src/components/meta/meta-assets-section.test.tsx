@@ -182,6 +182,34 @@ describe("MetaAssetsSection — estados vazios são distinguíveis", () => {
     expect(texto).toContain("não aceitou mais a autorização");
   });
 
+  it("credencial recusada oferece o botão de reconectar", () => {
+    // Mandar conectar novamente sem oferecer por onde é um beco: a orientação
+    // e a ação precisam estar na mesma tela (Correção 003B-08 §1).
+    const arvore = render({ kind: "conexao-recusada", organizationId: ORG });
+    const props = propsDe(MetaConnectButton, arvore);
+
+    expect(usa(MetaConnectButton, arvore)).toBe(true);
+    expect(props?.rotulo).toBe("Conectar novamente");
+    expect(props?.organizationId).toBe(ORG);
+    // Reconectar não passa por desconectar: a credencial atual só é
+    // substituída quando a nova autorização conclui.
+    expect(textOf(arvore)).not.toContain("Desconect");
+  });
+
+  it("o botão de reconectar usa a action canônica de conexão", () => {
+    const form = MetaConnectButton({
+      organizationId: ORG,
+      rotulo: "Conectar novamente",
+    });
+
+    let action: unknown = null;
+    walk(form, (element) => {
+      if (element.type === "form") action = (element.props as { action?: unknown }).action;
+    });
+
+    expect(action).toBe(connectMetaAction);
+  });
+
   it("falha temporária diz que nada foi alterado", () => {
     const texto = textOf(render({ kind: "indisponivel", organizationId: ORG }));
 
@@ -239,7 +267,6 @@ describe("ampliar autorização de uma conexão viva", () => {
       { kind: "escolher-instagram", organizationId: ORG, opcoes: [OPCAO] },
       { kind: "sem-pagina", organizationId: ORG },
       { kind: "sem-instagram-vinculado", organizationId: ORG },
-      { kind: "conexao-recusada", organizationId: ORG },
       { kind: "indisponivel", organizationId: ORG },
       {
         kind: "instagram-selecionado",

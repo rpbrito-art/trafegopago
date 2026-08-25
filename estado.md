@@ -190,22 +190,26 @@ Não há vaga para criar terceiro portfólio. O inventário Meta ainda precisa s
 
 A 003B-08 é independente desse inventário: ela apenas restaura na UI a ação de reconectar já suportada pelo backend.
 
-## 12. Próxima ação autorizada
+## 12. Correção 003B-08 — EXECUTADA
 
-Próximo a agir: **Claude Code**.
+Mandato: `rodadas/gpt/CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md`.
 
-Executar somente `rodadas/gpt/CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md` na branch `claude/rodada-003b-meta-asset-discovery-selection`.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
-Claude deve:
+Relatório: `rodadas/claude/RELATORIO_CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md`.
 
-1. adicionar `MetaConnectButton` com rótulo `Conectar novamente` ao estado `conexao-recusada`;
-2. ajustar os testes para exigir esse botão e remover a expectativa antiga que o proibia;
-3. não alterar banco, migration, `.env.local`, Meta App, Business Login Configuration, scopes ou tokens;
-4. executar testes Meta/actions/componentes, typecheck e lint;
-5. publicar novo HEAD e obter CI no PR #12;
-6. parar em `AGUARDANDO AUDITORIA GPT`.
+Delta, só de UI:
 
-Depois da auditoria GPT, se aprovada, o fundador poderá recarregar a aplicação local e usar **Conectar novamente** para testar outra autorização.
+- `src/components/meta/meta-assets-section.tsx` — ramo `conexao-recusada` passa a renderizar `MetaConnectButton` com rótulo **Conectar novamente**; mensagem inalterada; nenhum botão `Desconectar` adicionado;
+- `src/components/meta/meta-assets-section.test.tsx` — +2 provas do botão e remoção de `conexao-recusada` da lista de estados que não podem ter botão.
+
+Reconectar não passa por desconectar: `begin_meta_connection` retoma a linha viva e `activate_meta_connection` só substitui token, escopos e status depois que a nova autorização conclui.
+
+Provas: `meta-assets-section.test.tsx` **26/26** (24 antes) — botão presente, rótulo e organização corretos, tela não sugere desconectar, `connectMetaAction` canônica reutilizada. Suíte Meta/actions/componentes **230/230**. `tsc --noEmit` limpo; `npm run lint` limpo.
+
+Nenhum backend, RPC, migration, Supabase, `.env.local`, Meta App, configuração, escopo ou token tocado. Nenhum OAuth executado, nenhuma seleção automática, conexão persistida preservada.
+
+Próximo a agir: **GPT** — auditar o delta no PR #12. Aprovada a auditoria, o fundador pode recarregar a aplicação local e usar **Conectar novamente**.
 
 ## 13. Continua NÃO autorizado
 

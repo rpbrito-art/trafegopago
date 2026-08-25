@@ -135,6 +135,10 @@ export function MetaAssetsSection({
     );
   }
 
+  // Pelo mesmo motivo do ramo acima, reconectar não passa por desconectar: a
+  // credencial persistida só é substituída quando a nova autorização conclui.
+  // O que faltava aqui era a ação — a tela mandava conectar novamente e não
+  // oferecia por onde (Correção 003B-08 §1).
   if (state.kind === "conexao-recusada") {
     return (
       <Bloco tom="atencao" titulo="A conexão precisa da sua atenção">
@@ -142,6 +146,10 @@ export function MetaAssetsSection({
           A Meta não aceitou mais a autorização atual. Conecte novamente para
           retomar de onde parou.
         </p>
+        <MetaConnectButton
+          organizationId={state.organizationId}
+          rotulo="Conectar novamente"
+        />
       </Bloco>
     );
   }
