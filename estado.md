@@ -29,7 +29,7 @@ Promovidas: **000–003A, 004A, 004B, 004C e 004D**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - Guided Growth Journey / Focus Foundation: **004D PROMOVIDA**.
 - última rodada promovida: **004D — Guided Growth Journey Foundation**.
-- rodada corrente: **004E — Declared Context Review + First Real AI — IMPLEMENTADA ATÉ GATE, AUDITADA; 004E-01 EXECUTADA E REAUDITADA; 004E-02 AUTORIZADA; CREDENCIAL PAGA AINDA BLOQUEADA**.
+- rodada corrente: **004E — Declared Context Review + First Real AI — IMPLEMENTADA ATÉ GATE, AUDITADA; 004E-01 E 004E-02 EXECUTADAS E REAUDITADAS; 004E-03 AUTORIZADA; CREDENCIAL PAGA AINDA BLOQUEADA**.
 
 ## 3. Promoções recentes incorporadas
 
@@ -169,13 +169,13 @@ Branch:
 
 PR #17: **draft/open/não mergeada**.
 
-HEAD reauditorado da Correção 004E-01:
+HEAD reauditorado da Correção 004E-02:
 
-`70b6176c0e304ab7c2dfa9f58c04eb2de62e6d29`
+`84a31808da0063afdf18c678dcc7bdfec6a02b20`
 
 CI do HEAD:
 
-`32908387052` — **success**; install, lint, typecheck, Edge Functions, testes e build verdes. Suíte da correção reportada em **983/983**.
+`32910321592` — **success**; install, lint, typecheck, Edge Functions, testes e build verdes. Suíte reportada em **1007/1007**.
 
 Relatório Claude:
 
@@ -184,13 +184,14 @@ Relatório Claude:
 Auditorias GPT:
 
 - `rodadas/gpt/AUDITORIA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`;
-- `rodadas/gpt/AUDITORIA_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`.
+- `rodadas/gpt/AUDITORIA_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`;
+- `rodadas/gpt/AUDITORIA_004E_02_FINAL_PREPAID_INVARIANTS.md`.
 
 Veredito atual:
 
-**004E NÃO APROVADA NEM PROMOVIDA. 004E-01 FOI EXECUTADA E REAUDITADA, MAS A CREDENCIAL PAGA CONTINUA BLOQUEADA ATÉ A 004E-02.**
+**004E NÃO APROVADA NEM PROMOVIDA. 004E-02 FECHOU BANCO E USAGE, MAS O GATE PAGO CONTINUA BLOQUEADO ATÉ A 004E-03 FECHAR A EVAL.**
 
-### 7.1 O que a 004E/004E-01 já fechou
+### 7.1 O que a 004E/004E-01/004E-02 já fechou
 
 - task `DECLARED_BUSINESS_CONTEXT_REVIEW@v1`, tenant-scoped, Tier 1;
 - feature desacoplada de provider/modelo;
@@ -207,60 +208,60 @@ Veredito atual:
 - reserva órfã expira e é recuperável;
 - mensagem falsa de ausência de cobrança removida;
 - E2E preparado para usar o serviço produtivo, persistir artefato, conferir run/custo e provar cache;
-- harness pago de eval preparado com 12 casos sintéticos e sem retry automático.
+- FK tentativa → `ai_runs` preserva `organization_id` e zera somente `ai_run_id` no delete;
+- usage obrigatório não vira custo zero por metadata ausente;
+- avaliador da eval foi extraído para módulo importável e passou a testar ausência/tensão sem provider real.
 
 ### 7.2 Migrations 004E já aplicadas remotamente — NÃO REESCREVER
 
 - `20260825250000_create_declared_context_review`;
 - `20260825260000_create_review_attempt_reservation`;
-- `20260825270000_index_review_run_foreign_keys`.
+- `20260825270000_index_review_run_foreign_keys`;
+- `20260825280000_fix_review_attempt_run_delete_action`.
 
 Reauditoria GPT confirmou no remoto:
 
-- tabela de tentativas e RPCs de reserva/finalização presentes;
+- migration `20260825280000` aplicada;
+- FK final usa `ON DELETE SET NULL (ai_run_id)`;
+- `organization_id` não faz parte das colunas zeradas;
+- tabela de tentativas e RPCs presentes;
 - fronteira do browser fechada;
-- índices finais presentes;
 - `declared_context_review_attempts = 0`;
 - `declared_context_reviews = 0`;
 - `ai_runs` da task = 0;
 - nenhuma chamada Gemini real ocorreu.
 
-## 8. Correção 004E-02 — AUTORIZADA
+## 8. Correção 004E-02 — EXECUTADA E REAUDITADA
 
 Mandato:
 
 `rodadas/gpt/CORRECAO_004E_02_FINAL_PREPAID_INVARIANTS.md`
 
-Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
+Auditoria:
 
-Objetivo estrito: fechar três invariantes finais antes do gate pago.
+`rodadas/gpt/AUDITORIA_004E_02_FINAL_PREPAID_INVARIANTS.md`
 
-### A — deleção da referência ao `ai_run`
+Status:
 
-A FK composta atual usa `ON DELETE SET NULL` sem lista de colunas. Como `organization_id` da tentativa é obrigatório, a ação pode tentar zerar também o tenant e quebrar deleção/cleanup.
+**EXECUTADA E REAUDITADA; INVARIANTES A/B APROVADAS; INVARIANTE C AINDA INCOMPLETA.**
 
-A 004E-02 deve criar migration **aditiva** que preserve o tenant e zere somente `ai_run_id`, com prova de delete do run e cascade da organização.
+Aprovado:
 
-### B — custo não pode virar zero por metadado ausente
+- delete do `ai_run` preserva o tenant da tentativa;
+- cascade/cleanup foi coberto pela prova transacional 13/13;
+- metadata de usage obrigatória agora falha fechado em vez de virar custo zero;
+- CI do HEAD final está verde.
 
-`normalizarUsage()` ainda pode converter ausência de `promptTokenCount`/`candidatesTokenCount` em zero.
+Bloqueios restantes encontrados na eval:
 
-A 004E-02 deve falhar fechado com `USAGE_INVALID` quando essas contagens obrigatórias para uma revisão textual não existirem ou forem zero/inválidas. Nunca estimar custo zero por falta de evidência.
-
-### C — avaliador dos 12 casos precisa reprovar omissões reais
-
-O harness atual ainda pode deixar passar:
-
-- uma ausência esperada quando o modelo devolve `gaps=[]`;
-- o caso de tensão esperada quando o modelo devolve `tensions=[]`.
-
-A 004E-02 deve tornar essas expectativas explícitas e testar localmente a lógica do avaliador, sem chamada paga.
+1. tensão esperada aceita apenas **uma** das `refsDaTensao`, embora o caso 06 exija comparação entre objetivo e foco;
+2. a verificação explícita de resistência a prompt injection desapareceu da lógica extraída para `eval-criteria.ts`, embora o script ainda declare esse invariante.
 
 ## 9. Continua NÃO autorizado
 
 ### Gate pago 004E
 
-Até a reauditoria GPT da 004E-02:
+Até a reauditoria GPT da 004E-03:
 
 - NÃO criar/configurar/usar `GEMINI_API_KEY` no projeto;
 - NÃO configurar pagamento para a prova por instrução do Claude;
@@ -309,53 +310,36 @@ Até a reauditoria GPT da 004E-02:
 - e-commerce/estoque/SKU/pedidos/pagamentos;
 - score/gamificação.
 
-## 10. Correção 004E-02 — EXECUTADA
+## 10. Correção 004E-03 — AUTORIZADA
 
-Mandato: `rodadas/gpt/CORRECAO_004E_02_FINAL_PREPAID_INVARIANTS.md`.
+Mandato:
 
-Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · PR #17 mantido aberto, draft, não mergeado.
+`rodadas/gpt/CORRECAO_004E_03_EVAL_GATE_COMPLETION.md`
 
-CI: `32910217675` — **success**, 1007/1007 testes, lint/typecheck/Edge Functions/build verdes.
+Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
 
-Status: **CORREÇÃO 004E-02 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**.
+Objetivo estrito:
 
-Relatório: `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` §8.
+- exigir que a tensão esperada esteja ancorada em **todas** as refs pertinentes na mesma tensão;
+- restaurar uma verificação explícita, baseada em metadata/sentinela sintética e não no nome do caso, de resistência a prompt injection;
+- adicionar testes locais determinísticos para os dois pontos;
+- manter zero chamadas pagas.
 
-**Nenhuma chamada paga foi feita.** `GEMINI_API_KEY` continua ausente e só deve ser disponibilizada após a reauditoria desta correção.
+Não há migration, DDL, mudança de provider/modelo/preço, UI ou produto autorizados nesta correção.
 
-### 10.1 Invariantes fechadas
+Próximo ator: **Claude Code**.
 
-- **A** — a FK composta da tentativa passou a usar `on delete set null (ai_run_id)`: apagar o run zera só a referência e preserva `organization_id`, que é a coluna que sustenta toda a autorização da tabela;
-- **B** — `normalizarUsage()` deixou de converter contagem ausente em zero. `promptTokenCount` e `candidatesTokenCount` são obrigatórios e positivos; ausência, zero, negativo ou fracionário viram `USAGE_INVALID`. Cache ausente continua sendo "não informado" (`null`), e raciocínio ausente é zero;
-- **C** — o avaliador da eval saiu do script para módulo importável e testável em CI. Ausência esperada com `gaps` vazio agora reprova — antes a checagem era pulada nesse caso —, e a tensão esperada virou metadado explícito da fixture, com âncora exigida nas refs que divergem.
+Claude deve continuar na mesma branch e no PR #17 e executar **somente**:
 
-Achado no caminho: o detector de afirmações externas exigia adjacência e usava `\w`, que não casa letra acentuada; "o preço está alto" passava. Padrões corrigidos, com caso de teste para cada um.
+`rodadas/gpt/CORRECAO_004E_03_EVAL_GATE_COMPLETION.md`
 
-### 10.2 Supabase remoto
+A correção deve ocorrer sem chave Gemini e sem qualquer chamada paga.
 
-Migration aplicada nesta correção, aditiva e publicada antes do `db push`:
+Status esperado do Claude:
 
-- `20260825280000_fix_review_attempt_run_delete_action`.
+**CORREÇÃO 004E-03 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**.
 
-Nenhuma migration anterior foi reescrita.
-
-Prova: `scripts/sql/review-attempt-run-delete-004e02-proof.sql` → **13 casos, 13 passaram, 0 falharam**, transacional com rollback. Cobre catálogo da FK, deleção do run com tenant preservado, cross-tenant recusado e cascade da organização sem resíduo.
-
-### 10.3 Provas locais
-
-- suíte completa **1007/1007** em 49 arquivos;
-- 22 casos de usage no adapter, incluindo metadata vazia, contagem faltante e zerada;
-- 17 casos do avaliador da eval, com outputs sintéticos determinísticos;
-- `tsc --noEmit` e `eslint` limpos;
-- `npm run e2e:review` e `npm run eval:review` param no gate com código 2, sem chamar nada.
-
-### 10.4 Próxima ação autorizada
-
-Próximo ator: **GPT auditor**.
-
-Reauditar a Correção 004E-02 no PR #17. **Somente após aprovação** o GPT pode orientar o fundador a criar/configurar a credencial Paid Tier e liberar a primeira prova real.
-
-Claude não promove, não mergeia e não pede a chave ao fundador.
+Depois disso o próximo ator volta a ser GPT. Somente uma reauditoria aprovada poderá abrir o gate para o fundador criar/configurar a credencial Paid Tier e executar a primeira prova real.
 
 ## 11. Regra de continuidade
 
