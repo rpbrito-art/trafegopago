@@ -123,4 +123,6 @@ Migrations aplicadas nesta branch, nenhuma reescrita:
 
 `estado.md` da branch em **CORREÇÃO 004D-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**. Working tree limpa.
 
+CI da correção: `32896982284` — success.
+
 Nenhuma pendência técnica. Próximo ator: **GPT auditor**, para reauditoria.

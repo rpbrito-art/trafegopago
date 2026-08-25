@@ -306,6 +306,10 @@ Mandato: `rodadas/gpt/CORRECAO_004D_01_IMUTABILIDADE_GROWTH_OBJECTIVES.md`.
 
 Branch: `claude/rodada-004d-guided-growth-journey` · PR #16 mantido aberto, draft, não mergeado.
 
+HEAD publicado: `8cd73ca` (ver PR #16 para o HEAD final; commits posteriores a este registro alteram apenas relatório e este arquivo).
+
+CI: `32896982284` — **success**, lint/typecheck/Edge Functions/testes/build verdes.
+
 Status: **CORREÇÃO 004D-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
 
 Relatório: `rodadas/claude/RELATORIO_RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md` §6.
