@@ -155,30 +155,27 @@ O fundador autorizou testar o caminho `Token de acesso do usuário` no app `Traf
 
 Motivo: a Meta oferece explicitamente User Access Token nessa configuração; a documentação oficial do Instagram com Facebook Login trabalha com Facebook User Access Token; a Marketing API também admite User Access Token; e o gateway atual já contém caminho distinto para reconhecer/revogar token USER. Isso torna a hipótese relevante, mas ainda não provada no E2E específico do produto.
 
-Fato novo provado pela UI da Meta em 2026-08-25:
+Fatos novos provados pela UI da Meta em 2026-08-25:
 
 - ao escolher `Token de acesso do usuário`, a etapa `Ativos` fica indisponível;
 - a própria Meta informa: `Não é possível selecionar ativos porque você optou por usar um token de acesso do usuário com essa configuração.`;
-- isso não é, por si só, erro do experimento: no modelo USER a configuração passa a definir permissões, enquanto os ativos gerenciados são descobertos depois a partir do usuário autorizado;
-- a documentação oficial do Instagram/Facebook usa `GET /me/accounts` com `user_access_token` para listar as Pages administradas e obter `instagram_business_account`, exatamente compatível com a descoberta planejada na 003B.
+- no modelo USER, os ativos precisam ser descobertos depois a partir do usuário autorizado, compatível com `GET /me/accounts` previsto na 003B;
+- ao chegar à etapa `Permissões`, o seletor aparece vazio e, mesmo aberto sem filtro, mostra `Nenhum resultado correspondente`;
+- portanto, neste app E2E, **as permissões necessárias ainda não estão disponíveis no catálogo da configuração**. A hipótese principal a validar é que elas precisam ser habilitadas/adicionadas primeiro em `Casos de uso → Gerenciar mensagens e conteúdo no Instagram → Permissões e recursos`, antes de voltarem a aparecer na configuração de Facebook Login for Business.
 
 A autorização **não** promove User Access Token como arquitetura definitiva e **não** remove BISU do produto.
 
 ## 8. Próxima ação autorizada
 
-Próximo a agir: **fundador no Meta for Developers, no app `Trafego Pago E2E Test`**, na etapa `Permissões` da configuração USER.
+Próximo a agir: **fundador no Meta for Developers, no app `Trafego Pago E2E Test`**.
 
-Selecionar privilégio mínimo para provar Instagram:
+1. cancelar/fechar a criação atual da configuração USER sem criar configuração vazia;
+2. abrir `Casos de uso → Gerenciar mensagens e conteúdo no Instagram → Permissões e recursos`;
+3. verificar se a Meta permite adicionar individualmente, em acesso padrão para teste com usuário que tem função no app, `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_manage_insights` e, se disponível sem dependência de escrita, `ads_read`;
+4. não usar os botões em lote de conteúdo/mensagens se eles adicionarem permissões extras de escrita;
+5. retornar ao GPT com a tela da página `Permissões e recursos` antes de adicionar permissões materiais não previstas.
 
-- `pages_show_list`;
-- `pages_read_engagement`;
-- `instagram_basic`;
-- `instagram_manage_insights`;
-- `ads_read` apenas se estiver disponível e sem impor dependência de escrita/portfólio.
-
-Se a Meta adicionar automaticamente `business_management`, `ads_management` ou outra permissão material não prevista, parar antes de criar e retornar ao GPT. Se não houver ampliação material, criar a configuração USER e registrar o `config_id` para o próximo gate.
-
-Depois de criada a configuração, o GPT deve orientar a troca **temporária** das credenciais locais para o app E2E sem expor segredo e conduzir o OAuth real. A conexão atual deve ser preservada até o gate seguro definido pelo GPT.
+Se as permissões mínimas puderem ser habilitadas individualmente, recriar a configuração USER e verificar se o seletor passa a oferecê-las. Se continuarem ausentes, o experimento para e o GPT reavalia a hipótese antes de nova tentativa.
 
 ## 9. Continua NÃO autorizado
 
