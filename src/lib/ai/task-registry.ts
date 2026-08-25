@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { AITaskDefinition } from "./contracts";
+import { declaredContextReviewTask } from "./tasks/declared-context-review";
 
 /**
  * Registro server-side das tasks de IA (Rodada 004A §5.4).
@@ -59,11 +60,12 @@ export function criarTaskRegistry(
 /**
  * Registro de produção.
  *
- * **Vazio de propósito.** A 004A constrói a fundação; inventar uma "feature de
- * IA" só para ter o que registrar produziria uma task que ninguém pediu e que
- * a próxima rodada teria de desfazer (mandato §5.4). As tasks reais nascem
- * junto com as features que as consomem.
+ * A 004A deixou este registro vazio de propósito — a fundação não deveria
+ * inventar uma feature só para ter o que registrar. A 004E traz a primeira
+ * task real, nascida junto com a feature que a consome.
  */
-export const PRODUCTION_TASKS: readonly AITaskDefinition[] = [];
+export const PRODUCTION_TASKS: readonly AITaskDefinition[] = [
+  declaredContextReviewTask as AITaskDefinition,
+];
 
 export const taskRegistry: AITaskRegistry = criarTaskRegistry(PRODUCTION_TASKS);

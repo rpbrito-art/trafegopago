@@ -21,6 +21,7 @@ export const DEFAULT_AUTHENTICATED_REDIRECT: string = ROUTES.start;
 export const ALLOWED_REDIRECT_PATHS: readonly string[] = [
   ROUTES.start,
   ROUTES.focus,
+  ROUTES.review,
   ROUTES.account,
   ROUTES.home,
 ];

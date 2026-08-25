@@ -26,6 +26,8 @@ export const JOURNEY_STEPS = [
   "ADICIONAR_OFERTA",
   "ESCOLHER_FOCO",
   "REESCOLHER_FOCO",
+  "REVISAR_CONTEXTO_DECLARADO",
+  "CONTEXTO_DECLARADO_REVISADO",
   "BASE_ESTRATEGICA_PRONTA",
   "ERRO_TECNICO",
 ] as const;
@@ -66,6 +68,15 @@ const TOTAL_ETAPAS = 4;
 export type JourneyInput = {
   objetivo: ObjectiveState;
   ofertas: OffersState;
+  /**
+   * Existe revisão do contexto **de agora**? (Rodada 004E §11)
+   *
+   * A decisão é determinística — comparação de fingerprint feita antes de
+   * chegar aqui —, e o conteúdo da revisão não participa dela. `undefined`
+   * significa que quem chamou não consultou a revisão; o motor então para em
+   * `BASE_ESTRATEGICA_PRONTA` em vez de supor ausência.
+   */
+  revisaoAtual?: boolean;
 };
 
 /**
@@ -76,7 +87,11 @@ export type JourneyInput = {
  * orientar alguém a "definir o objetivo" quando nem sabemos de qual negócio se
  * trata seria conduzir para o lugar errado.
  */
-export function decideJourneyStep({ objetivo, ofertas }: JourneyInput): JourneyStep {
+export function decideJourneyStep({
+  objetivo,
+  ofertas,
+  revisaoAtual,
+}: JourneyInput): JourneyStep {
   // Falha de leitura nunca vira estado vazio: "não deu para saber" e "não
   // existe" levariam a telas opostas.
   if (objetivo.kind === "erro-tecnico" || ofertas.kind === "erro-tecnico") {
@@ -239,9 +254,44 @@ export function decideJourneyStep({ objetivo, ofertas }: JourneyInput): JourneyS
     };
   }
 
+  // Com a base pronta, o próximo passo passa a ser revisar o que o Quoron
+  // entendeu. **Isto não chama IA**: o motor só sabe se existe revisão para o
+  // contexto atual; a chamada exige clique explícito em `/revisao`.
+  if (revisaoAtual === false) {
+    return {
+      kind: "REVISAR_CONTEXTO_DECLARADO",
+      titulo: "Revise o que o Quoron entendeu do seu negócio",
+      explicacao:
+        "Você conta, o Quoron organiza e devolve o que entendeu, o que ainda falta e o que vale confirmar.",
+      porqueImporta:
+        "Antes de recomendar qualquer coisa, o Quoron precisa ter entendido seu negócio do jeito certo — e você precisa poder corrigir se ele entendeu errado.",
+      oQueMuda:
+        "Você vê em um lugar só o que informou, o que falta esclarecer e os pontos que merecem uma segunda olhada.",
+      acao: podeAlterar
+        ? { rotulo: "Revisar meu contexto", href: ROUTES.review }
+        : null,
+      progresso: { etapa: TOTAL_ETAPAS, total: TOTAL_ETAPAS },
+    };
+  }
+
+  if (revisaoAtual === true) {
+    return {
+      kind: "CONTEXTO_DECLARADO_REVISADO",
+      titulo: "Seu contexto já foi revisado",
+      explicacao:
+        "O Quoron organizou o que você informou e apontou o que ainda falta esclarecer.",
+      porqueImporta:
+        "Quanto mais claro o contexto, mais específica fica cada recomendação futura.",
+      oQueMuda:
+        "Sempre que você mudar objetivo, ofertas ou prioridade, vale pedir uma nova revisão. As próximas camadas — observar sua presença digital e medir resultado — chegam conforme as conexões do produto forem habilitadas.",
+      acao: { rotulo: "Ver minha revisão", href: ROUTES.review },
+      progresso: { etapa: TOTAL_ETAPAS, total: TOTAL_ETAPAS },
+    };
+  }
+
   // Base pronta não fabrica um próximo passo que ainda não existe. Nada de CTA
   // para integração bloqueada nem promessa de análise que o produto ainda não
-  // consegue entregar (mandato §§8.2 e 14).
+  // consegue entregar (mandato 004D §§8.2 e 14).
   return {
     kind: "BASE_ESTRATEGICA_PRONTA",
     titulo: "Sua base estratégica inicial está pronta",

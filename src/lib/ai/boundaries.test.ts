@@ -14,6 +14,41 @@ import { describe, expect, it } from "vitest";
 
 const DIRETORIO = join(process.cwd(), "src", "lib", "ai");
 
+/** Nomes comerciais que não podem vazar para fora da camada de adapter. */
+const MARCAS_DE_PROVIDER =
+  /(openai|anthropic|claude|gemini|vertex|bedrock|mistral|cohere|groq|kimi|deepseek)/i;
+
+/**
+ * Varre recursivamente uma pasta de código produtivo.
+ *
+ * Usado para provar o que **não** existe em features, páginas e componentes —
+ * a invariante mais forte do §20 e do mandato 004E §2: nenhum componente de
+ * produto contém `if provider === ...` nem literal de modelo.
+ */
+function arquivosRecursivos(raiz: string): { nome: string; conteudo: string }[] {
+  const encontrados: { nome: string; conteudo: string }[] = [];
+
+  for (const entrada of readdirSync(raiz, { withFileTypes: true })) {
+    const caminho = join(raiz, entrada.name);
+
+    if (entrada.isDirectory()) {
+      encontrados.push(...arquivosRecursivos(caminho));
+      continue;
+    }
+
+    if (!/\.(ts|tsx)$/.test(entrada.name) || /\.test\.tsx?$/.test(entrada.name)) {
+      continue;
+    }
+
+    encontrados.push({
+      nome: caminho.replace(process.cwd(), ""),
+      conteudo: readFileSync(caminho, "utf8"),
+    });
+  }
+
+  return encontrados;
+}
+
 function arquivosDeProducao(): { nome: string; conteudo: string }[] {
   return readdirSync(DIRETORIO)
     .filter((nome) => nome.endsWith(".ts") && !nome.endsWith(".test.ts"))
@@ -33,14 +68,41 @@ describe("a camada de IA não conhece provider real", () => {
     }
   });
 
-  it("nenhum arquivo produtivo cita marca de provider de IA", () => {
-    // Feature nunca contém `if provider === ...`; a camada inteira também não
-    // deve conhecer nome comercial (`AI_ARCHITECTURE.md` §20).
-    const marcas =
-      /\b(openai|anthropic|claude|gemini|vertex|bedrock|mistral|cohere|groq|kimi|deepseek)\b/i;
-
+  /**
+   * A 004A podia exigir que a camada inteira ignorasse nome comercial, porque
+   * não havia provider nenhum. Com um provider real, a invariante que importa é
+   * mais precisa: **quem decide** não conhece marca. O núcleo — contratos,
+   * Router, catálogo, ledger, preço, registro de tasks — escolhe por capacidade
+   * e tier; a marca existe apenas no adapter e no ato de registrá-lo
+   * (`AI_ARCHITECTURE.md` §20).
+   */
+  it("o núcleo que decide não cita marca de provider de IA", () => {
     for (const { nome, conteudo } of arquivosDeProducao()) {
-      expect(conteudo, nome).not.toMatch(marcas);
+      // Registrar um adapter é, literalmente, nomear o provider.
+      if (nome === "adapter-registry.ts") continue;
+
+      expect(conteudo, nome).not.toMatch(MARCAS_DE_PROVIDER);
+    }
+  });
+
+  /**
+   * A invariante mais forte, e a que o produto realmente precisa: nenhuma
+   * feature, página ou componente conhece provider ou modelo. É isso que
+   * permite trocar o modelo desta capacidade alterando só o catálogo
+   * (mandato 004E §2).
+   */
+  it("nenhuma feature, página ou componente cita provider ou modelo", () => {
+    const alvos = [
+      join(process.cwd(), "src", "app"),
+      join(process.cwd(), "src", "components"),
+      join(process.cwd(), "src", "lib", "review"),
+    ];
+
+    for (const alvo of alvos) {
+      for (const { nome, conteudo } of arquivosRecursivos(alvo)) {
+        expect(conteudo, nome).not.toMatch(MARCAS_DE_PROVIDER);
+        expect(conteudo, nome).not.toMatch(/\bmodel(Key)?\s*[:=]\s*["'`]/);
+      }
     }
   });
 

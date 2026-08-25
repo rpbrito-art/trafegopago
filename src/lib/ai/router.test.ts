@@ -353,9 +353,18 @@ describe("adapter", () => {
     expect(falhados[0]?.errorClass).toBe("ADAPTER_NOT_REGISTERED");
   });
 
-  it("o registro de produção não tem nenhum adapter", async () => {
+  /**
+   * A 004A mantinha este registro vazio porque não havia provider real. A 004E
+   * registra o primeiro — e o que continua valendo é que ele seja **um**, com a
+   * chave que existe no catálogo: um adapter registrado sob chave que o
+   * catálogo não conhece nunca seria alcançado, e um provider do catálogo sem
+   * adapter falha em `ADAPTER_NOT_REGISTERED` depois de já ter aberto run.
+   */
+  it("o registro de produção tem exatamente o provider catalogado", async () => {
     const { PRODUCTION_ADAPTERS } = await import("./adapter-registry");
-    expect(PRODUCTION_ADAPTERS).toHaveLength(0);
+
+    expect(PRODUCTION_ADAPTERS).toHaveLength(1);
+    expect(PRODUCTION_ADAPTERS[0].providerKey).toBe("google_gemini");
   });
 });
 
@@ -659,9 +668,26 @@ describe("registro de tasks", () => {
     expect(() => criarTaskRegistry([TASK, TASK])).toThrow();
   });
 
-  it("o registro de produção nasce vazio", async () => {
+  /**
+   * A 004A não registrava task alguma: inventar uma feature só para ter o que
+   * registrar produziria política que ninguém pediu. A 004E traz a primeira
+   * task real, e o que se prova agora é que ela é uma só, versionada e de
+   * escopo tenant — uma task de contexto de negócio sem organização seria um
+   * vazamento esperando acontecer.
+   */
+  it("o registro de produção tem a task real, versionada e tenant-scoped", async () => {
     const { PRODUCTION_TASKS } = await import("./task-registry");
-    expect(PRODUCTION_TASKS).toHaveLength(0);
+
+    expect(PRODUCTION_TASKS).toHaveLength(1);
+
+    const task = PRODUCTION_TASKS[0];
+
+    expect(task.taskType).toBe("DECLARED_BUSINESS_CONTEXT_REVIEW");
+    expect(task.taskVersion).toBe("v1");
+    expect(task.scope).toBe("TENANT");
+    // Só Tier 1: a task é síntese do que já está estruturado, e permitir
+    // escalada compraria raciocínio caro para trabalho que não o exige.
+    expect(task.allowedTiers).toEqual([1]);
   });
 });
 
