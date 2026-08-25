@@ -1,67 +1,63 @@
-# DECISÃO 003B-04 — SEPARAR PROVEDOR/DONO DO APP E EMPRESA CLIENTE DE TESTE
+# REGISTRO 003B-04 — HIPÓTESE DE SEPARAÇÃO ENTRE PROVEDOR E CLIENTE DE TESTE
 
-Status: **DECIDIDA PELO FUNDADOR — VIGENTE**
+Status: **ANULADO COMO DECISÃO — HIPÓTESE EM DEBATE, NÃO AUTORIZADA PELO FUNDADOR**
 Data: 2026-08-24
 Rodada pai: **003B — Meta Asset Discovery & Selection**
 
-## 1. Fato observado
+## 1. Correção de governança
+
+Este arquivo foi criado prematuramente como se o fundador tivesse decidido separar o portfólio provedor/dono do app e o portfólio cliente de teste.
+
+Isso estava incorreto. O fundador estava **debatendo uma alternativa**, não autorizando uma decisão.
+
+Portanto:
+
+- nenhuma decisão arquitetural 003B-04 está vigente;
+- nenhuma nova fixture cliente foi autorizada;
+- nenhuma criação de portfólio, Página, Instagram ou conta de anúncios foi autorizada por este registro;
+- este arquivo permanece apenas como trilha de auditoria do erro documental e das hipóteses discutidas.
+
+## 2. Fato observado que permanece válido
 
 No E2E real do Facebook Login for Business, o portfólio **Quoron** apareceu desabilitado no seletor de portfólio empresarial com a mensagem literal:
 
 `This Meta Business Account owns the app`
 
-O fluxo passou a oferecer somente a criação de um novo portfólio para ocupar o papel de empresa cliente.
+O fluxo passou a oferecer criação de novo portfólio para ocupar o papel de empresa cliente.
 
-## 2. Decisão
+Esse é um **fato observado**, não uma decisão sobre como contorná-lo.
 
-Separar os papéis:
+## 3. Hipóteses em debate — nenhuma autorizada
 
-- **Quoron** permanece como empresa provedora/dona do aplicativo Meta e marca do SaaS;
-- o E2E do fluxo de cliente deve usar um **portfólio empresarial distinto**, que não seja dono do app;
-- não criar `Quoron 1` apenas para contornar a restrição;
-- não transferir a propriedade do app por tentativa;
-- não mover os ativos Quoron por tentativa.
+As alternativas atualmente em debate incluem, sem decisão tomada:
 
-## 3. Objetivo de produto preservado
+1. usar um portfólio empresarial distinto como fixture de cliente;
+2. criar ou reorganizar uma fixture de teste sem afetar os ativos Quoron;
+3. investigar se acesso de parceiro/compartilhamento oficial permite que ativos Quoron sejam usados por um portfólio operacional distinto;
+4. reavaliar o modelo de token/login apenas se evidência técnica justificar.
 
-O fundador quer que o próprio Quoron possa usar o software no futuro para operar e comercializar o produto.
+Nenhuma dessas alternativas pode ser executada sem decisão posterior do GPT + autorização do fundador quando houver impacto externo/material.
 
-Essa meta permanece válida. O fato de o portfólio dono do app não poder ocupar o papel de cliente nesse Business Login não significa que a marca Quoron não possa usar o SaaS.
+## 4. Objetivo de produto preservado
 
-O modelo a validar posteriormente é:
+Permanece como requisito de produto que o próprio **Quoron possa usar o software no futuro** para operar sua presença e demonstrar/comercializar o SaaS.
 
-1. Quoron permanece dono do app e dos seus ativos;
-2. um portfólio operacional/cliente distinto recebe acesso autorizado aos ativos Quoron por mecanismo oficial de compartilhamento/partner access, sem transferência de propriedade;
-3. esse portfólio distinto percorre o mesmo onboarding que qualquer cliente;
-4. o SaaS pode então operar os ativos Quoron como cliente interno/demonstração, se a Meta permitir esse conjunto no E2E real.
+O bloqueio atual do portfólio dono do app no Business Login não resolve nem invalida esse objetivo; apenas mostra que o E2E atual precisa de investigação antes de escolhermos a arquitetura/fixture correta.
 
-Esse caminho é hipótese operacional a validar, não fato ainda provado no nosso app.
+## 5. Proibições vigentes
 
-## 4. Fixture da 003B
+Até decisão posterior:
 
-Para concluir a 003B, usar uma empresa/portfólio cliente real ou de teste separado do portfólio Quoron dono do app.
-
-Critérios desejáveis da fixture:
-
-- não possuir o app Meta;
-- ser administrada pelo fundador ou por colaborador autorizado;
-- ter Página do Facebook;
-- ter Instagram profissional ligado à Página;
-- idealmente ter conta de anúncios utilizável para os gates futuros de mídia paga, embora a 003B possa validar primeiro o ramo Instagram.
-
-## 5. Proibições
-
-Até nova decisão:
-
-- não criar portfólio duplicado `Quoron 1`;
+- não criar `Quoron 1`;
 - não inventar site/domínio;
-- não transferir o app para outro portfólio;
-- não mover Página Quoron ou `@goquoron` de portfólio apenas para fechar o teste;
-- não assumir que partner access resolverá o Business Login sem E2E real;
-- não desconectar a conexão Meta atual por conveniência.
+- não mover Página Quoron ou `@goquoron` entre portfólios por tentativa;
+- não transferir a propriedade do app;
+- não assumir que acesso de parceiro resolverá o fluxo sem prova;
+- não desconectar a conexão Meta atual por conveniência;
+- não iniciar novo OAuth baseado nesta hipótese.
 
-## 6. Próximo gate
+## 6. Próximo passo correto
 
-Identificar qual portfólio empresarial distinto será usado como fixture cliente da 003B.
+Debater e investigar qual estrutura de teste reproduz o cenário real de cliente **sem comprometer o objetivo de usar o próprio Quoron no produto no futuro**.
 
-Depois, o GPT conduz a preparação dos ativos desse portfólio e somente então libera novo OAuth real.
+Somente depois registrar uma decisão efetiva, com autorização explícita quando aplicável.
