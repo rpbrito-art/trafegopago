@@ -23,23 +23,19 @@ Promovidas: **000–003A**.
 - merge 003A: `546838db8e7ced4e9045c05feb8c7b2f0c476cc2`.
 - CI final 003A: `32772710738` — verde.
 
-003A está **EXECUTADA, AUDITADA E PROMOVIDA**. Permanecem canônicos: Facebook Login for Business + Graph API v26.0; token Meta server-side no Vault; OAuth `state` de uso único; membership reconferida; suporte/classificação de BISU; desconexão segura.
+003A está **EXECUTADA, AUDITADA E PROMOVIDA**.
 
-## 3. Rodada 003B — EM EXECUÇÃO, NÃO PROMOVIDA
+## 3. Rodada 003B — EXECUTADA/AUDITADA EM CÓDIGO, NÃO PROMOVIDA
 
 Mandato: `rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
 
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
-PR: **#12 draft, open, não mergeado**.
+PR #12: **draft, open, não mergeado, mergeable=true**.
 
-HEAD anterior auditado: `1771965805a09082579da1f1baea58b674f24084`.
+HEAD reconciliado e auditado: `377756b08b02895b900cad04c6bf7ec13e6e0fd5`.
 
-CI anterior auditada: `32844721885` — success.
-
-HEAD da Correção 003B-06: `c1b3ba01abd44503777adaf6b5ea4507063bce34`.
-
-Situação atual do PR: branch divergiu da `main`, PR temporariamente não mergeável; o HEAD `c1b3ba0...` ainda não possui CI associada.
+CI final auditada antes da 003B-08: `32848304161` — **success**.
 
 Já executado/auditado:
 
@@ -51,9 +47,18 @@ Já executado/auditado:
 - investigação 003B-05: **EXECUTADA E AUDITADA**;
 - complemento Page direta: **EXECUTADO, AUDITADO E APROVADO COMO EVIDÊNCIA READ-ONLY**;
 - complemento IG User + Insights: **EXECUTADO, AUDITADO E APROVADO COMO EVIDÊNCIA READ-ONLY**;
-- Correção 003B-06 credential-aware discovery: **EXECUTADA E AUDITADA; APROVADA NO NÍVEL DE CÓDIGO/ARQUITETURA DOCUMENTADA; NÃO É PROVA E2E BISU**.
+- Correção 003B-06 credential-aware discovery: **EXECUTADA E AUDITADA; APROVADA NO NÍVEL DE CÓDIGO/ARQUITETURA DOCUMENTADA; NÃO É PROVA E2E BISU**;
+- reconciliação da branch com `main`: **EXECUTADA, AUDITADA E APROVADA**;
+- testes após reconciliação: **228/228** nos módulos Meta/actions/componentes; typecheck e lint limpos;
+- CI do HEAD reconciliado: **verde**.
 
 003B continua **NÃO PROMOVIDA**.
+
+Correção vigente:
+
+`rodadas/gpt/CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md`
+
+Status da 003B-08: **AUTORIZADA, AINDA NÃO EXECUTADA/AUDITADA**.
 
 ## 4. Produto — mídia paga
 
@@ -61,7 +66,7 @@ Canônico específico: `docs/01-produto/PAID_MEDIA_CANONICAL.md`.
 
 Mídia paga é pilar central; orgânico também entrega valor. Permissão Ads não equivale a criar campanha/gastar. Gasto exige aprovação humana explícita, comando de domínio, idempotência e auditoria.
 
-`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` permanece obrigatório para simplicidade guiada: complexidade técnica pertence ao sistema, não ao pequeno empresário.
+`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` permanece obrigatório para simplicidade guiada.
 
 ## 5. Arquitetura Meta vigente
 
@@ -84,7 +89,27 @@ Experimento USER:
 - User Access Token;
 - evidência diagnóstica válida, mas **não canônica**.
 
-## 6. Conexão USER real atual
+## 6. Limite real de Business Portfolios — RESTRIÇÃO OPERACIONAL
+
+Fatos confirmados:
+
+- a conta do fundador já atingiu o limite atual de **dois Meta Business Portfolios**;
+- portanto **não é possível criar um terceiro Business Portfolio** nessa conta agora;
+- o portfólio que está **bloqueado/inutilizável é `Bizzman5po`**;
+- **`Bizzman5po` e `BizzManiq1` são identidades distintas e não podem ser confundidas**;
+- `BizzManiq1` **não está comprovado como bloqueado** e seu papel atual precisa ser reconstruído por evidência antes de qualquer uso;
+- Quoron possui o app canônico; no fluxo BISU observado apareceu desabilitado como cliente do próprio app com `This Meta Business Account owns the app`.
+
+A decisão anterior de criar `Tráfego Pago Cliente Teste` está **RETRATADA — NÃO EXECUTAR**.
+
+Regra permanente:
+
+- não instruir criação de terceiro portfolio;
+- não excluir `Bizzman5po` por tentativa apenas para liberar vaga;
+- não inferir a identidade ou estado de recurso Meta por semelhança de nome;
+- não usar empresa/portfolio de terceiro sem decisão explícita do fundador.
+
+## 7. Conexão USER real atual
 
 Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 
@@ -96,14 +121,12 @@ Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 - `instagram_accounts=0`;
 - `ad_accounts=0`.
 
-O GPT reconfirmou esse snapshot no Supabase após a execução 003B-06; não houve persistência de seleção nem mutação externa.
-
 Ativos de fixture diagnóstica:
 
 - Page Quoron `1356474050873300`;
 - Instagram profissional `@goquoron` `17841429590351285`.
 
-## 7. Evidência USER consolidada
+## 8. Evidência USER consolidada
 
 Com o mesmo User Access Token:
 
@@ -115,23 +138,13 @@ Com o mesmo User Access Token:
 - `media_count=9`;
 - Insights `reach/day` → HTTP 200.
 
-Sem `business_management`, `ads_management` ou Page Access Token.
-
 Falha observada:
 
 - `/me/accounts` → HTTP 200, 0 Pages.
 
-A causa interna da Meta permanece não provada. USER continua não canônico porque não satisfez descoberta automática no E2E real.
+USER continua não canônico porque não satisfez descoberta automática no E2E real.
 
-## 8. Correção 003B-06 — resultado da auditoria
-
-Documentos:
-
-- `rodadas/gpt/CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`;
-- `rodadas/claude/RELATORIO_CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`;
-- `rodadas/gpt/AUDITORIA_CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`.
-
-A afirmação anterior de que `assigned_pages` era apenas hipótese fica **SUPERADA**.
+## 9. Correção 003B-06 — arquitetura aprovada
 
 Evidência primária verificada: o SDK oficial da Meta `facebook-nodejs-business-sdk`, objeto `SystemUser`, implementa `getAssignedPages()` usando `/assigned_pages` e objetos `Page`.
 
@@ -147,67 +160,86 @@ Arquitetura aprovada no código:
 
 A execução não deve ser revertida.
 
-## 9. O que a 003B-06 NÃO provou
+## 10. Bug de reconexão observado — 003B-08
 
-Ainda não há prova E2E real de BISU para:
+Na tela real, o estado `conexao-recusada` mostra:
 
-1. chamada de `assigned_pages` com um BISU ativo do fluxo real;
-2. permissões efetivamente exigidas pelo edge nesse arranjo;
-3. expansão `instagram_business_account` no retorno real desse edge;
-4. descoberta/seleção completa usando uma entidade cliente elegível separada do portfólio dono do app.
+`A Meta não aceitou mais a autorização atual. Conecte novamente para retomar de onde parou.`
 
-No BISU anterior, o portfólio Quoron apareceu desabilitado com `This Meta Business Account owns the app`. Esse fato permanece válido.
+Mas o componente não oferece o botão correspondente.
 
-Não usar empresa/portfólio de terceiro sem nova decisão explícita do fundador.
+Causa confirmada no código:
 
-## 10. Reconciliação + CI — EXECUTADA
+- `src/components/meta/meta-assets-section.tsx`: ramo `conexao-recusada` não renderiza `MetaConnectButton`;
+- `src/components/meta/meta-assets-section.test.tsx`: teste atual inclusive exige que `conexao-recusada` não tenha botão.
 
-Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+O fluxo de servidor existente já suporta reautorização sem apagar a conexão anterior: `MetaConnectButton` → `connectMetaAction` → `startMetaAuthorization`; no callback, a conexão viva é retomada e o segredo só é substituído após autorização bem-sucedida.
 
-Autorização: §10 anterior — integração técnica e CI, sem E2E, OAuth ou alteração Meta.
+A correção autorizada deve apenas disponibilizar **Conectar novamente** nesse ramo e ajustar os testes correspondentes.
 
-Executado:
+## 11. Gate E2E BISU — ESTADO ATUAL
 
-- branch 003B atualizada com a `main` da auditoria por merge, sem `reset`/`clean` e sem force-push;
-- único conflito foi documental, em `estado.md`: resolvido preservando a versão de `main`, que é a auditoria mais nova;
-- **nenhuma mudança de comportamento**: o delta de código da 003B-06 permaneceu idêntico ao aprovado — `src/lib/meta/credential.ts`, `assets.ts`, `gateway.ts` e `assets.test.ts` sem alteração nesta reconciliação;
-- provas re-executadas após o merge: `vitest run src/lib/meta src/lib/actions src/components/meta` **228/228**; `tsc --noEmit` limpo; `npm run lint` limpo.
+Ainda falta E2E real de BISU para provar:
 
-Fato corrigido nesta rodada: o push anterior (`c1b3ba0`) **não disparou CI** — não havia check run para aquele SHA, então o item de CI do handoff da 003B-06 estava em aberto. A CI do novo HEAD é a que fecha esse item.
+1. `assigned_pages` com BISU ativo do fluxo real;
+2. permissões exigidas pelo edge nesse arranjo;
+3. expansão `instagram_business_account` no retorno real;
+4. descoberta/seleção completa em entidade cliente elegível.
 
-Nenhum OAuth, nenhuma alteração no painel Meta, nenhuma escrita no Supabase, nenhum escopo alterado.
+Não há vaga para criar terceiro portfólio. O inventário Meta ainda precisa ser reconstruído corretamente, distinguindo Quoron, Bizzman5po e BizzManiq1 e provando qual papel cada um exerce.
 
-Próximo a agir: **GPT** — auditar HEAD, PR e CI.
+A 003B-08 é independente desse inventário: ela apenas restaura na UI a ação de reconectar já suportada pelo backend.
 
-## 11. Continua NÃO autorizado
+## 12. Próxima ação autorizada
 
-- promover/mergear 003B automaticamente;
+Próximo a agir: **Claude Code**.
+
+Executar somente `rodadas/gpt/CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md` na branch `claude/rodada-003b-meta-asset-discovery-selection`.
+
+Claude deve:
+
+1. adicionar `MetaConnectButton` com rótulo `Conectar novamente` ao estado `conexao-recusada`;
+2. ajustar os testes para exigir esse botão e remover a expectativa antiga que o proibia;
+3. não alterar banco, migration, `.env.local`, Meta App, Business Login Configuration, scopes ou tokens;
+4. executar testes Meta/actions/componentes, typecheck e lint;
+5. publicar novo HEAD e obter CI no PR #12;
+6. parar em `AGUARDANDO AUDITORIA GPT`.
+
+Depois da auditoria GPT, se aprovada, o fundador poderá recarregar a aplicação local e usar **Conectar novamente** para testar outra autorização.
+
+## 13. Continua NÃO autorizado
+
+- criar terceiro Business Portfolio;
+- excluir `Bizzman5po` por tentativa;
+- promover/mergear 003B antes do gate correspondente;
 - iniciar Fase 4;
 - declarar USER arquitetura definitiva;
 - remover BISU;
 - adicionar `business_management`, `ads_management` ou outro scope por tentativa;
-- novo OAuth;
-- alterar `.env.local`;
-- mexer no acesso da Page/Instagram/Business Portfolio;
-- alterar App/Business Login Configuration no painel Meta;
-- usar empresa/portfólio de terceiro sem nova decisão explícita;
+- transferir ownership da Page/Instagram/Ad Account/app;
+- usar empresa/portfólio de terceiro;
 - expor App Secret/token;
 - pedir/imprimir/persistir Page Access Token;
 - campanha/anúncio/gasto;
 - importar conteúdo.
 
-## 12. Pendências
+## 14. Pendências
 
-- reconciliar PR #12 com `main` e obter CI verde no novo HEAD;
-- depois decidir o critério final de E2E/promoção da 003B;
+- executar/auditar Correção 003B-08;
+- depois reconstruir inventário Meta real sem confundir nomes;
+- definir fixture BISU elegível usando recursos existentes, se possível;
+- executar E2E BISU real;
+- se passar, decidir promoção da 003B;
 - corrigir UX que hoje afirma ausência de Page quando API devolve lista vazia;
 - harmonizar canônicos de mídia paga pós-003B;
 - redaction do callback em logs antes de produção;
 - leaked-password protection, SMTP/domínio, App Review/Business Verification quando aplicável.
 
-## 13. Regra de comunicação para continuidade
+## 15. Regra de comunicação para continuidade
 
 - sempre fornecer link direto quando instruir o fundador a abrir página/tela externa;
 - explicar toda ação manual em linguagem simples;
 - não fragmentar sequência lógica conhecida;
-- não tratar hipótese sobre comportamento da Meta como fato antes de prova.
+- não tratar hipótese sobre comportamento da Meta como fato antes de prova;
+- antes de instrução manual dependente de limite/capacidade externa, conferir o estado específico da conta já conhecido no histórico;
+- nomes de recursos Meta só podem ser associados a estado/função quando essa identidade estiver comprovada.
