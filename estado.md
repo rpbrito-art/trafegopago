@@ -35,7 +35,7 @@ Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
 PR: **#12 draft**.
 
-HEAD final auditado das sondas/branch: `1771965805a09082579da1f1baea58b674f24084`.
+HEAD final auditado antes da Correção 003B-06: `1771965805a09082579da1f1baea58b674f24084`.
 
 CI final auditada: `32844721885` — **success**.
 
@@ -158,7 +158,7 @@ Documentos:
 - `rodadas/gpt/AUDITORIA_COMPLEMENTO_003B_05_IG_DIRECT_INSIGHTS.md`;
 - `rodadas/gpt/DECISAO_003B_05_USER_NAO_CANONICO_BISU_MANTIDO.md`.
 
-Decisão:
+Decisão preservada:
 
 - User Access Token **não** é adotado como arquitetura canônica de descoberta da 003B;
 - BISU permanece arquitetura canônica de produção;
@@ -166,38 +166,56 @@ Decisão:
 - não adicionar scopes por tentativa;
 - não pedir/persistir Page Access Token sem prova material.
 
-Motivo: o fluxo USER testado não consegue descobrir automaticamente as Pages, e exigir ID técnico viola `Simplicidade Guiada`.
+## 9. Novo achado de auditoria — discovery atual não distingue credencial
 
-## 9. Gate externo restante da 003B
+Após a auditoria do complemento downstream, o GPT inspecionou novamente o código da 003B e identificou:
 
-No BISU, o portfólio Quoron apareceu desabilitado com:
-
-`This Meta Business Account owns the app`
-
-Portanto o portfólio que é dono do app não pode atuar simultaneamente como cliente no E2E BISU testado.
-
-O fundador não quer usar empresa/portfólio de terceiro apenas para contornar o teste. Não reabrir essa proposta automaticamente.
-
-Não foi encontrada evidência oficial atual de um Business Portfolio de teste que elimine essa separação de forma aplicável.
+- `src/lib/meta/assets.ts` usa atualmente `me/accounts` para descoberta de Pages **independentemente do tipo de credencial**;
+- `src/lib/meta/gateway.ts`, vindo da 003A, já contém inspeção/classificação server-side de credenciais;
+- a própria 003A registra que `debug_token.type=SYSTEM_USER` sozinho não distingue com segurança BISU de system user clássico e usa evidência complementar (`client_business_id`) na classificação.
 
 Consequência:
 
-- o bloqueio restante é um **gate externo de fixture cliente elegível separada do portfólio dono do app**;
-- o E2E canônico BISU ainda não ocorreu;
-- a 003B não pode ser descrita como E2E canônico concluído.
+- a conclusão anterior de que o bloqueio restante era **apenas** uma fixture externa fica **SUPERSEDIDA**;
+- antes de decidir que o E2E BISU está bloqueado somente pela separação provedor/cliente, a 003B precisa tornar a descoberta sensível ao tipo real de credencial;
+- USER continua não canônico; esse novo achado não reabre a decisão USER.
 
-## 10. Próximo a agir — GPT/FUNDADOR, NÃO CLAUDE
+## 10. Próxima ação autorizada — CORREÇÃO 003B-06
 
-Nenhuma nova investigação está autorizada.
+Próximo a agir: **Claude Code**.
 
-Existem duas opções legítimas para destravar:
+Mandato:
 
-1. futuramente disponibilizar uma entidade Meta cliente elegível e separada do portfólio dono do app para executar o E2E BISU real; ou
-2. o GPT formular uma revisão explícita do critério de promoção da 003B, usando as provas de código, banco, CI e E2E downstream já obtidas, e submeter essa exceção ao fundador — sem fingir que o E2E BISU ocorreu.
+`rodadas/gpt/CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`
 
-Até essa decisão, **não enviar `/proxima` ao Claude**.
+Objetivo, em linguagem simples: fazer o sistema parar de usar a mesma rota da Meta para todos os tipos de autorização. Ele deve reconhecer no servidor qual credencial recebeu e usar o mecanismo oficial correspondente para descobrir as Pages.
 
-## 11. Continua NÃO autorizado
+Regras principais:
+
+- reutilizar/centralizar a classificação segura já existente;
+- USER continua em `/me/accounts`;
+- BISU/System User deve usar o mecanismo oficial de Pages atribuídas confirmado por fonte oficial vigente durante a implementação;
+- não usar `external_business_id` como proxy;
+- não assumir `SYSTEM_USER` sozinho == BISU;
+- se o edge correto não puder ser estabelecido com evidência suficiente, parar em `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`;
+- sem novo OAuth, sem alteração no painel Meta, sem novos scopes e sem Page Access Token;
+- sem merge/promoção.
+
+Depois da execução, Claude deve entregar relatório e parar aguardando auditoria GPT.
+
+## 11. Gate externo BISU — AINDA NÃO CLASSIFICADO COMO BLOQUEIO FINAL
+
+No fluxo BISU anterior, o portfólio Quoron apareceu desabilitado com:
+
+`This Meta Business Account owns the app`
+
+Esse fato permanece válido.
+
+Porém, somente após a Correção 003B-06 e sua auditoria o GPT decidirá se ainda é indispensável uma entidade cliente separada para o E2E final ou se há outra prova segura suficiente.
+
+Não usar empresa/portfólio de terceiro sem nova decisão explícita do fundador.
+
+## 12. Continua NÃO autorizado
 
 - promover/mergear 003B automaticamente;
 - iniciar Fase 4;
@@ -206,8 +224,9 @@ Até essa decisão, **não enviar `/proxima` ao Claude**.
 - pedir Page ID técnico ao cliente como fluxo padrão;
 - adicionar `business_management`, `ads_management` ou outro scope por tentativa;
 - novo OAuth;
+- alterar `.env.local`;
 - mexer no acesso da Page Quoron;
-- associar o app E2E ao portfólio Quoron só para BISU;
+- alterar App/Business Login Configuration no painel Meta;
 - criar/mover Page, Instagram, portfólio ou Ad Account;
 - usar conta/empresa de terceiro sem nova decisão explícita do fundador;
 - expor App Secret/token;
@@ -215,16 +234,16 @@ Até essa decisão, **não enviar `/proxima` ao Claude**.
 - campanha/anúncio/gasto;
 - importar conteúdo.
 
-## 12. Pendências
+## 13. Pendências
 
-- resolver o gate de promoção 003B por fixture elegível ou exceção explícita de evidência;
+- executar/auditar 003B-06;
+- depois reavaliar o E2E BISU e o gate externo;
 - corrigir UX que hoje afirma ausência de Page quando a API apenas devolve lista vazia;
-- se algum dia USER for reconsiderado, decidir ciclo de vida/renovação/reautorização/revogação/Ads e segurança;
 - harmonizar canônicos de mídia paga pós-003B;
 - redaction do callback em logs antes de produção;
 - leaked-password protection, SMTP/domínio, App Review/Business Verification quando aplicável.
 
-## 13. Regra de comunicação para continuidade
+## 14. Regra de comunicação para continuidade
 
 - Sempre que o fundador for instruído a abrir uma página/tela externa, fornecer o link direto.
 - O fundador não é programador: toda ação manual precisa dizer o que fazer, onde fazer e por quê.
