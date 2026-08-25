@@ -660,17 +660,34 @@ async function revokeUserPermissions(input: {
 }): Promise<Revogacao> {
   const alvo = input.externalUserId ?? "me";
   const url = new URL(`${input.base}/${alvo}/permissions`);
-  url.searchParams.set("access_token", input.accessToken);
 
   try {
-    const resposta = await fetch(url, { method: "DELETE" });
+    // O token vai no header, não na query: a URL de um `DELETE` aparece em
+    // log de proxy, de erro e de rede, e uma credencial ali é uma credencial
+    // vazada. `Authorization: Bearer` é a forma aceita pela Graph API.
+    const resposta = await fetch(url, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${input.accessToken}` },
+    });
 
     if (!resposta.ok) {
       return { ok: false, motivo: await descreverFalha(resposta) };
     }
 
-    const corpo = (await resposta.json()) as { success?: unknown };
-    if (corpo.success === true || corpo.success === "true") return { ok: true };
+    // Este endpoint responde sucesso em mais de uma forma: o JSON literal
+    // `true` e o objeto `{"success": true}`. Aceitar só a segunda fazia a
+    // revogação real da Meta ser lida como falha, e a conexão local sobrevivia
+    // a uma credencial que o provider já tinha invalidado (Correção 003B-09
+    // §2.2). O que segue falhando fechado é tudo que não é sucesso explícito:
+    // `false`, objeto sem `success`, corpo ilegível.
+    const corpo = (await resposta.json().catch(() => undefined)) as unknown;
+
+    if (corpo === true) return { ok: true };
+
+    if (typeof corpo === "object" && corpo !== null) {
+      const sucesso = (corpo as { success?: unknown }).success;
+      if (sucesso === true || sucesso === "true") return { ok: true };
+    }
 
     return { ok: false, motivo: { http: resposta.status, causa: "SEM_SUCCESS" } };
   } catch {

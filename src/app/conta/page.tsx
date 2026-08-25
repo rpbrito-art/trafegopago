@@ -96,7 +96,11 @@ export default async function ContaPage({
 
       <BusinessSection state={state} />
 
-      <MetaSection state={metaState} resultado={resultadoMeta} />
+      <MetaSection
+        state={metaState}
+        resultado={resultadoMeta}
+        credencialRecusada={assetState.kind === "conexao-recusada"}
+      />
 
       <MetaAssetsSection state={assetState} resultado={resultadoAtivo} />
 

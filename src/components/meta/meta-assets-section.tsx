@@ -5,6 +5,7 @@ import {
   selectInstagramAccountAction,
 } from "@/app/actions/meta-assets";
 import { MetaConnectButton } from "@/components/meta/meta-connect-button";
+import { MetaDisconnectButton } from "@/components/meta/meta-disconnect-button";
 import type {
   MetaAdsState,
   MetaAssetState,
@@ -149,6 +150,14 @@ export function MetaAssetsSection({
         <MetaConnectButton
           organizationId={state.organizationId}
           rotulo="Conectar novamente"
+        />
+        <p className="text-sm text-neutral-600">
+          Se preferir recomeçar do zero, encerre a conexão atual e conecte
+          depois.
+        </p>
+        <MetaDisconnectButton
+          organizationId={state.organizationId}
+          rotulo="Desconectar e começar de novo"
         />
       </Bloco>
     );

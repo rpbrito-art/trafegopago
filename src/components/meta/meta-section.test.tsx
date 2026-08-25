@@ -275,3 +275,44 @@ describe("MetaExternalRemoval — caminho na interface da Meta", () => {
     expect(texto).toContain("Você pediu para desconectar em");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Correção 003B-09 — uma tela, um estado
+// ---------------------------------------------------------------------------
+
+describe("MetaSection — credencial recusada pela descoberta", () => {
+  it("não afirma que a Meta está conectada", () => {
+    // O estado persistido ainda diz ACTIVE, e é assim que deve ser: ele só
+    // muda quando uma desconexão é comprovada. Mas quem falou com a Meta agora
+    // foi a descoberta, e dizer "Meta conectada" ao lado de "a conexão precisa
+    // da sua atenção" é contradição na mesma tela.
+    const arvore = MetaSection({ state: CONECTADO, credencialRecusada: true });
+
+    expect(arvore).toBeNull();
+  });
+
+  it("sem recusa, o cartão de conexão saudável continua aparecendo", () => {
+    const arvore = MetaSection({ state: CONECTADO, credencialRecusada: false });
+
+    expect(textOf(arvore)).toContain("conectada");
+    expect(usa(MetaDisconnectButton, arvore)).toBe(true);
+  });
+
+  it("o padrão é não suprimir nada", () => {
+    expect(textOf(MetaSection({ state: CONECTADO }))).toContain("conectada");
+  });
+
+  it("depois de revogada, a tela volta a oferecer conectar", () => {
+    // `REVOKED` fica fora do filtro de `getMetaConnectionState`, que lê apenas
+    // PENDING/ACTIVE/ACTION_REQUIRED — a conexão some da leitura e o estado
+    // vira `desconectado`. Nenhum cartão verde residual sobrevive a isso.
+    const arvore = MetaSection({
+      state: { kind: "desconectado", organizationId: ORG },
+    });
+
+    expect(textOf(arvore)).toContain("Conecte sua conta da Meta");
+    expect(usa(MetaConnectButton, arvore)).toBe(true);
+    expect(usa(MetaDisconnectButton, arvore)).toBe(false);
+    expect(textOf(arvore)).not.toContain("precisa da sua atenção");
+  });
+});

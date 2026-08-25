@@ -1,8 +1,9 @@
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { connectMetaAction } from "@/app/actions/meta";
+import { connectMetaAction, disconnectMetaAction } from "@/app/actions/meta";
 import { MetaConnectButton } from "@/components/meta/meta-connect-button";
+import { MetaDisconnectButton } from "@/components/meta/meta-disconnect-button";
 import type { MetaAdsState, MetaAssetState } from "@/lib/meta/asset-state";
 
 import { MetaAssetsSection, type AtivoResultado } from "./meta-assets-section";
@@ -191,9 +192,33 @@ describe("MetaAssetsSection — estados vazios são distinguíveis", () => {
     expect(usa(MetaConnectButton, arvore)).toBe(true);
     expect(props?.rotulo).toBe("Conectar novamente");
     expect(props?.organizationId).toBe(ORG);
-    // Reconectar não passa por desconectar: a credencial atual só é
-    // substituída quando a nova autorização conclui.
-    expect(textOf(arvore)).not.toContain("Desconect");
+  });
+
+  it("credencial recusada também deixa recomeçar do zero", () => {
+    // Ação secundária, não pré-requisito: reconectar continua não passando por
+    // desconectar — a credencial atual só é substituída quando a nova
+    // autorização conclui. Mas quem quer reiniciar o ciclo precisa de saída
+    // (Correção 003B-09 §3.2).
+    const arvore = render({ kind: "conexao-recusada", organizationId: ORG });
+    const props = propsDe(MetaDisconnectButton, arvore);
+
+    expect(usa(MetaDisconnectButton, arvore)).toBe(true);
+    expect(props?.rotulo).toBe("Desconectar e começar de novo");
+    expect(props?.organizationId).toBe(ORG);
+  });
+
+  it("recomeçar do zero usa a action canônica de desconexão", () => {
+    const form = MetaDisconnectButton({
+      organizationId: ORG,
+      rotulo: "Desconectar e começar de novo",
+    });
+
+    let action: unknown = null;
+    walk(form, (element) => {
+      if (element.type === "form") action = (element.props as { action?: unknown }).action;
+    });
+
+    expect(action).toBe(disconnectMetaAction);
   });
 
   it("o botão de reconectar usa a action canônica de conexão", () => {
