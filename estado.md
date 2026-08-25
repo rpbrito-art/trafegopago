@@ -309,17 +309,53 @@ Até reauditoria GPT da 004E-01:
 - recriar/trocar Supabase project ref;
 - renomear/mover recursos Meta.
 
-## 10. Próxima ação autorizada
+## 10. Correção 004E-01 — EXECUTADA
 
-Próximo ator: **Claude Code**.
+Mandato: `rodadas/gpt/CORRECAO_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`.
 
-Claude deve continuar no PR #17 e executar **somente**:
+Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · PR #17 mantido aberto, draft, não mergeado.
 
-`rodadas/gpt/CORRECAO_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`
+Status: **CORREÇÃO 004E-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT ANTES DO GATE DE CREDENCIAL PAGA**.
 
-A correção deve ser feita **sem disponibilizar chave Gemini e sem chamada paga**.
+Relatório: `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` §7.
 
-Depois da correção, o próximo ator volta a ser o GPT para reauditoria. Somente após aprovação dessa reauditoria o GPT poderá orientar o fundador a criar/configurar a credencial Paid Tier e liberar a prova real.
+**Nenhuma chamada paga foi feita.** `GEMINI_API_KEY` continua ausente e não deve ser disponibilizada antes da reauditoria.
+
+### 10.1 Bloqueios fechados
+
+- **A** — o JSON Schema enviado ao provider passou a usar só o subconjunto oficial: `maxLength` e `nullable` removidos, `nextQuestion` como união de tipos `["object","null"]`, limites mantidos no Zod, e teste de allowlist recursiva que falha se alguém reintroduzir keyword;
+- **B** — reserva atômica por RPC serializada por advisory lock decide cache/in-flight/papel/teto num único passo; índice único parcial impede duas reservas do mesmo contexto; reserva órfã expira e é recuperável; tentativa falha continua consumindo cota;
+- **C** — a promessa de que "nada foi cobrado" saiu da UI: depois de chamar o provider não há como garanti-la;
+- **D** — o E2E passou a chamar o serviço produtivo e provar artefato, tenant, modelo, usage, custo reproduzível e cache;
+- **E** — harness de eval avalia a resposta da task nos 12 casos por invariantes, uma execução por caso, sem retry.
+
+Achado próprio: duas FKs do delta 004E estavam sem cobertura porque os índices tinham as colunas invertidas. Migration `20260825270000` corrige.
+
+### 10.2 Supabase remoto
+
+Migrations aplicadas nesta correção, ambas aditivas e publicadas antes do `db push`:
+
+- `20260825260000_create_review_attempt_reservation`;
+- `20260825270000_index_review_run_foreign_keys`.
+
+Nenhuma migration anterior foi reescrita.
+
+Prova: `scripts/sql/review-attempt-reservation-004e01-proof.sql` → **23 casos, 23 passaram, 0 falharam**, transacional com rollback e zero fixtures residuais. Os dois `unindexed_foreign_keys` do delta foram quitados.
+
+### 10.3 Provas locais
+
+- suíte completa **983/983** em 48 arquivos;
+- testes de concorrência com chamadas simultâneas, não sequenciais;
+- `tsc --noEmit` e `eslint` limpos;
+- `npm run e2e:review` e `npm run eval:review` param no gate com código 2, sem chamar nada.
+
+### 10.4 Próxima ação autorizada
+
+Próximo ator: **GPT auditor**.
+
+Reauditar a Correção 004E-01 no PR #17. **Somente após aprovação** o GPT pode orientar o fundador a criar/configurar a credencial Paid Tier e liberar a prova real.
+
+Claude não promove, não mergeia e não pede a chave ao fundador.
 
 ## 11. Regra de continuidade
 

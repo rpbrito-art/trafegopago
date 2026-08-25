@@ -4,7 +4,11 @@ Mandato: `rodadas/gpt/RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
 
 Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · base: `main` em `0ad811f`.
 
-Status: **004E IMPLEMENTADA ATÉ GATE DE CREDENCIAL PAGA — AGUARDANDO AÇÃO GPT/FUNDADOR PARA PROVA E2E REAL**.
+Status: **CORREÇÃO 004E-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT ANTES DO GATE DE CREDENCIAL PAGA**.
+
+Auditoria: `rodadas/gpt/AUDITORIA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` — cinco bloqueios. Correção: `rodadas/gpt/CORRECAO_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`, executada nesta mesma branch e registrada na §7 abaixo.
+
+**Nenhuma chamada paga foi feita nesta correção.** A credencial continua bloqueada e só deve ser disponibilizada após a reauditoria.
 
 ## 1. Gate de credencial — o que falta
 
@@ -81,10 +85,67 @@ Migration aplicada: `20260825250000_create_declared_context_review`, publicada n
 
 Sem Meta, sem segundo provider, sem fallback multi-provider, sem tool calling, sem embeddings, sem geração de conteúdo, sem Content Intelligence, sem CRM, sem App Shell. A `nextQuestion` é orientação: nada do output altera automaticamente objetivo, foco, preço ou oferta.
 
-## 6. Handoff
+## 7. Correção 004E-01 — segurança pré-paga e contrato do provider
 
-Branch publicada; PR #17 aberto, draft, base `main`, não mergeado. CI `32904274001` — success. `estado.md` da branch no status de gate. Working tree limpa.
+Cinco bloqueios, todos fechados sem nenhuma chamada ao provider.
 
-## 7. Pendências
+### 7.1 A — JSON Schema no subconjunto oficial
 
-Uma, e é o gate: **prova E2E real paga**. Depende de `GEMINI_API_KEY` de projeto no Paid Tier existir no runtime. Próximo ator: **GPT**, para conduzir a disponibilização da credencial; depois disso, a prova roda por `npm run e2e:review` e a rodada pode ser fechada.
+O schema enviado por `responseJsonSchema` usava `maxLength` e `nullable`. Confirmei na documentação oficial vigente (`ai.google.dev/gemini-api/docs/structured-output`, revalidada nesta execução) que nenhuma das duas consta no subconjunto suportado, e que a forma documentada para valor nulo é **união de tipos** — `["string", "null"]` no exemplo oficial.
+
+`maxLength` saiu; os limites de texto continuam no Zod, que é quem recusa de fato, e o provider passou a ser orientado por `description`. `nextQuestion` virou `type: ["object", "null"]`. `KEYWORDS_SUPORTADAS` e uma varredura recursiva no teste derrubam a build se alguém reintroduzir keyword fora da lista.
+
+### 7.2 B — reserva atômica antes da chamada paga
+
+Migration aditiva `20260825260000_create_review_attempt_reservation`: tabela de tentativas e duas RPCs server-only.
+
+`acquire_declared_context_review_slot` decide **num único passo serializado por advisory lock** se há cache, se já existe execução do mesmo contexto em andamento, se o papel autoriza e se ainda há vaga na janela de uma hora. Devolve `CACHE | IN_FLIGHT | RATE_LIMITED | RESERVED`. Quem não adquire não chega ao Router.
+
+Duas garantias vivem no banco, não na aplicação: um índice único parcial impede duas reservas `RESERVED` do mesmo contexto, e a contagem da janela acontece sob o mesmo lock. Reserva órfã expira e é recuperável; tentativa que falhou continua consumindo cota, porque o que custa é ter chegado a chamar.
+
+Os testes de limite passaram a exercitar **concorrência**: `Promise.all` de duas chamadas do mesmo contexto e de quatro contextos distintos. O código auditado passava nos testes sequenciais e falhava nesses.
+
+### 7.3 C — mensagem de custo honesta
+
+A action prometia que "nada foi cobrado" quando a revisão não ficava pronta. Depois que a chamada alcança o provider isso não é garantido — grounding ou persistência podem falhar com a chamada já feita, e abortar do lado do cliente não cancela o processamento no serviço. A mensagem passou a ser neutra: *"Não foi possível concluir a revisão agora."*
+
+### 7.4 D — E2E que prova o caminho produtivo
+
+O script chamava o Router direto e não criava artefato. Agora chama `revisarContextoDeclarado` e verifica em 12 asserções: revisão criada, artefato persistido, tenant do run, modelo do catálogo, usage registrado, custo reproduzível pela versão de preço, segunda chamada em cache, e ausência de segundo run ou segunda tentativa.
+
+### 7.5 E — eval da resposta, não do snapshot
+
+`scripts/eval-declared-context-review.mjs` roda os 12 casos e valida invariantes: schema, refs válidas, ausência de afirmações externas proibidas (mercado, preço alto/baixo, conversão, demanda, percentuais), lacunas para as ausências esperadas, tensão sempre com confirmação humana, injection sem troca de papel e português utilizável. Uma execução por caso, sem retry.
+
+### 7.6 Achado próprio
+
+Os advisors apontaram duas FKs do meu próprio delta sem cobertura: eu criara os índices com as colunas invertidas em relação às FKs compostas, então eles não cobriam nada. Migration `20260825270000` cria os índices na ordem certa e remove os que não serviam.
+
+### 7.7 Provas da correção
+
+| prova | resultado |
+| --- | --- |
+| `scripts/sql/review-attempt-reservation-004e01-proof.sql` | **23 casos, 23 passaram, 0 falharam** |
+| concorrência, cache, teto e reserva | `src/lib/review/declared-context-review.test.ts` — 20 casos |
+| allowlist do schema do provider | `src/lib/ai/tasks/declared-context-review.test.ts` — 21 casos |
+| suíte local | **983/983** em 48 arquivos |
+| advisors | os dois `unindexed_foreign_keys` do delta foram quitados |
+| gate dos scripts | `e2e:review` e `eval:review` param com código 2, sem chamar nada |
+
+Correção durante a execução: a prova tentava simular reserva vencida movendo só `expires_at` para o passado, e a constraint `expires_at > reserved_at` recusou — corretamente, porque é um estado incoerente. A simulação passou a envelhecer a tentativa inteira.
+
+## 8. Handoff
+
+Branch publicada; PR #17 mantido aberto, draft, base `main`, não mergeado.
+
+Branch atualizada com a `main` documental por merge; único conflito em `estado.md`, resolvido pela versão da `main`.
+
+Migrations aplicadas nesta branch, nenhuma reescrita: `20260825250000`, `20260825260000` e `20260825270000`.
+
+`estado.md` da branch em **CORREÇÃO 004E-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT ANTES DO GATE DE CREDENCIAL PAGA**. Working tree limpa.
+
+## 9. Pendências
+
+Uma, e continua sendo o gate: **prova E2E real paga e eval real**. Ambas dependem de `GEMINI_API_KEY` de projeto no Paid Tier.
+
+Próximo ator: **GPT auditor**, para reauditar esta correção. Só depois da aprovação a credencial deve ser disponibilizada; então `npm run e2e:review` e `npm run eval:review` fecham a rodada.
