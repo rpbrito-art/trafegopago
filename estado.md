@@ -20,10 +20,10 @@ Promovidas: **000–003A**.
 - Fase 3 — Meta Connection Foundation: **EM ANDAMENTO**.
 - última rodada promovida: **003A — Meta Connection Foundation**.
 - PR #11: MERGED.
-- merge commit 003A: `546838db8e7ced4e9045c05feb8c7b2f0c476cc2`.
+- merge 003A: `546838db8e7ced4e9045c05feb8c7b2f0c476cc2`.
 - CI final 003A: `32772710738` — verde.
 
-A 003A está **EXECUTADA, AUDITADA E PROMOVIDA**. Permanecem canônicos: Facebook Login for Business + Graph API v26.0; token Meta server-side no Vault; OAuth `state` de uso único; membership reconferida; suporte e classificação de BISU; desconexão segura; E2E real de desconexão 003A concluído.
+A 003A está **EXECUTADA, AUDITADA E PROMOVIDA**. Permanecem canônicos: Facebook Login for Business + Graph API v26.0; token Meta server-side no Vault; OAuth `state` de uso único; membership reconferida; suporte/classificação de BISU; desconexão segura.
 
 ## 3. Rodada 003B — EM EXECUÇÃO, NÃO PROMOVIDA
 
@@ -35,196 +35,168 @@ Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
 PR: **#12 draft**.
 
-HEAD atual auditado: `872d777a929f4be12567d9a7b9e9fa89bac00dfb`
+HEAD auditado: `872d777a929f4be12567d9a7b9e9fa89bac00dfb`
 
-Última CI auditada: `32792662569` — verde em install, lint, typecheck, Edge Functions, testes e build.
+CI auditada: `32792662569` — verde.
 
-Executado/auditado na 003B até aqui:
+Executado/auditado até aqui:
 
 - migration `20260824210000_create_meta_asset_selection.sql` aplicada;
 - remoto com 15 migrations;
 - `instagram_accounts` e `ad_accounts` presentes;
-- RLS/grants/funções de seleção auditados;
 - descoberta/seleção, capabilities e UX implementadas;
 - Correção 003B-01 fail-closed metadata + membership: **EXECUTADA, AUDITADA E APROVADA**;
 - Correção 003B-03 reautorização de conexão ativa: **EXECUTADA, AUDITADA E APROVADA**;
-- ainda **não promovido**.
+- 003B ainda **não promovida**.
 
-## 4. Produto — centralidade de mídia paga corrigida
+## 4. Produto — mídia paga
 
-Canônico vigente: `docs/01-produto/PAID_MEDIA_CANONICAL.md`
+Canônico: `docs/01-produto/PAID_MEDIA_CANONICAL.md`.
 
-Decisão: `rodadas/gpt/DECISAO_003B_02_MIDIA_PAGA_CENTRAL_E_OAUTH_LIBERADO.md`
+Mídia paga é pilar central da proposta de crescimento; orgânico também entrega valor. Permissão Ads não equivale a criar campanha/gastar. Gasto exige aprovação humana explícita, comando de domínio, idempotência e auditoria.
 
-Regra atual:
+Antes da próxima rodada substantiva pós-003B, harmonizar formulações antigas conflitantes em `.gpt/PROJECT_PROMPT.md`, `GROWTH_INTELLIGENCE_CANONICAL.md`, `MVP_CANONICAL.md`, `IMPLEMENTATION_ROADMAP.md` e demais canônicos afetados, sem rodada só de housekeeping.
 
-- orgânico deve entregar valor e pode existir sozinho por períodos;
-- **mídia paga é pilar central da proposta de crescimento**, não capacidade periférica;
-- todo usuário deve poder evoluir para tráfego pago quando houver motivo estratégico;
-- permissão técnica Ads ≠ criar campanha ≠ aprovar orçamento ≠ gerar gasto;
-- gasto continua exigindo aprovação humana explícita, comando de domínio, idempotência e auditoria.
+## 5. Configuração Meta vigente no experimento
 
-Antes da próxima rodada substantiva pós-003B, harmonizar diretamente as formulações antigas conflitantes em `.gpt/PROJECT_PROMPT.md`, `GROWTH_INTELLIGENCE_CANONICAL.md`, `MVP_CANONICAL.md`, `IMPLEMENTATION_ROADMAP.md` e demais canônicos afetados, sem criar rodada apenas de housekeeping.
+### Baseline BISU anterior
 
-## 5. Configuração externa Meta da 003B
+- app: **Trafego Pago Business Dev** — App ID `2940404272985831`;
+- `Quoron Instagram Dev Login` — Configuration ID `38307908848822330`;
+- System-user access token / BISU;
+- Pages + Instagram Accounts.
 
-### 5.1 Baseline anterior BISU
+Configuração histórica 003A ainda não apagar:
 
-App anterior: **Trafego Pago Business Dev** — App ID `2940404272985831`.
+- `Trafego Pago Dev Login` — Configuration ID `1549901823029730`.
 
-Configuração BISU anterior:
+### App E2E USER atual
 
-- `Quoron Instagram Dev Login`;
-- Configuration ID `38307908848822330`;
-- `System-user access token / BISU`;
-- ativos Pages + Instagram Accounts.
-
-Configuração histórica 003A, ainda não apagar:
-
-- `Trafego Pago Dev Login`;
-- Configuration ID `1549901823029730`.
-
-### 5.2 App E2E USER atual
-
-App: **Trafego Pago E2E Test**.
-
+- app: **Trafego Pago E2E Test**;
 - criado sem Business Portfolio;
-- caso de uso Instagram em **API setup with Facebook login**;
-- `Login do Facebook para Empresas` disponível;
+- Instagram em **API setup with Facebook login**;
+- Facebook Login for Business disponível;
 - configuração **Quoron E2E Login**;
 - Configuration ID **`1068370819137366`**;
-- tipo de token: **User Access Token**;
-- etapa `Ativos` indisponível por desenho no modo USER;
-- redirect local: `http://localhost:3000/meta/callback`;
-- `.env.local` temporariamente aponta para o app E2E e o servidor local foi reiniciado;
-- App Secret nunca deve ser exposto em chat/log/commit.
+- token: **User Access Token**;
+- `Ativos` indisponível por desenho no modo USER;
+- redirect: `http://localhost:3000/meta/callback`;
+- `.env.local` temporariamente aponta para o app E2E; servidor local reiniciado;
+- App Secret nunca pode ir para chat/log/commit.
 
-Ativos reais conhecidos no portfólio Quoron:
+Ativos reais:
 
-- Página Facebook: **Quoron**;
-- Instagram profissional: **@goquoron**.
+- Página Facebook **Quoron**;
+- Instagram profissional **@goquoron**.
 
 ## 6. Conexão real atual — PÓS-OAUTH USER
 
-Conexão:
+Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 
-- id: `655da6e6-9056-456d-a81d-5e2570da5faf`;
-- status: **ACTIVE**;
+- status ACTIVE;
 - token presente no Vault;
 - `connected_at`: `2026-08-25 11:03:11.366473+00`;
-- expiração: `2026-10-24 11:03:08.745+00`;
+- expira `2026-10-24 11:03:08.745+00`;
 - `external_user_id`: `28050226117920563`;
-- `external_business_id`: `null`;
 - escopos efetivamente concedidos:
-  - `pages_show_list`;
-  - `pages_read_engagement`;
-  - `instagram_basic`;
-  - `instagram_manage_insights`;
-  - `ads_read`;
-  - `public_profile`;
-- `instagram_accounts`: 0 linhas;
-- `ad_accounts`: 0 linhas.
+  - `pages_show_list`
+  - `pages_read_engagement`
+  - `instagram_basic`
+  - `instagram_manage_insights`
+  - `ads_read`
+  - `public_profile`
+- `instagram_accounts`: 0;
+- `ad_accounts`: 0.
 
-Auditoria independente do GPT no Supabase após o callback confirmou que **o OAuth USER passou e o token recebeu todas as permissões mínimas esperadas para o experimento**.
+O GPT confirmou no Supabase que o OAuth USER passou com todos os escopos mínimos esperados.
 
-Resultado formal: `rodadas/gpt/RESULTADO_003B_05_OAUTH_USER_PAGINAS_ZERO.md`.
+Resultado: `rodadas/gpt/RESULTADO_003B_05_OAUTH_USER_PAGINAS_ZERO.md`.
 
 ## 7. Gates E2E
 
-### 7.1 Portfólio dono do app não elegível como cliente no BISU
+### 7.1 BISU: portfólio dono do app não pode ser cliente
 
-Na reautorização BISU, o seletor exibiu Quoron desabilitado com:
-
-`This Meta Business Account owns the app`
+No BISU, Quoron apareceu desabilitado com `This Meta Business Account owns the app`.
 
 Gate: `rodadas/gpt/GATE_003B_PORTFOLIO_DONO_DO_APP_NAO_ELEGIVEL_COMO_CLIENTE.md`.
 
-### 7.2 Decisão prematura anterior anulada
+### 7.2 Decisão prematura anulada
 
-`rodadas/gpt/DECISAO_003B_04_SEPARAR_PROVEDOR_E_CLIENTE_FIXTURE.md`
+`rodadas/gpt/DECISAO_003B_04_SEPARAR_PROVEDOR_E_CLIENTE_FIXTURE.md` está **ANULADO COMO DECISÃO**; era debate sem autorização.
 
-Status: **ANULADO COMO DECISÃO**. Era hipótese em debate, não autorização do fundador.
+### 7.3 App sem portfólio + BISU
 
-### 7.3 Experimento app sem portfólio / BISU
+`rodadas/gpt/RESULTADO_003B_04_APP_META_TESTE_SEM_PORTFOLIO.md`
 
-Autorização: `rodadas/gpt/AUTORIZACAO_003B_04_APP_META_TESTE_SEM_PORTFOLIO.md`
+**HIPÓTESE REPROVADA**: System-user access token fica indisponível sem Business Portfolio proprietário do app.
 
-Resultado: `rodadas/gpt/RESULTADO_003B_04_APP_META_TESTE_SEM_PORTFOLIO.md`
+### 7.4 USER — OAuth PASSOU; `/me/accounts` devolve zero Pages
 
-Status: **EXECUTADO — HIPÓTESE BISU REPROVADA**.
-
-Fato central: `System-user access token` fica indisponível quando o app não está associado a Business Portfolio.
-
-### 7.4 Experimento User Access Token — OAuth PASSOU, descoberta de Page BLOQUEADA
-
-Autorização: `rodadas/gpt/AUTORIZACAO_003B_05_USER_ACCESS_TOKEN_E2E.md`
+Autorização: `rodadas/gpt/AUTORIZACAO_003B_05_USER_ACCESS_TOKEN_E2E.md`.
 
 Status: **EM ANDAMENTO — NÃO É DECISÃO ARQUITETURAL DEFINITIVA**.
 
-Cadeia já provada:
+Provado:
 
 `configuração USER → OAuth real → token ACTIVE → escopos mínimos corretos`
 
-Novo bloqueio observado:
+Bloqueio:
 
-- o código 003B chama `GET /me/accounts?fields=id,name,instagram_business_account` com o User Access Token;
-- a chamada retornou lista vazia, portanto `pagesFound=0`;
-- a UX exibiu `Falta a Página do seu negócio`;
-- isso **não prova que a Página Quoron não existe**; prova apenas que nenhuma Page foi devolvida por `/me/accounts` para esta credencial;
-- a documentação oficial Meta para Instagram API with Facebook Login usa `/me/accounts` com User Access Token para listar Pages gerenciadas pelo usuário;
-- como `pages_show_list` foi realmente concedido, o problema atual não é ausência desse escopo.
+- 003B chama `GET /me/accounts?fields=id,name,instagram_business_account`;
+- resposta efetiva trouxe zero Pages (`pagesFound=0`);
+- a UX mostrou `Falta a Página do seu negócio`;
+- isso não prova inexistência da Página, apenas que `/me/accounts` não a devolveu.
 
-Hipótese principal a verificar antes de mudar arquitetura: o perfil pessoal usado no OAuth pode administrar o portfólio Quoron sem ter a **Página Quoron atribuída diretamente a ele com acesso/tarefas reconhecidos por `/me/accounts`**.
+### 7.5 Hipótese de acesso insuficiente à Página — REPROVADA
 
-A mensagem atual da UX é considerada imprecisa para esse cenário e deverá ser corrigida se a hipótese se confirmar.
+Em 2026-08-25 o fundador abriu a tela oficial **Acesso à Página** da Página Quoron. Evidência visual:
+
+- Página: **Quoron**;
+- pertence ao portfólio empresarial Quoron, ID `5301659283195806`;
+- em **Pessoas com controle total**, aparece **Rafael Brito — Acesso total**.
+
+Portanto a hipótese anterior de que `/me/accounts` estava vazio porque o perfil usado no OAuth não tinha a Página diretamente atribuída / não tinha acesso suficiente está **REPROVADA**. Não alterar acesso da Página.
+
+A documentação oficial Meta/Postman continua mostrando User Access Token + `/me/accounts` como caminho para listar Pages gerenciadas; logo o vazio exige diagnóstico técnico do token/edge, não mais tentativa manual de permissões da Página.
 
 ## 8. Próxima ação autorizada
 
-Próximo a agir: **fundador na configuração empresarial da Meta**.
+Próximo a agir: **Claude Code, investigação read-only**.
 
-Objetivo: verificar, sem criar/mover nada, se o perfil pessoal usado no OAuth possui a Página **Quoron** entre seus ativos diretamente atribuídos.
+Mandato: `rodadas/gpt/INVESTIGACAO_003B_05_PAGE_ZERO_GRANULAR_SCOPES.md`.
 
-Caminho recomendado no portfólio Quoron:
+Objetivo: sem mutações, provar:
 
-1. abrir **Configurações do negócio / Business Settings** do portfólio Quoron;
-2. entrar em **Usuários → Pessoas**;
-3. selecionar o próprio perfil pessoal usado no OAuth;
-4. abrir **Ativos atribuídos / Assigned assets**;
-5. verificar se a **Página Quoron** aparece e qual nível/tarefa de acesso está atribuído;
-6. se a Página não estiver atribuída, não alterar nada ainda: retornar ao GPT com a tela;
-7. se estiver atribuída, retornar ao GPT com a tela mostrando Página + nível de acesso.
+1. `debug_token`: validade/tipo/scopes e `granular_scopes/target_ids` sanitizados;
+2. identidade `GET /me?fields=id,name`;
+3. comparar `/me/accounts?fields=id,name,tasks` com `/me/accounts?fields=id,name,tasks,instagram_business_account`;
+4. usar `/me/adaccounts?fields=id,name,account_status` como controle independente de `ads_read`.
 
-Até essa verificação, **não** adicionar `business_management`, não reautorizar outra vez, não criar nova Page/Instagram/portfolio e não mudar a arquitetura.
+Claude não deve expor token/secret, não deve editar código de produto nem iniciar OAuth. Ao final, relatório factual e parar para auditoria GPT.
 
 ## 9. Continua NÃO autorizado
 
-- declarar User Access Token arquitetura definitiva antes do E2E e da análise de ciclo de vida/segurança;
-- remover suporte BISU;
+- declarar User Access Token arquitetura definitiva;
+- remover BISU;
 - adicionar `business_management` ou `ads_management` por tentativa;
-- associar o app E2E ao portfólio Quoron apenas para habilitar BISU;
+- mexer no acesso da Página Quoron;
+- novo OAuth antes do resultado da investigação;
+- associar o app E2E ao portfólio Quoron só para BISU;
 - substituir definitivamente o app oficial;
-- criar novo portfólio empresarial;
+- criar/mover Page, Instagram, portfólio ou Ad Account;
 - usar conta de terceiro;
-- criar `Quoron 1`;
-- inventar site/domínio;
-- mover Página Quoron ou `@goquoron` entre portfólios;
-- transferir a propriedade do app oficial;
 - expor App Secret/token;
 - persistir Page Access Token sem decisão arquitetural;
-- criar campanha, anúncio ou gasto;
-- importar conteúdo do Instagram;
+- campanha/anúncio/gasto;
+- importar conteúdo;
 - iniciar Fase 4;
-- promover/mergear a 003B antes do E2E real, sondas e auditoria final.
+- promover/mergear 003B antes do E2E, sondas e auditoria final.
 
-## 10. Pendências não bloqueantes
+## 10. Pendências
 
-- se USER passar no E2E, revisar formalmente duração/expiração, renovação/reautorização, revogação, impacto em Ads e segurança antes de decidir arquitetura definitiva;
-- decidir se Page Access Token precisará ser persistido apenas se o E2E provar necessidade material;
-- harmonização dos canônicos antigos com `PAID_MEDIA_CANONICAL.md` antes da próxima rodada substantiva pós-003B;
-- revisar onboarding final para não depender de configurações manuais desnecessárias no painel Meta;
-- corrigir UX para não afirmar inexistência de Page quando a API apenas devolve lista vazia;
-- logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
-- leaked-password protection antes de produção;
-- SMTP/domínio de produção;
-- default ACL residual de `supabase_admin` enquanto inerte;
-- App Review/Business Verification quando aplicável à fase comercial.
+- se USER passar, decidir ciclo de vida/renovação/reautorização/revogação/Ads e segurança antes de promover arquitetura;
+- decidir Page Access Token só se houver prova material de necessidade;
+- corrigir UX que hoje afirma ausência de Page quando a API apenas devolve lista vazia;
+- harmonizar canônicos de mídia paga pós-003B;
+- redaction do callback em logs antes de produção;
+- leaked-password protection, SMTP/domínio, App Review/Business Verification quando aplicável.
