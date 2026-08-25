@@ -31,11 +31,11 @@ Promovidas: **000–003A e 004A**.
 
 ### 2.1 Promoção 004A
 
-PR #13: **MERGEADA**.
+PR #13: mergeada.
 
 HEAD final auditado: `880a7e4665f827fc7ea5707d863fb00299f56811`.
 
-CI final: `32873495263` — **success**, 734/734 testes.
+CI final: `32873495263` — success, 734/734.
 
 Merge: `da2862135eab6897fc44ae361da1298c7071a11f`.
 
@@ -59,39 +59,11 @@ Incorporado:
 
 Ainda não existe provider real, API key, SDK, chamada paga, fallback real, tool calling, embeddings/RAG ou feature de IA de negócio.
 
-### 2.2 Supabase após 004A
-
-Migration incorporada: `20260825140000_create_ai_foundation_core`.
-
-Tabelas remotas: `ai_providers`, `ai_models`, `ai_price_versions`, `ai_runs`.
-
-Snapshot auditado:
-
-- quatro tabelas presentes;
-- RLS habilitado;
-- zero policies por desenho server-only;
-- `anon`/`authenticated` sem grants;
-- grants mínimos para `service_role`;
-- zero registros residuais após provas.
-
-O histórico de migrations foi reconciliado incluindo na `main`, como artefato histórico exato já aplicado, `20260824210000_create_meta_asset_selection.sql`. Isso **não promove funcionalmente a 003B**.
-
-### 2.3 Dívida de performance 004A
-
-O advisor apontou FKs de `ai_runs` sem índice de cobertura:
-
-- `ai_runs_fallback_same_organization`;
-- `ai_runs_model_belongs_to_provider`;
-- `ai_runs_price_belongs_to_model`;
-- `ai_runs_provider_id_fkey`.
-
-São INFO de performance, não falha de segurança. A Rodada 004B está autorizada a quitá-los porque já tocará schema; não criar housekeeping isolado.
-
 ## 3. Rodada 003B — ESTACIONADA, NÃO PROMOVIDA
 
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`.
 
-PR #12: **draft, open, não mergeado**.
+PR #12: draft, open, não mergeada.
 
 HEAD: `053bc7ca3f25b53954579df30bce598894e718dd`.
 
@@ -143,72 +115,126 @@ Decisão: `rodadas/gpt/DECISAO_DESBLOQUEIO_DESENVOLVIMENTO_META_GATE.md`.
 
 O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes podem avançar a partir da `main`.
 
-## 5. Rodada 004B — EXECUTADA
+## 5. Rodada 004B — EXECUTADA, NÃO PROMOVIDA
 
 Rodada: **004B — Quoron Branding + Growth Context Foundation**.
 
 Mandato: `rodadas/gpt/RODADA_004B_QUORON_GROWTH_CONTEXT.md`.
 
-Branch: `claude/rodada-004b-quoron-growth-context`, criada a partir da `main` (`2ad38c1`).
+Branch: `claude/rodada-004b-quoron-growth-context`.
 
-Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+PR #14: **draft, open, não mergeada, mergeable=true no snapshot auditado**.
 
-Relatório: `rodadas/claude/RELATORIO_RODADA_004B_QUORON_GROWTH_CONTEXT.md`.
+HEAD auditado: `c0be0427b837e71a2532fbf228618f400b180070`.
 
-### 5.1 Branding
+CI: `32877064536` — **success**, 766/766 testes, lint/typecheck/Edge Functions/build verdes.
 
-Marca por constante compartilhada em `src/lib/brand.ts`. Migrados metadata raiz, sete páginas, `auth-shell`, instrução de remoção Meta e o pacote (`quoron` em `package.json` e lockfile). Documentação ativa migrada em 12 arquivos.
+Relatório Claude: `rodadas/claude/RELATORIO_RODADA_004B_QUORON_GROWTH_CONTEXT.md`.
 
-Home reescrita: sem estágio de rodada, sem a afirmação de que não há funcionalidade de domínio, sem prometer campanha ou automação inexistente.
+Auditoria GPT: `rodadas/gpt/AUDITORIA_RODADA_004B_QUORON_GROWTH_CONTEXT.md`.
 
-Preservadas de propósito duas ocorrências de `tráfego pago` em minúsculas — em `GROWTH_INTELLIGENCE_CANONICAL.md` §19 e `PAID_MEDIA_CANONICAL.md` §7 elas são o **conceito** de mídia paga, não a marca. Repo, pasta local, project ref e recursos Meta não renomeados.
+Veredito:
 
-### 5.2 Onboarding progressivo
+**BASE SUBSTANTIVA APROVADA; RODADA REPROVADA PARA PROMOÇÃO ATÉ CORREÇÃO 004B-01.**
 
-Primeiro formulário reduzido de dez para **quatro** campos. `target_audience` e `acquisition_goal` passam a aceitar `NULL`; os `CHECK ..._not_blank` seguem recusando `''`. Nenhum dado apagado ou convertido — `acquisition_goal` permanece contexto livre legado, não migrado para objetivo estruturado.
+### 5.1 Base aprovada da 004B
 
-Schemas separados por momento do produto. Campos progressivos forçados no POST não alcançam a RPC. Depois do bootstrap, destino é `/objetivo`.
+- branding Quoron no runtime, metadata, Home, auth/conta e package;
+- onboarding inicial reduzido a quatro campos essenciais;
+- `target_audience` e `acquisition_goal` nullable sem apagar dados;
+- nova entidade `growth_objectives` separada de `business_profiles`;
+- um único objetivo ACTIVE por organização;
+- histórico preservado ao alterar objetivo;
+- RPC server-only, service_role, owner/admin, org/membership ACTIVE;
+- serialização por organização e idempotência de reenvio idêntico;
+- RLS de leitura e browser sem escrita;
+- rota `/objetivo` com três perguntas em linguagem de negócio;
+- resultado desejado explicitamente separado de observabilidade;
+- quatro INFO de FK de `ai_runs` da 004A quitados.
 
-### 5.3 growth_objectives
+### 5.2 Supabase remoto da 004B
 
-Entidade própria. Um único `ACTIVE` por organização por índice único parcial; `ARCHIVED` exige `archived_at` e `ACTIVE` o proíbe; sem DELETE no fluxo normal.
+Migrations já aplicadas:
 
-`set_active_growth_objective` arquiva e insere na mesma transação, serializada por advisory lock. Autorização lida do banco (organização e membership `ACTIVE`, papel `owner`/`admin`); identidade de `getClaims()`; organização resolvida server-side. Reenvio idêntico é idempotente.
+- `20260825180000_create_growth_objectives`;
+- `20260825190000_index_growth_objectives_created_by`.
 
-Browser só `SELECT`, sob policy de membership. RPC não executável por `anon`/`authenticated`.
+Snapshot independente:
 
-### 5.4 Experiência
+- `growth_objectives` presente e sem fixtures residuais;
+- RLS habilitado e uma policy SELECT;
+- `anon` sem grants;
+- `authenticated` somente SELECT;
+- `service_role` SELECT/INSERT/UPDATE e sem DELETE;
+- RPC sem EXECUTE para anon/authenticated e com EXECUTE para service_role;
+- constraints e índices esperados presentes;
+- `target_audience` e `acquisition_goal` nullable;
+- advisor não mostra mais os quatro unindexed FKs de `ai_runs`.
 
-Rota protegida `/objetivo` com três perguntas em português; resumo e CTA em `/conta`. Nenhum enum, UUID ou termo de Ads Manager na tela. Ausência de objetivo é estado válido que orienta e não bloqueia conta nem Meta. O produto declara que registrar o resultado desejado não é o mesmo que já conseguir medi-lo.
+Essas migrations **não devem ser reescritas**.
 
-### 5.5 Provas
+## 6. Bloqueadores da auditoria 004B
 
-`npx vitest run` → **766/766** em 33 arquivos. `tsc --noEmit`, `lint` e `typecheck:functions` limpos.
+### 6.1 Bloqueante — seleção silenciosa de organização
 
-Migrations aplicadas: `20260825180000_create_growth_objectives.sql` e `20260825190000_index_growth_objectives_created_by.sql`.
+O estado promovido da conta não seleciona automaticamente quando há múltiplas memberships.
 
-`npx supabase db query --linked --file scripts/sql/growth-objectives-004b-proof.sql` → **29 casos, 29 passaram, 0 falharam**, com `rollback` deixando zero resíduo.
+A 004B, porém, usa:
 
-### 5.6 Advisors
+- `ativas[0]` em `getObjectiveState()`;
+- `.limit(1)` na resolução de organização de `setGrowthObjectiveAction()`.
 
-Os **quatro INFO de FK de `ai_runs` da 004A foram resolvidos**. O INFO novo introduzido por esta rodada (`growth_objectives_created_by_fkey`) foi quitado na migration `20260825190000`.
+Isso pode mostrar ou alterar objetivo de um negócio escolhido implicitamente pela ordem do banco quando a conta participa de mais de um negócio.
 
-Permanecem fora do escopo, por decisão do mandato §10: quatro INFO de FK em `ad_accounts`, `instagram_accounts` e `meta_oauth_intents` — dívida da trilha Meta/003B.
+Também cria inconsistência para membership/organização inativa.
 
-`unused_index` não removidos: em tabela recém-criada e vazia, "não usado" significa "ainda não houve consulta".
+**Não promover enquanto isso existir.**
 
-Segurança: só os INFO `rls_enabled_no_policy` das tabelas internas server-only — contrato deliberado desde a 002A — e o WARN antigo de leaked password protection.
+### 6.2 Nullable incompleto
 
-### 5.7 Não tocado
+`BusinessProfileSummary.targetAudience` ainda é `string` e a leitura converte `NULL` em `""`.
 
-Sem importação Instagram, provider real de IA, API key, SDK, chamada paga, IA inferindo objetivo, geração de conteúdo, campanha, anúncio, gasto, Financial Approval, CRM ou App Shell. Nenhum segredo novo. A 003B segue estacionada.
+Deve preservar `null` até a UI, que já pode apresentar “Não informado”.
 
-## 6. Continua NÃO autorizado
+### 6.3 Branding ativo incompleto
+
+Ainda usam o nome antigo como identidade corrente e devem ser atualizados semanticamente para Quoron:
+
+- `.gpt/CHAT_ENTRY_PROMPT.md`;
+- `docs/00-governanca/ACTIVE_DOCS.md`;
+- `docs/00-governanca/PROJECT_CHARTER.md`;
+- `docs/00-governanca/IMPLEMENTATION_ROADMAP.md`;
+- `docs/00-governanca/ARCHITECTURE_EXECUTION_BOUNDARY.md`;
+- `docs/00-governanca/EXTERNAL_CONFIGURATION_GATE.md`;
+- `docs/00-governanca/DOCUMENTATION_LIFECYCLE.md`;
+- `docs/00-governanca/HISTORY_SUMMARY.md` apenas na identidade/título corrente, sem reescrever histórico.
+
+## 7. Correção vigente — 004B-01
+
+Mandato:
+
+`rodadas/gpt/CORRECAO_004B_01_MULTI_ORG_NULLABLE_BRANDING.md`.
+
+Status:
+
+**AUTORIZADA — AGUARDANDO EXECUÇÃO PELO CLAUDE CODE.**
+
+Escopo fechado:
+
+1. alinhar objetivo à semântica de zero/uma indisponível/múltiplas memberships e impedir mutação em tenant escolhido implicitamente;
+2. preservar `targetAudience=null` no contrato de leitura;
+3. completar branding nos documentos ativos listados;
+4. executar prova remota focada da RLS real de `growth_objectives` sob papel autenticado;
+5. testes focados + uma CI final.
+
+Sem DDL esperado. Não reexecutar os 29 casos SQL por ritual. Não tocar Meta/003B nem abrir nova feature.
+
+## 8. Continua NÃO autorizado
 
 ### Meta
 
 - promover/mergear 003B;
-- iniciar importação real Instagram/Fase 4;
+- iniciar importação real Instagram;
 - declarar USER arquitetura definitiva;
 - remover BISU;
 - alterar scopes/app/Business Login Configuration;
@@ -227,33 +253,44 @@ Sem importação Instagram, provider real de IA, API key, SDK, chamada paga, IA 
 - tool calling;
 - embeddings/RAG;
 - geração real de copy/imagem;
-- IA inferir automaticamente objetivo do usuário;
+- IA inferir automaticamente objetivo;
 - qualquer capacidade de IA executar gasto.
 
-### Branding externo/técnico
+### Produto
+
+- seletor multi-organização;
+- Content Intelligence/Oportunidades;
+- Financial Approval;
+- CRM/leads;
+- App Shell/Hoje definitivo;
+- nova fase enquanto a 004B estiver em correção.
+
+### Branding técnico externo
 
 - renomear repositório GitHub;
 - renomear pasta local;
 - recriar/trocar Supabase project ref;
 - renomear/mover recursos Meta.
 
-### Produto fora da 004B
+## 9. Próximo a agir
 
-- importação/publicação Instagram;
-- Content Intelligence/Oportunidades;
-- campanhas/Ads;
-- Financial Approval;
-- CRM/leads;
-- App Shell/Hoje definitivo.
+**Claude Code**.
 
-## 7. Próximo a agir
+Na mesma janela do projeto, executar `/proxima`.
 
-**GPT** — auditar a 004B no PR aberto para `main`.
+Claude deve:
 
-## 8. Regra de continuidade
+1. permanecer na branch 004B;
+2. reconciliar a `main` atual;
+3. executar apenas `CORRECAO_004B_01_MULTI_ORG_NULLABLE_BRANDING.md`;
+4. se o classificador pedir aprovação para a prova RLS transacional, pedir somente esse gate ao fundador;
+5. parar em **AGUARDANDO AUDITORIA GPT**.
 
-- distinguir planejado, autorizado, executado, auditado e promovido;
+## 10. Regra de continuidade
+
+- distinguir planejado, autorizado, executado, auditado, aprovado e promovido;
 - não promover por relatório do Claude sem auditoria independente;
+- migrations 004B já aplicadas não devem ser reescritas;
 - gate Meta não bloqueia desenvolvimento independente;
 - hipótese Meta não vira fato sem prova;
 - nomes de recursos Meta só recebem estado/função quando comprovados;
