@@ -17,62 +17,93 @@ Promovidas: **000–003A**.
 
 - Fase 1 — Supabase, Auth e Tenancy: **ENCERRADA**.
 - Fase 2 — Operations, Audit, Queues e Segurança Base: **ENCERRADA**.
-- Fase 3 — Meta Connection Foundation: **EM ANDAMENTO**.
+- Fase 3 — Meta Connection Foundation: **EM ANDAMENTO / GATE EXTERNO PENDENTE**.
 - última rodada promovida: **003A — Meta Connection Foundation**.
 - merge 003A: `546838db8e7ced4e9045c05feb8c7b2f0c476cc2`.
 - CI final 003A: `32772710738` — verde.
 
 003A está **EXECUTADA, AUDITADA E PROMOVIDA**.
 
-## 3. Rodada 003B — NÃO PROMOVIDA
+## 3. Rodada 003B — ESTACIONADA, NÃO PROMOVIDA
 
 Mandato: `rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
 
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
-PR #12: **draft, open, não mergeado, mergeable=true**.
+PR #12: **draft, open, não mergeado**.
 
-HEAD atual após execução parcial da 003B-09: `895dd0dc8b0d0d0c005c64edb95161518540deb8`.
+HEAD final da execução mais recente: `053bc7ca3f25b53954579df30bce598894e718dd`.
 
-CI do HEAD: `32854313271` — **success**.
+CI: `32859795018` — **success**.
 
-Suíte normal na CI: **759/759 testes passando**, além de lint, typecheck, Edge Functions e build verdes.
-
-Já executado/auditado anteriormente:
+Já preservado/auditado:
 
 - migration `20260824210000_create_meta_asset_selection.sql` aplicada;
 - `instagram_accounts` e `ad_accounts` presentes;
 - Correção 003B-01: **APROVADA**;
 - Correção 003B-03: **APROVADA**;
 - investigação 003B-05 e complementos Page/IG: **AUDITADOS como evidência read-only**;
-- Correção 003B-06 credential-aware discovery: **APROVADA em código/arquitetura; não é prova E2E BISU**;
-- reconciliação da branch: **APROVADA**;
-- Correção 003B-08 reconexão: **APROVADA**.
+- endpoint BISU `/{system-user-id}/assigned_pages` permanece sustentado por evidência oficial e não deve ser revertido;
+- reconciliações e UI anteriores permanecem preservadas onde não contraditas por prova real;
+- Correção 003B-08 reconexão: **APROVADA em código**;
+- Correção 003B-09 parser/UX: **APROVADA em código**, com E2E real executado.
 
 003B continua **NÃO PROMOVIDA**.
 
-## 4. Produto e arquitetura Meta
+## 4. Correção 003B-09 — RESULTADO REAL
 
-Canônicos:
+Auditoria final:
 
-- `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`;
-- `docs/01-produto/PAID_MEDIA_CANONICAL.md`.
+`rodadas/gpt/AUDITORIA_CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`
 
-Arquitetura Meta canônica continua:
+Relatório Claude:
 
-- Facebook Login for Business;
-- System-user access token / BISU;
-- Graph API v26.0 no estado atual.
+`rodadas/claude/RELATORIO_CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`
 
-App baseline:
+O E2E real de desconexão foi finalmente executado com autorização humana explícita.
 
-- `Trafego Pago Business Dev` — App ID `2940404272985831`;
-- `Quoron Instagram Dev Login` — Configuration ID `38307908848822330`;
-- Business Portfolio Quoron ID `5301659283195806`.
+Resultado:
 
-Experimento USER atual é diagnóstico, **não arquitetura canônica**.
+- `disconnectMeta()` falhou fechado na etapa `CLASSIFICACAO`;
+- Meta respondeu HTTP 400 / code 190 antes de `/permissions`;
+- nenhuma revogação foi executada;
+- nenhuma limpeza local foi simulada.
 
-## 5. Restrição operacional de Business Portfolios
+Snapshot independente do GPT no Supabase após o E2E:
+
+- conexão `655da6e6-9056-456d-a81d-5e2570da5faf` continua `ACTIVE`;
+- `scope_count=6`;
+- referência de token presente;
+- `token_expires_at` preenchido;
+- `disconnected_at=null`;
+- `external_disconnect_pending_at=null`.
+
+O reset não foi concluído, mas a causa foi isolada.
+
+## 5. Defeito Meta agora comprovado
+
+Com o mesmo User Access Token válido:
+
+- `debug_token` confirma `is_valid=true`, `type=USER`;
+- `/me?fields=id,name` → HTTP 200;
+- `/me?fields=client_business_id` → HTTP 400 / code 190;
+- `/me?fields=id,client_business_id` → HTTP 400 / code 190.
+
+Conclusão:
+
+**o classifier compartilhado da 003B-06 não pode continuar inferindo saúde/tipo da credencial pela leitura de `client_business_id` desse modo.**
+
+Consequências provadas:
+
+- desconexão USER pode ser bloqueada antes da primitive real;
+- descoberta pode mostrar `conexao-recusada` sobre token válido;
+- a mensagem de conexão recusada vista pelo fundador não era prova de token morto.
+
+A parte `assigned_pages` da arquitetura BISU permanece preservada. O defeito está no classifier USER/BISU compartilhado.
+
+A correção futura do classifier deve ser pesquisada/decidida pelo GPT antes de retomar a 003B. Não tratar `190` genérico como semântica de “é USER” sem prova oficial suficiente.
+
+## 6. Restrição operacional Meta
 
 Fatos confirmados:
 
@@ -83,130 +114,109 @@ Fatos confirmados:
 - `BizzManiq1` não deve ser tratado como bloqueado sem prova;
 - Quoron possui o app canônico e apareceu inelegível como cliente do próprio app no fluxo BISU observado.
 
-Regras:
+Continua proibido:
 
-- não criar terceiro portfolio;
-- não excluir `Bizzman5po` por tentativa;
-- não usar empresa/portfolio de terceiro sem decisão explícita;
-- não inferir identidade/estado de recurso Meta por semelhança de nome.
+- criar terceiro portfolio;
+- excluir `Bizzman5po` por tentativa;
+- usar empresa/portfolio de terceiro sem decisão explícita;
+- alterar app/configuração/scopes por tentativa;
+- promover 003B sem E2E BISU real.
 
-## 6. Conexão USER real — ESTADO ATUAL AUDITADO
+## 7. Decisão de desbloqueio do desenvolvimento
 
-Conexão alvo:
+Decisão aprovada pelo fundador:
 
-`655da6e6-9056-456d-a81d-5e2570da5faf`
+`rodadas/gpt/DECISAO_DESBLOQUEIO_DESENVOLVIMENTO_META_GATE.md`
 
-Organização:
+O gate Meta é **trilha pendente**, não bloqueio global.
 
-`a8f79c4b-b10a-4e01-b12d-2d8e62917009`
+Isso não promove 003B e não transforma USER em arquitetura canônica.
 
-Usuário/membership:
+Capacidades independentes podem avançar em branches próprias a partir da `main`.
 
-`d4ed915a-2fe8-4990-9e73-9a68fbbd1f9d`
+## 8. Próxima rodada autorizada — 004A
 
-Snapshot independente do GPT após o Claude declarar término da 003B-09:
+Rodada:
 
-- `status=ACTIVE`;
-- `scope_count=6`;
-- referência de token ainda presente;
-- `token_expires_at` ainda preenchido;
-- `disconnected_at=null`;
-- `external_disconnect_pending_at=null`;
-- `instagram_accounts=0`;
-- `ad_accounts=0`;
-- nenhum ativo selecionado.
-
-Portanto **o ambiente NÃO foi zerado**.
-
-## 7. Correção 003B-09 — AUDITORIA
+**004A — AI Foundation Core**
 
 Mandato:
 
-`rodadas/gpt/CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`
+`rodadas/gpt/RODADA_004A_AI_FOUNDATION_CORE.md`
 
-Auditoria:
+Status:
 
-`rodadas/gpt/AUDITORIA_CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`
+**PLANEJADA E AUTORIZADA — CLAUDE PODE EXECUTAR AGORA.**
 
-Veredito:
+Objetivo resumido:
 
-**PARCIALMENTE APROVADA EM CÓDIGO; REPROVADA/INCOMPLETA NO CRITÉRIO OPERACIONAL E2E.**
+- catálogo interno de providers/modelos/preços;
+- `ai_runs` e custo reproduzível;
+- contrato único de AI Task;
+- Router server-only;
+- seleção por tier/capability/status;
+- structured output validado;
+- fake adapter apenas em testes;
+- nenhuma API paga, chave, SDK ou chamada externa de IA nesta rodada.
 
-Código publicado no HEAD `895dd0dc...`:
+Base obrigatória:
 
-- `revokeUserPermissions()` passou a aceitar JSON literal `true` e `{ success: true }` como sucessos explícitos;
-- respostas ambíguas continuam falhando fechadas;
-- token USER no `DELETE /permissions` passou para `Authorization: Bearer`, fora da URL;
-- BISU continua sem usar o endpoint USER;
-- estado recusado oferece `Conectar novamente` e `Desconectar e começar de novo`;
-- a UI evita afirmar simultaneamente “Meta conectada” saudável quando a descoberta já classificou a credencial como recusada;
-- criado harness real `scripts/e2e/meta-disconnect-003b-09.e2e.ts` e configuração `vitest.e2e.config.ts`.
+- partir da **`main` atual**;
+- não continuar da branch 003B;
+- criar branch `claude/rodada-004a-ai-foundation-core`.
 
-O código **não deve ser revertido** neste momento.
-
-Falha de execução:
-
-- o E2E real obrigatório não foi comprovadamente executado;
-- o harness não roda na CI normal e exige `META_E2E_DISCONNECT=1`;
-- o relatório obrigatório `rodadas/claude/RELATORIO_CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md` não existe no HEAD;
-- o Supabase permanece `ACTIVE`.
-
-## 8. Próxima ação autorizada — CLAUDE DEVE CONCLUIR A 003B-09
+## 9. Próxima ação autorizada
 
 Próximo a agir: **Claude Code**.
 
-Não abrir nova arquitetura e não criar nova fase. Concluir somente a parte faltante da 003B-09:
+Executar `/proxima` e seguir `RODADA_004A_AI_FOUNDATION_CORE.md`.
 
-1. executar o harness E2E real já criado com a flag explícita prevista;
-2. usar o backend canônico `disconnectMeta()`; não simular sucesso via SQL;
-3. observar somente resposta sanitizada da Meta;
-4. se o comportamento real exigir ajuste mínimo do parser USER, corrigir dentro da mesma 003B-09 e repetir;
-5. terminar com prova no Supabase de:
-   - `status=REVOKED`;
-   - sem referência de token;
-   - `token_expires_at=null`;
-   - scopes vazios;
-   - `disconnected_at` preenchido;
-   - nenhum ativo selecionado;
-6. **não reconectar**;
-7. escrever `rodadas/claude/RELATORIO_CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`;
-8. se houver novo código, rerodar testes/typecheck/lint/CI;
-9. parar em **AGUARDANDO AUDITORIA GPT**.
+Se a migration da 004A exigir aplicação remota e o classificador do Claude pedir aprovação humana, parar no gate e pedir aprovação ao fundador; não contornar o classificador.
 
-O fundador não precisa executar nenhum comando técnico além de acionar `/proxima` no Claude Code.
+## 10. Continua NÃO autorizado
 
-## 9. Continua NÃO autorizado
+Na trilha Meta:
 
-- alterar `.env.local`;
-- alterar Meta App ou Business Login Configuration;
-- adicionar/remover scopes;
+- promover/mergear 003B;
+- iniciar Fase 4 com importação real Instagram;
+- declarar USER arquitetura definitiva;
+- remover BISU;
+- adicionar/remover scopes por tentativa;
+- alterar Meta App/Business Login Configuration;
 - criar/excluir/mover Business Portfolio;
-- mexer em Bizzman5po, BizzManiq1 ou Quoron;
 - transferir Page/Instagram/Ad Account/app;
 - usar terceiro;
-- Page Access Token;
-- campanha/anúncio/gasto;
-- importar conteúdo;
-- promover/mergear 003B;
-- iniciar Fase 4;
-- declarar USER arquitetura definitiva;
-- tratar o E2E USER como prova BISU.
+- campanha/anúncio/gasto.
 
-## 10. Gate BISU permanece separado
+Na 004A:
+
+- provider real de IA;
+- API key;
+- chamada paga;
+- SDK de IA;
+- fallback real entre providers;
+- tool calling;
+- embeddings/RAG;
+- geração real de copy/imagem;
+- qualquer capacidade de IA executar gasto.
+
+## 11. Gate BISU permanece pendente
 
 Ainda falta provar em E2E real BISU:
 
-1. `assigned_pages` com BISU ativo do fluxo real;
-2. permissões exigidas pelo edge;
-3. expansão `instagram_business_account`;
-4. descoberta/seleção completa em entidade cliente elegível.
+1. classificação de credencial corrigida sem inferência insegura;
+2. `assigned_pages` com BISU ativo do fluxo real;
+3. permissões exigidas pelo edge;
+4. expansão `instagram_business_account`;
+5. descoberta/seleção completa em entidade cliente elegível.
 
-A 003B-09 trata somente confiabilidade do ciclo USER conectar/desconectar e reset de teste.
+Esse gate será retomado quando houver condição operacional e decisão arquitetural adequada.
 
-## 11. Regra de continuidade
+## 12. Regra de continuidade
 
 - distinguir sempre planejado, autorizado, executado, auditado e promovido;
 - não promover por relatório do Claude sem auditoria independente;
-- sempre dar ao fundador uma única ação manual principal, com explicação simples;
+- o gate Meta não bloqueia desenvolvimento independente;
 - não tratar hipótese sobre comportamento da Meta como fato sem prova;
-- nomes de recursos Meta só podem ser associados a estado/função quando comprovados.
+- nomes de recursos Meta só podem ser associados a estado/função quando comprovados;
+- evitar housekeeping isolado apenas para alinhar numeração/documentação.
