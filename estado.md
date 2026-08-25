@@ -86,7 +86,7 @@ Configuração histórica 003A ainda não apagar:
 
 Ativos reais:
 
-- Página Facebook **Quoron**;
+- Página Facebook **Quoron** — ID **`1356474050873300`**;
 - Instagram profissional **@goquoron**.
 
 ## 6. Conexão real atual — PÓS-OAUTH USER
@@ -149,13 +149,17 @@ Bloqueio:
 
 ### 7.5 Hipótese de acesso insuficiente à Página — REPROVADA
 
-Em 2026-08-25 o fundador abriu a tela oficial **Acesso à Página** da Página Quoron. Evidência visual:
+Em 2026-08-25 o fundador apresentou duas provas visuais oficiais da Meta:
 
-- Página: **Quoron**;
-- pertence ao portfólio empresarial Quoron, ID `5301659283195806`;
-- em **Pessoas com controle total**, aparece **Rafael Brito — Acesso total**.
+1. tela **Acesso à Página** da Página Quoron:
+   - `Rafael Brito — Acesso total` em `Pessoas com controle total`;
+2. **Business Settings → Contas → Páginas → Quoron**:
+   - Page **Quoron**, ID **`1356474050873300`**;
+   - propriedade: **Quoron**;
+   - `1 pessoa está atribuída a essa Página do Facebook`;
+   - `Rafael Brito (You) — Acesso total`.
 
-Portanto a hipótese anterior de que `/me/accounts` estava vazio porque o perfil usado no OAuth não tinha a Página diretamente atribuída / não tinha acesso suficiente está **REPROVADA**. Não alterar acesso da Página.
+Portanto não há mais ambiguidade: o perfil usado no OAuth está **diretamente atribuído à Page Quoron com acesso total**. A hipótese de que `/me/accounts` está vazio por falta de atribuição ou nível de acesso está **REPROVADA**. Não alterar acesso da Página.
 
 A documentação oficial Meta/Postman continua mostrando User Access Token + `/me/accounts` como caminho para listar Pages gerenciadas; logo o vazio exige diagnóstico técnico do token/edge, não mais tentativa manual de permissões da Página.
 
@@ -170,7 +174,8 @@ Objetivo: sem mutações, provar:
 1. `debug_token`: validade/tipo/scopes e `granular_scopes/target_ids` sanitizados;
 2. identidade `GET /me?fields=id,name`;
 3. comparar `/me/accounts?fields=id,name,tasks` com `/me/accounts?fields=id,name,tasks,instagram_business_account`;
-4. usar `/me/adaccounts?fields=id,name,account_status` como controle independente de `ads_read`.
+4. testar diretamente a Page conhecida `1356474050873300` com `GET /{page-id}?fields=id,name` e, se permitido, expansão `instagram_business_account`;
+5. usar `/me/adaccounts?fields=id,name,account_status` como controle independente de `ads_read`.
 
 Claude não deve expor token/secret, não deve editar código de produto nem iniciar OAuth. Ao final, relatório factual e parar para auditoria GPT.
 
