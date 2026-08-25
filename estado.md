@@ -35,7 +35,7 @@ Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
 PR: **#12 draft**.
 
-HEAD final auditado antes da Correção 003B-06: `1771965805a09082579da1f1baea58b674f24084`.
+HEAD final auditado das sondas/branch: `1771965805a09082579da1f1baea58b674f24084`.
 
 CI final auditada: `32844721885` — **success**.
 
@@ -60,13 +60,11 @@ Mídia paga é pilar central da proposta de crescimento; orgânico também entre
 
 `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` permanece obrigatório para simplicidade guiada: complexidade técnica pertence ao sistema, não ao pequeno empresário.
 
-Antes da próxima rodada substantiva pós-003B, harmonizar formulações antigas conflitantes nos canônicos afetados sem criar rodada apenas de housekeeping.
-
 ## 5. Configurações Meta relevantes
 
 ### Arquitetura canônica mantida
 
-Permanece canônico para produção:
+Permanece canônico para produção, até nova decisão arquitetural:
 
 - **Facebook Login for Business**;
 - **System-user access token / BISU**;
@@ -115,8 +113,6 @@ Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 - `instagram_accounts=0`;
 - `ad_accounts=0`.
 
-O GPT reconfirmou o estado no Supabase após a última sonda.
-
 Ativos reais usados como fixture diagnóstica:
 
 - Page Quoron — `1356474050873300`;
@@ -136,11 +132,7 @@ Com o mesmo User Access Token:
 - `media_count=9`;
 - Insights `reach/day` → HTTP 200 com série retornada.
 
-Isso ocorreu sem:
-
-- `business_management`;
-- `ads_management`;
-- Page Access Token.
+Isso ocorreu sem `business_management`, `ads_management` e sem Page Access Token.
 
 ### Falhou
 
@@ -153,57 +145,46 @@ A causa interna da Meta permanece **não provada**.
 
 ## 8. Decisão arquitetural GPT — USER NÃO CANÔNICO
 
-Documentos:
-
-- `rodadas/gpt/AUDITORIA_COMPLEMENTO_003B_05_IG_DIRECT_INSIGHTS.md`;
-- `rodadas/gpt/DECISAO_003B_05_USER_NAO_CANONICO_BISU_MANTIDO.md`.
-
 Decisão preservada:
 
 - User Access Token **não** é adotado como arquitetura canônica de descoberta da 003B;
-- BISU permanece arquitetura canônica de produção;
+- BISU permanece arquitetura canônica de produção até nova decisão;
 - não usar Page ID/IG ID hardcoded ou informado tecnicamente pelo cliente;
 - não adicionar scopes por tentativa;
 - não pedir/persistir Page Access Token sem prova material.
 
-## 9. Novo achado de auditoria — discovery atual não distingue credencial
+Motivo: o fluxo USER testado não consegue descobrir automaticamente as Pages, e exigir ID técnico viola `Simplicidade Guiada`.
 
-Após a auditoria do complemento downstream, o GPT inspecionou novamente o código da 003B e identificou:
+## 9. Achado de auditoria sobre o código de descoberta
 
-- `src/lib/meta/assets.ts` usa atualmente `me/accounts` para descoberta de Pages **independentemente do tipo de credencial**;
-- `src/lib/meta/gateway.ts`, vindo da 003A, já contém inspeção/classificação server-side de credenciais;
-- a própria 003A registra que `debug_token.type=SYSTEM_USER` sozinho não distingue com segurança BISU de system user clássico e usa evidência complementar (`client_business_id`) na classificação.
+`src/lib/meta/assets.ts` usa hoje `me/accounts` para descoberta de Pages independentemente do tipo de credencial.
 
-Consequência:
+A documentação oficial Meta consultada descreve `/me/accounts` explicitamente como caminho de listagem com **User Access Token**. Isso torna legítima a pergunta sobre a compatibilidade do mesmo edge com BISU/System-user access token.
 
-- a conclusão anterior de que o bloqueio restante era **apenas** uma fixture externa fica **SUPERSEDIDA**;
-- antes de decidir que o E2E BISU está bloqueado somente pela separação provedor/cliente, a 003B precisa tornar a descoberta sensível ao tipo real de credencial;
-- USER continua não canônico; esse novo achado não reabre a decisão USER.
+Porém, o GPT **ainda não comprovou em fonte oficial vigente qual é o mecanismo correto e genérico de descoberta de Pages para BISU/System-user access token** no fluxo usado pelo projeto.
 
-## 10. Próxima ação autorizada — CORREÇÃO 003B-06
+A menção anterior a `assigned_pages` foi apenas hipótese de investigação e não pode ser tratada como solução comprovada.
 
-Próximo a agir: **Claude Code**.
+## 10. Correção 003B-06 — SUSPENSA
 
-Mandato:
+Documento:
 
 `rodadas/gpt/CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`
 
-Objetivo, em linguagem simples: fazer o sistema parar de usar a mesma rota da Meta para todos os tipos de autorização. Ele deve reconhecer no servidor qual credencial recebeu e usar o mecanismo oficial correspondente para descobrir as Pages.
+Status: **SUSPENSA — NÃO EXECUTAR**.
 
-Regras principais:
+Motivo: não há ainda prova documental suficiente para autorizar mudança comportamental no código.
 
-- reutilizar/centralizar a classificação segura já existente;
-- USER continua em `/me/accounts`;
-- BISU/System User deve usar o mecanismo oficial de Pages atribuídas confirmado por fonte oficial vigente durante a implementação;
-- não usar `external_business_id` como proxy;
-- não assumir `SYSTEM_USER` sozinho == BISU;
-- se o edge correto não puder ser estabelecido com evidência suficiente, parar em `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`;
-- sem novo OAuth, sem alteração no painel Meta, sem novos scopes e sem Page Access Token;
-- sem merge/promoção.
+Próximo a agir: **GPT**, não Claude.
 
-Depois da execução, Claude deve entregar relatório e parar aguardando auditoria GPT.
+Próxima obrigação do GPT:
 
-## 11. Gate externo BISU — AINDA NÃO CLASSIFICADO COMO BLOQUEIO FINAL
+- investigar e documentar, com fonte oficial Meta, SDK oficial ou sample oficial vigente, qual é o contrato de descoberta de Pages/Instagram para BISU/System-user access token no Facebook Login for Business;
+- somente depois disso decidir se existe correção segura no código ou se o bloqueio restante é externo/arquitetural.
+
+Até essa comprovação, **não enviar `/proxima` ao Claude**.
+
+## 11. Gate externo BISU
 
 No fluxo BISU anterior, o portfólio Quoron apareceu desabilitado com:
 
@@ -211,7 +192,7 @@ No fluxo BISU anterior, o portfólio Quoron apareceu desabilitado com:
 
 Esse fato permanece válido.
 
-Porém, somente após a Correção 003B-06 e sua auditoria o GPT decidirá se ainda é indispensável uma entidade cliente separada para o E2E final ou se há outra prova segura suficiente.
+Ainda não está decidido se esse gate externo é o único bloqueio final, porque primeiro é necessário resolver documentalmente o contrato correto de descoberta para BISU.
 
 Não usar empresa/portfólio de terceiro sem nova decisão explícita do fundador.
 
@@ -221,6 +202,7 @@ Não usar empresa/portfólio de terceiro sem nova decisão explícita do fundado
 - iniciar Fase 4;
 - declarar USER arquitetura definitiva;
 - remover BISU;
+- implementar `assigned_pages` ou qualquer outro edge por hipótese;
 - pedir Page ID técnico ao cliente como fluxo padrão;
 - adicionar `business_management`, `ads_management` ou outro scope por tentativa;
 - novo OAuth;
@@ -236,8 +218,8 @@ Não usar empresa/portfólio de terceiro sem nova decisão explícita do fundado
 
 ## 13. Pendências
 
-- executar/auditar 003B-06;
-- depois reavaliar o E2E BISU e o gate externo;
+- comprovar oficialmente o mecanismo de discovery para BISU/System-user access token;
+- depois decidir se 003B-06 volta a ser autorizada ou se o gate final é externo;
 - corrigir UX que hoje afirma ausência de Page quando a API apenas devolve lista vazia;
 - harmonizar canônicos de mídia paga pós-003B;
 - redaction do callback em logs antes de produção;
