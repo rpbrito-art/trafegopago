@@ -29,7 +29,7 @@ Promovidas: **000–003A, 004A, 004B, 004C e 004D**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - Guided Growth Journey / Focus Foundation: **004D PROMOVIDA**.
 - última rodada promovida: **004D — Guided Growth Journey Foundation**.
-- rodada corrente: **004E — Declared Context Review + First Real AI — IMPLEMENTADA ATÉ GATE, AUDITADA; 004E-01 E 004E-02 EXECUTADAS E REAUDITADAS; 004E-03 AUTORIZADA; CREDENCIAL PAGA AINDA BLOQUEADA**.
+- rodada corrente: **004E — Declared Context Review + First Real AI — 004E-03 APROVADA; GATE PAGO CONTROLADO AUTORIZADO; E2E/EVAL REAIS PENDENTES; 004E AINDA NÃO PROMOVIDA**.
 
 ## 3. Promoções recentes incorporadas
 
@@ -169,13 +169,13 @@ Branch:
 
 PR #17: **draft/open/não mergeada**.
 
-HEAD reauditorado da Correção 004E-02:
+HEAD reauditorado da Correção 004E-03:
 
-`84a31808da0063afdf18c678dcc7bdfec6a02b20`
+`19f4931fcadf45b9cb9d3bf1039c21e417111e19`
 
-CI do HEAD:
+CI final do HEAD:
 
-`32910321592` — **success**; install, lint, typecheck, Edge Functions, testes e build verdes. Suíte reportada em **1007/1007**.
+`32911288204` — **success**; install, lint, typecheck, Edge Functions, testes e build verdes. Suíte local reportada em **1015/1015**.
 
 Relatório Claude:
 
@@ -185,13 +185,14 @@ Auditorias GPT:
 
 - `rodadas/gpt/AUDITORIA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`;
 - `rodadas/gpt/AUDITORIA_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`;
-- `rodadas/gpt/AUDITORIA_004E_02_FINAL_PREPAID_INVARIANTS.md`.
+- `rodadas/gpt/AUDITORIA_004E_02_FINAL_PREPAID_INVARIANTS.md`;
+- `rodadas/gpt/AUDITORIA_004E_03_EVAL_GATE_COMPLETION.md`.
 
 Veredito atual:
 
-**004E NÃO APROVADA NEM PROMOVIDA. 004E-02 FECHOU BANCO E USAGE, MAS O GATE PAGO CONTINUA BLOQUEADO ATÉ A 004E-03 FECHAR A EVAL.**
+**004E AINDA NÃO APROVADA NEM PROMOVIDA. O GATE TÉCNICO PRÉ-PAGO FOI APROVADO; ESTÁ AUTORIZADA SOMENTE A PROVA PAGA CONTROLADA COM FIXTURES SINTÉTICAS.**
 
-### 7.1 O que a 004E/004E-01/004E-02 já fechou
+### 7.1 O que a 004E/004E-01/004E-02/004E-03 já fechou
 
 - task `DECLARED_BUSINESS_CONTEXT_REVIEW@v1`, tenant-scoped, Tier 1;
 - feature desacoplada de provider/modelo;
@@ -210,7 +211,11 @@ Veredito atual:
 - E2E preparado para usar o serviço produtivo, persistir artefato, conferir run/custo e provar cache;
 - FK tentativa → `ai_runs` preserva `organization_id` e zera somente `ai_run_id` no delete;
 - usage obrigatório não vira custo zero por metadata ausente;
-- avaliador da eval foi extraído para módulo importável e passou a testar ausência/tensão sem provider real.
+- avaliador da eval é importável e testável sem provider real;
+- ausência esperada com `gaps=[]` reprova;
+- tensão esperada exige todas as refs pertinentes dentro da mesma tensão;
+- prompt injection possui sentinela explícita em metadata de fixture e reprova se a instrução embutida for obedecida;
+- eval real permanece em 12 casos, uma chamada por caso e sem retry automático.
 
 ### 7.2 Migrations 004E já aplicadas remotamente — NÃO REESCREVER
 
@@ -219,72 +224,61 @@ Veredito atual:
 - `20260825270000_index_review_run_foreign_keys`;
 - `20260825280000_fix_review_attempt_run_delete_action`.
 
-Reauditoria GPT confirmou no remoto:
+Reauditorias GPT confirmaram no remoto:
 
 - migration `20260825280000` aplicada;
 - FK final usa `ON DELETE SET NULL (ai_run_id)`;
 - `organization_id` não faz parte das colunas zeradas;
 - tabela de tentativas e RPCs presentes;
 - fronteira do browser fechada;
-- `declared_context_review_attempts = 0`;
-- `declared_context_reviews = 0`;
-- `ai_runs` da task = 0;
-- nenhuma chamada Gemini real ocorreu.
+- antes da abertura deste gate: `declared_context_review_attempts = 0`, `declared_context_reviews = 0` e `ai_runs` reais desta task = 0;
+- nenhuma chamada Gemini real havia ocorrido até a aprovação da 004E-03.
 
-## 8. Correção 004E-02 — EXECUTADA E REAUDITADA
+## 8. Correções 004E — estado de auditoria
 
-Mandato:
+### 004E-01
 
-`rodadas/gpt/CORRECAO_004E_02_FINAL_PREPAID_INVARIANTS.md`
+**EXECUTADA E REAUDITADA.** Fechou schema do provider, reserva atômica/rate limit, mensagem de custo, E2E produtivo e harness real da eval.
 
-Auditoria:
+### 004E-02
 
-`rodadas/gpt/AUDITORIA_004E_02_FINAL_PREPAID_INVARIANTS.md`
+**EXECUTADA E REAUDITADA.** Fechou delete da FK preservando tenant, usage obrigatório para custo confiável e omissões básicas do avaliador.
 
-Status:
+### 004E-03
 
-**EXECUTADA E REAUDITADA; INVARIANTES A/B APROVADAS; INVARIANTE C AINDA INCOMPLETA.**
+Mandato: `rodadas/gpt/CORRECAO_004E_03_EVAL_GATE_COMPLETION.md`.
+
+Auditoria: `rodadas/gpt/AUDITORIA_004E_03_EVAL_GATE_COMPLETION.md`.
+
+Status: **EXECUTADA, REAUDITADA E APROVADA PARA ABERTURA DO GATE PAGO CONTROLADO**.
 
 Aprovado:
 
-- delete do `ai_run` preserva o tenant da tentativa;
-- cascade/cleanup foi coberto pela prova transacional 13/13;
-- metadata de usage obrigatória agora falha fechado em vez de virar custo zero;
-- CI do HEAD final está verde.
+- tensão esperada compara todos os lados relevantes na mesma tensão;
+- prompt injection tem sentinela sintética explícita e testável;
+- delta ficou restrito ao avaliador/fixtures/testes e documentação;
+- nenhuma migration, mudança de provider/modelo/preço, UI, Meta ou produto;
+- CI final `32911288204` verde.
 
-Bloqueios restantes encontrados na eval:
+## 9. Gate pago 004E — AUTORIZADO SOB CONTROLE
 
-1. tensão esperada aceita apenas **uma** das `refsDaTensao`, embora o caso 06 exija comparação entre objetivo e foco;
-2. a verificação explícita de resistência a prompt injection desapareceu da lógica extraída para `eval-criteria.ts`, embora o script ainda declare esse invariante.
+Está autorizado somente o seguinte fluxo:
 
-## 9. Continua NÃO autorizado
+1. criar/configurar uma `GEMINI_API_KEY` de projeto no **Paid Tier**;
+2. manter a chave fora do repositório e somente no ambiente local seguro;
+3. executar `npm run e2e:review` **uma única vez**;
+4. somente se o E2E passar, executar `npm run eval:review` **uma única vez**;
+5. usar apenas as fixtures sintéticas versionadas — nenhum dado real de cliente;
+6. não usar retry automático;
+7. registrar run IDs, usage, custo, resultado dos 12 casos e limpeza das fixtures;
+8. após as duas provas, parar e devolver ao GPT para auditoria final da 004E.
 
-### Gate pago 004E
+Se E2E ou eval falhar, **não repetir chamada paga por tentativa**. Parar e devolver ao GPT.
 
-Até a reauditoria GPT da 004E-03:
+Mesmo com o gate aberto, continua NÃO autorizado:
 
-- NÃO criar/configurar/usar `GEMINI_API_KEY` no projeto;
-- NÃO configurar pagamento para a prova por instrução do Claude;
-- NÃO executar chamada Gemini real;
-- NÃO rodar eval paga;
-- NÃO rodar E2E pago;
-- NÃO mergear/promover PR #17.
-
-### Meta
-
-- promover/mergear 003B;
-- iniciar importação/publicação real Instagram dependente da arquitetura bloqueada;
-- implementar onboarding Meta guiado antes da abertura do gate;
-- alterar scopes/app/Business Login Configuration;
-- criar/excluir/mover Business Portfolio;
-- transferir ativos;
-- usar terceiro;
-- campanha/anúncio/gasto.
-
-### IA fora da 004E
-
-- segundo provider real;
-- fallback real multi-provider;
+- mergear/promover PR #17 antes da auditoria final;
+- segundo provider real ou fallback real;
 - web search/grounding externo;
 - tool calling;
 - embeddings/RAG;
@@ -294,7 +288,18 @@ Até a reauditoria GPT da 004E-03:
 - qualquer capacidade de IA executar gasto ou ação externa;
 - Free Tier Gemini com dados reais de clientes.
 
-### Produto
+### Meta continua bloqueada
+
+- promover/mergear 003B;
+- iniciar importação/publicação real Instagram dependente da arquitetura bloqueada;
+- implementar onboarding Meta guiado antes da abertura do gate externo;
+- alterar scopes/app/Business Login Configuration;
+- criar/excluir/mover Business Portfolio;
+- transferir ativos;
+- usar terceiro;
+- campanha/anúncio/gasto.
+
+### Produto ainda fora de escopo
 
 - seletor multi-organização;
 - personas/públicos observados;
@@ -310,36 +315,13 @@ Até a reauditoria GPT da 004E-03:
 - e-commerce/estoque/SKU/pedidos/pagamentos;
 - score/gamificação.
 
-## 10. Correção 004E-03 — AUTORIZADA
+## 10. Próxima ação autorizada
 
-Mandato:
+Próximo ator: **fundador, orientado pelo GPT**.
 
-`rodadas/gpt/CORRECAO_004E_03_EVAL_GATE_COMPLETION.md`
+Ação: criar/configurar a credencial Gemini API em **Paid Tier**, uma etapa manual por vez, sem expor a chave no chat, GitHub ou documentação.
 
-Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
-
-Objetivo estrito:
-
-- exigir que a tensão esperada esteja ancorada em **todas** as refs pertinentes na mesma tensão;
-- restaurar uma verificação explícita, baseada em metadata/sentinela sintética e não no nome do caso, de resistência a prompt injection;
-- adicionar testes locais determinísticos para os dois pontos;
-- manter zero chamadas pagas.
-
-Não há migration, DDL, mudança de provider/modelo/preço, UI ou produto autorizados nesta correção.
-
-Próximo ator: **Claude Code**.
-
-Claude deve continuar na mesma branch e no PR #17 e executar **somente**:
-
-`rodadas/gpt/CORRECAO_004E_03_EVAL_GATE_COMPLETION.md`
-
-A correção deve ocorrer sem chave Gemini e sem qualquer chamada paga.
-
-Status esperado do Claude:
-
-**CORREÇÃO 004E-03 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**.
-
-Depois disso o próximo ator volta a ser GPT. Somente uma reauditoria aprovada poderá abrir o gate para o fundador criar/configurar a credencial Paid Tier e executar a primeira prova real.
+Depois de a chave estar disponível apenas no ambiente local seguro, o próximo ator será **Claude Code**, exclusivamente para executar o E2E pago e, se ele passar, a eval paga conforme o §9. Claude deve então atualizar relatório/estado da branch e devolver ao GPT. Claude não mergeia nem promove.
 
 ## 11. Regra de continuidade
 
