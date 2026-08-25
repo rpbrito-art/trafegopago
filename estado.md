@@ -159,20 +159,41 @@ Portanto a hipótese anterior de que `/me/accounts` estava vazio porque o perfil
 
 A documentação oficial Meta/Postman continua mostrando User Access Token + `/me/accounts` como caminho para listar Pages gerenciadas; logo o vazio exige diagnóstico técnico do token/edge, não mais tentativa manual de permissões da Página.
 
-## 8. Próxima ação autorizada
-
-Próximo a agir: **Claude Code, investigação read-only**.
+## 8. Investigação 003B-05 — EXECUTADA
 
 Mandato: `rodadas/gpt/INVESTIGACAO_003B_05_PAGE_ZERO_GRANULAR_SCOPES.md`.
 
-Objetivo: sem mutações, provar:
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
-1. `debug_token`: validade/tipo/scopes e `granular_scopes/target_ids` sanitizados;
-2. identidade `GET /me?fields=id,name`;
-3. comparar `/me/accounts?fields=id,name,tasks` com `/me/accounts?fields=id,name,tasks,instagram_business_account`;
-4. usar `/me/adaccounts?fields=id,name,account_status` como controle independente de `ads_read`.
+Relatório: `rodadas/claude/RELATORIO_INVESTIGACAO_003B_05_PAGE_ZERO.md`.
 
-Claude não deve expor token/secret, não deve editar código de produto nem iniciar OAuth. Ao final, relatório factual e parar para auditoria GPT.
+Sonda read-only: `scripts/meta-user-token-page-zero-probe.mjs` — token pelo caminho server-side, header `Authorization`, saída sanitizada. Nenhuma mutação, nenhum OAuth, nenhum escopo alterado, código de produto intocado.
+
+Provado sobre a conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
+
+- `debug_token`: `is_valid=true`, `type=USER`, app corrente, `user_id=28050226117920563`, `expires_at=1792839788`, `data_access_expires_at=1795431788`, os seis escopos presentes;
+- `granular_scopes`: 5 entradas e **nenhuma com `target_ids`** — nenhum alvo de Page/Instagram vinculado ao consentimento;
+- `GET /me`: `28050226117920563` / `Rafael Pereira Brito`, igual ao `external_user_id`;
+- `/me/accounts?fields=id,name,tasks`: **HTTP 200, 0 itens, sem `paging`**;
+- `/me/accounts?fields=id,name,tasks,instagram_business_account`: **HTTP 200, 0 itens** — idêntico;
+- `/me/adaccounts?fields=id,name,account_status`: **HTTP 200, 3 itens** (`act_203057539730795` status 1; `act_1051375372322456` status 2; `act_263815755779613` status 1).
+
+Consequências factuais:
+
+- token íntegro, do app certo, na identidade certa — o vazio não é expiração, revogação nem app trocado;
+- o vazio **nasce no edge `/me/accounts`**; a hipótese de que a expansão `instagram_business_account` derrubava o item está **REPROVADA**;
+- resposta é `200` com lista vazia, não erro de permissão nem paginação;
+- o token **enxerga outros ativos Meta** via `ads_read`, então a cegueira é específica de Pages;
+- `ads_read` também veio sem `target_ids` e ainda assim devolveu 3 contas: "sem `target_ids`" **não equivale** a "sem acesso ao ativo" em todos os edges.
+
+Ambiguidade material declarada no relatório, sem escolha do Claude:
+
+- **(i)** a concessão não vinculou nenhuma Página ao app — coerente com `Ativos` indisponível por desenho na configuração USER `Quoron E2E Login`;
+- **(ii)** `/me/accounts` exige, para este app/portfólio, um vínculo Página↔app que `pages_show_list` sozinho não estabelece.
+
+Claude declarou `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`.
+
+Próximo a agir: **GPT** — auditar a investigação e decidir entre (i) e (ii). Nenhum novo OAuth, nenhuma mudança de configuração Meta e nenhuma ampliação de escopo antes dessa decisão.
 
 ## 9. Continua NÃO autorizado
 
