@@ -59,6 +59,7 @@ Cada passo carrega título, explicação, **por que importa**, **o que muda depo
 | suíte local | `npx vitest run` | **902/902** em 44 arquivos |
 | tipos e lint | `tsc --noEmit`, `eslint` | limpos |
 | advisors | MCP Supabase, security e performance | idênticos ao baseline; nenhuma FK do delta descoberta |
+| CI final | `32892914249` no PR #16 | **success**, 902/902, lint/typecheck/Edge Functions/build verdes |
 
 A prova SQL é transacional (`begin … rollback`) e a leitura final acontece sob `set local role authenticated`.
 
@@ -80,6 +81,8 @@ Advisors: um novo INFO `unused_index` em `growth_objectives_focus_offer_idx`, es
 
 Sem Meta, sem provider de IA, sem prompt ou chamada ao Router, sem CRM, sem Ads, sem App Shell, sem seletor multi-organização, sem múltiplos focos e sem score de maturidade. `BASE_ESTRATEGICA_PRONTA` não oferece link para integração bloqueada — há teste que falha se um aparecer.
 
-## 6. Pendências
+## 6. Handoff
 
-Nenhuma técnica. Próximo ator: **GPT auditor**.
+Branch `claude/rodada-004d-guided-growth-journey`, HEAD publicado em `origin`. PR #16, draft, base `main`. CI `32892914249` — success. `estado.md` da branch em **004D EXECUTADA — AGUARDANDO AUDITORIA GPT**. Working tree limpa.
+
+Nenhuma pendência técnica. Próximo ator: **GPT auditor**.

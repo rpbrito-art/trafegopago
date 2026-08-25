@@ -217,6 +217,12 @@ Branch: `claude/rodada-004d-guided-growth-journey`.
 
 Base: `main` em `b389e2d`, após a promoção da 004C.
 
+PR #16: **draft, open, não mergeada**, base `main`.
+
+HEAD com o delta completo: `a75e922`. Commits posteriores a este registro alteram apenas relatório e este arquivo; o PR #16 aponta para o HEAD final.
+
+CI: `32892914249` — **success**, 902/902 testes, lint/typecheck/Edge Functions/build verdes.
+
 Status: **004D EXECUTADA — AGUARDANDO AUDITORIA GPT**. Não promovida, não mergeada.
 
 Relatório: `rodadas/claude/RELATORIO_RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`.
@@ -257,7 +263,7 @@ Esta migration **não deve ser reescrita**.
 - motor de condução, action de foco, tela do próximo passo, rotas e regressão de autenticação cobertos por testes novos/atualizados;
 - suíte local completa → **902/902** em 44 arquivos;
 - `tsc --noEmit` e `eslint` limpos;
-- CI final do PR.
+- CI final do PR: `32892914249` — success, 902/902.
 
 ## 10. Continua NÃO autorizado fora do mandato 004D
 
