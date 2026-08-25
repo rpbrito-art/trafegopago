@@ -33,9 +33,9 @@ Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
 PR #12: **draft, open, não mergeado, mergeable=true**.
 
-HEAD reconciliado e auditado: `377756b08b02895b900cad04c6bf7ec13e6e0fd5`.
+HEAD auditado após Correção 003B-08: `ed44cb8abab86cb28087d410ae5c0fe75b26d2be`.
 
-CI final auditada antes da 003B-08: `32848304161` — **success**.
+CI auditada do HEAD: `32851269642` — **success**.
 
 Já executado/auditado:
 
@@ -49,16 +49,11 @@ Já executado/auditado:
 - complemento IG User + Insights: **EXECUTADO, AUDITADO E APROVADO COMO EVIDÊNCIA READ-ONLY**;
 - Correção 003B-06 credential-aware discovery: **EXECUTADA E AUDITADA; APROVADA NO NÍVEL DE CÓDIGO/ARQUITETURA DOCUMENTADA; NÃO É PROVA E2E BISU**;
 - reconciliação da branch com `main`: **EXECUTADA, AUDITADA E APROVADA**;
-- testes após reconciliação: **228/228** nos módulos Meta/actions/componentes; typecheck e lint limpos;
-- CI do HEAD reconciliado: **verde**.
+- Correção 003B-08 reconexão em `conexao-recusada`: **EXECUTADA, AUDITADA E APROVADA**;
+- testes após 003B-08: **230/230** nos módulos Meta/actions/componentes; typecheck e lint limpos;
+- CI do HEAD `ed44cb8...`: **verde**.
 
 003B continua **NÃO PROMOVIDA**.
-
-Correção vigente:
-
-`rodadas/gpt/CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md`
-
-Status da 003B-08: **AUTORIZADA, AINDA NÃO EXECUTADA/AUDITADA**.
 
 ## 4. Produto — mídia paga
 
@@ -109,11 +104,11 @@ Regra permanente:
 - não inferir a identidade ou estado de recurso Meta por semelhança de nome;
 - não usar empresa/portfolio de terceiro sem decisão explícita do fundador.
 
-## 7. Conexão USER real atual
+## 7. Conexão USER real atual antes do novo teste
 
 Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 
-- status ACTIVE;
+- status ACTIVE no último snapshot auditado;
 - `external_user_id=28050226117920563`;
 - `external_business_id=null`;
 - scopes: `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_manage_insights`, `ads_read`, `public_profile`;
@@ -128,7 +123,7 @@ Ativos de fixture diagnóstica:
 
 ## 8. Evidência USER consolidada
 
-Com o mesmo User Access Token:
+Com o mesmo User Access Token anterior:
 
 - token válido, tipo USER, app/identidade esperados;
 - `/me/adaccounts` → HTTP 200, 3 contas;
@@ -160,22 +155,13 @@ Arquitetura aprovada no código:
 
 A execução não deve ser revertida.
 
-## 10. Bug de reconexão observado — 003B-08
+## 10. Correção 003B-08 — reconexão liberada
 
-Na tela real, o estado `conexao-recusada` mostra:
+Auditoria: `rodadas/gpt/AUDITORIA_CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md`.
 
-`A Meta não aceitou mais a autorização atual. Conecte novamente para retomar de onde parou.`
+O estado `conexao-recusada` agora oferece **Conectar novamente** e reutiliza a Server Action canônica `connectMetaAction`.
 
-Mas o componente não oferece o botão correspondente.
-
-Causa confirmada no código:
-
-- `src/components/meta/meta-assets-section.tsx`: ramo `conexao-recusada` não renderiza `MetaConnectButton`;
-- `src/components/meta/meta-assets-section.test.tsx`: teste atual inclusive exige que `conexao-recusada` não tenha botão.
-
-O fluxo de servidor existente já suporta reautorização sem apagar a conexão anterior: `MetaConnectButton` → `connectMetaAction` → `startMetaAuthorization`; no callback, a conexão viva é retomada e o segredo só é substituído após autorização bem-sucedida.
-
-A correção autorizada deve apenas disponibilizar **Conectar novamente** nesse ramo e ajustar os testes correspondentes.
+Reconectar não exige desconectar primeiro. A correção não alterou backend, RPC, migration, banco, `.env.local`, app Meta, Business Login Configuration, scopes ou tokens.
 
 ## 11. Gate E2E BISU — ESTADO ATUAL
 
@@ -188,30 +174,34 @@ Ainda falta E2E real de BISU para provar:
 
 Não há vaga para criar terceiro portfólio. O inventário Meta ainda precisa ser reconstruído corretamente, distinguindo Quoron, Bizzman5po e BizzManiq1 e provando qual papel cada um exerce.
 
-A 003B-08 é independente desse inventário: ela apenas restaura na UI a ação de reconectar já suportada pelo backend.
-
 ## 12. Próxima ação autorizada
 
-Próximo a agir: **Claude Code**.
+Próximo a agir: **fundador**.
 
-Executar somente `rodadas/gpt/CORRECAO_003B_08_RECONEXAO_CONEXAO_RECUSADA.md` na branch `claude/rodada-003b-meta-asset-discovery-selection`.
+Ação autorizada agora:
 
-Claude deve:
+1. recarregar a aplicação local em `http://localhost:3000/conta`;
+2. no cartão **A conexão precisa da sua atenção**, clicar em **Conectar novamente**;
+3. seguir o fluxo normal que a Meta abrir;
+4. parar e trazer ao GPT qualquer tela de escolha, erro, bloqueio ou resultado antes de alterar configurações externas por conta própria.
 
-1. adicionar `MetaConnectButton` com rótulo `Conectar novamente` ao estado `conexao-recusada`;
-2. ajustar os testes para exigir esse botão e remover a expectativa antiga que o proibia;
-3. não alterar banco, migration, `.env.local`, Meta App, Business Login Configuration, scopes ou tokens;
-4. executar testes Meta/actions/componentes, typecheck e lint;
-5. publicar novo HEAD e obter CI no PR #12;
-6. parar em `AGUARDANDO AUDITORIA GPT`.
+Durante esse teste NÃO:
 
-Depois da auditoria GPT, se aprovada, o fundador poderá recarregar a aplicação local e usar **Conectar novamente** para testar outra autorização.
+- clicar em `Desconectar` antes da reconexão;
+- criar ou excluir Business Portfolio;
+- alterar `.env.local`;
+- alterar scopes, App ou Business Login Configuration manualmente;
+- transferir ativos;
+- criar campanha/anúncio/gasto;
+- expor token/secret.
+
+O teste real está **AUTORIZADO**. O resultado ainda precisa ser auditado antes de qualquer promoção da 003B.
 
 ## 13. Continua NÃO autorizado
 
 - criar terceiro Business Portfolio;
 - excluir `Bizzman5po` por tentativa;
-- promover/mergear 003B antes do gate correspondente;
+- promover/mergear 003B antes do E2E pertinente;
 - iniciar Fase 4;
 - declarar USER arquitetura definitiva;
 - remover BISU;
@@ -225,11 +215,11 @@ Depois da auditoria GPT, se aprovada, o fundador poderá recarregar a aplicaçã
 
 ## 14. Pendências
 
-- executar/auditar Correção 003B-08;
-- depois reconstruir inventário Meta real sem confundir nomes;
-- definir fixture BISU elegível usando recursos existentes, se possível;
-- executar E2E BISU real;
-- se passar, decidir promoção da 003B;
+- executar o novo teste de reconexão e auditar o resultado;
+- reconstruir inventário Meta real sem confundir nomes;
+- definir fixture BISU elegível usando recursos existentes, se necessário;
+- executar E2E BISU real quando houver condição elegível;
+- se os gates passarem, decidir promoção da 003B;
 - corrigir UX que hoje afirma ausência de Page quando API devolve lista vazia;
 - harmonizar canônicos de mídia paga pós-003B;
 - redaction do callback em logs antes de produção;
