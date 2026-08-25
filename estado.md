@@ -143,45 +143,60 @@ Arquitetura aprovada no código:
 
 A execução não deve ser revertida.
 
-## 9. Gate E2E BISU ainda aberto
+## 9. Gate E2E BISU — fixture própria decidida
 
-Ainda não há prova E2E real de BISU para:
+Ainda falta E2E real de BISU para provar:
 
 1. chamada de `assigned_pages` com BISU ativo do fluxo real;
 2. permissões efetivamente exigidas pelo edge nesse arranjo;
-3. expansão `instagram_business_account` no retorno real desse edge;
-4. descoberta/seleção completa usando uma entidade cliente elegível separada do portfólio dono do app.
+3. expansão `instagram_business_account` no retorno real;
+4. descoberta/seleção completa em um portfólio cliente elegível.
 
 No BISU anterior, o portfólio Quoron apareceu desabilitado com `This Meta Business Account owns the app`.
 
-Esse gap é material porque descoberta/seleção de ativos é a função central da 003B. Por isso a rodada **não deve ser promovida apenas com prova documental + testes**, apesar do código estar auditado e da CI estar verde.
+Decisão registrada em:
 
-Não usar empresa/portfólio de terceiro sem nova decisão explícita do fundador.
+`rodadas/gpt/DECISAO_003B_07_FIXTURE_BISU_CLIENTE_PROPRIO.md`
+
+Solução escolhida:
+
+- criar um segundo Meta Business Portfolio controlado pelo próprio fundador, chamado **Tráfego Pago Cliente Teste**;
+- ele funciona como cliente do E2E e **não** como terceiro;
+- o app continua pertencendo ao portfólio Quoron;
+- preferir compartilhamento de acesso aos ativos existentes, sem transferência de ownership;
+- somente criar Page/Instagram isolados dentro da fixture se a Meta não aceitar ativos compartilhados no fluxo.
+
+Evidência oficial: documentação Meta/WhatsApp de 2026 afirma que uma empresa pode criar múltiplos Meta Business Portfolios.
 
 ## 10. Próxima ação autorizada
 
-**Nenhuma nova execução do Claude está autorizada neste momento.**
+Próximo a agir: **fundador**.
 
-Próximo a agir: **GPT/fundador somente quando houver uma decisão sobre como obter uma fixture E2E BISU elegível**.
+Única ação manual autorizada agora:
 
-Até lá:
+**criar na própria conta Meta o Business Portfolio `Tráfego Pago Cliente Teste`.**
 
-- não enviar `/proxima` ao Claude;
-- não promover/mergear 003B;
-- não iniciar Fase 4.
+Depois da criação, o GPT deve continuar imediatamente com o compartilhamento mínimo de ativos e o E2E BISU, sem reabrir a decisão arquitetural.
+
+Nesta ação inicial, NÃO:
+
+- compartilhar ativos ainda;
+- transferir ownership;
+- mover o app;
+- alterar Business Login Configuration;
+- alterar scopes;
+- executar novo OAuth;
+- mexer em `.env.local`.
 
 ## 11. Continua NÃO autorizado
 
-- promover/mergear 003B;
+- promover/mergear 003B antes do E2E BISU;
 - iniciar Fase 4;
 - declarar USER arquitetura definitiva;
 - remover BISU;
 - adicionar `business_management`, `ads_management` ou outro scope por tentativa;
-- novo OAuth;
-- alterar `.env.local`;
-- mexer no acesso da Page/Instagram/Business Portfolio;
-- alterar App/Business Login Configuration no painel Meta;
-- usar empresa/portfólio de terceiro sem nova decisão explícita;
+- transferir ownership da Page/Instagram/Ad Account/app;
+- usar empresa/portfólio de terceiro;
 - expor App Secret/token;
 - pedir/imprimir/persistir Page Access Token;
 - campanha/anúncio/gasto;
@@ -189,8 +204,10 @@ Até lá:
 
 ## 12. Pendências
 
-- decidir como obter um E2E BISU real com entidade elegível;
-- depois decidir promoção da 003B;
+- criar `Tráfego Pago Cliente Teste`;
+- compartilhar acesso mínimo aos ativos necessários sem transferir ownership;
+- executar E2E BISU real;
+- se passar, decidir promoção da 003B;
 - corrigir UX que hoje afirma ausência de Page quando API devolve lista vazia;
 - harmonizar canônicos de mídia paga pós-003B;
 - redaction do callback em logs antes de produção;
