@@ -155,27 +155,33 @@ O fundador autorizou testar o caminho `Token de acesso do usuário` no app `Traf
 
 Motivo: a Meta oferece explicitamente User Access Token nessa configuração; a documentação oficial do Instagram com Facebook Login trabalha com Facebook User Access Token; a Marketing API também admite User Access Token; e o gateway atual já contém caminho distinto para reconhecer/revogar token USER. Isso torna a hipótese relevante, mas ainda não provada no E2E específico do produto.
 
-Fatos novos provados pela UI da Meta em 2026-08-25:
+Fatos provados pela UI da Meta em 2026-08-25:
 
 - ao escolher `Token de acesso do usuário`, a etapa `Ativos` fica indisponível;
 - a própria Meta informa: `Não é possível selecionar ativos porque você optou por usar um token de acesso do usuário com essa configuração.`;
 - no modelo USER, os ativos precisam ser descobertos depois a partir do usuário autorizado, compatível com `GET /me/accounts` previsto na 003B;
-- ao chegar à etapa `Permissões`, o seletor aparece vazio e, mesmo aberto sem filtro, mostra `Nenhum resultado correspondente`;
-- portanto, neste app E2E, **as permissões necessárias ainda não estão disponíveis no catálogo da configuração**. A hipótese principal a validar é que elas precisam ser habilitadas/adicionadas primeiro em `Casos de uso → Gerenciar mensagens e conteúdo no Instagram → Permissões e recursos`, antes de voltarem a aparecer na configuração de Facebook Login for Business.
+- inicialmente, o seletor de permissões da configuração USER apareceu vazio;
+- a página geral `Permissões e recursos` do app confirmou que existem `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_manage_insights` e `ads_read` no catálogo do app;
+- após a configuração das permissões, foi criada com sucesso a configuração **`Quoron E2E Login`** no app **`Trafego Pago E2E Test`**;
+- Configuration ID da configuração USER: **`1068370819137366`**.
+
+A configuração USER está **CRIADA NO PAINEL META**, mas o OAuth real com ela ainda **NÃO FOI EXECUTADO**. Nada foi alterado ainda em `.env.local` e a conexão real atual permanece preservada.
 
 A autorização **não** promove User Access Token como arquitetura definitiva e **não** remove BISU do produto.
 
 ## 8. Próxima ação autorizada
 
-Próximo a agir: **fundador no Meta for Developers, no app `Trafego Pago E2E Test`**.
+Próximo a agir: **GPT + fundador na preparação segura do OAuth E2E USER**.
 
-1. cancelar/fechar a criação atual da configuração USER sem criar configuração vazia;
-2. abrir `Casos de uso → Gerenciar mensagens e conteúdo no Instagram → Permissões e recursos`;
-3. verificar se a Meta permite adicionar individualmente, em acesso padrão para teste com usuário que tem função no app, `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_manage_insights` e, se disponível sem dependência de escrita, `ads_read`;
-4. não usar os botões em lote de conteúdo/mensagens se eles adicionarem permissões extras de escrita;
-5. retornar ao GPT com a tela da página `Permissões e recursos` antes de adicionar permissões materiais não previstas.
+Antes de iniciar o OAuth real:
 
-Se as permissões mínimas puderem ser habilitadas individualmente, recriar a configuração USER e verificar se o seletor passa a oferecê-las. Se continuarem ausentes, o experimento para e o GPT reavalia a hipótese antes de nova tentativa.
+1. cadastrar no app `Trafego Pago E2E Test` o redirect URI de desenvolvimento exatamente como o produto espera: `http://localhost:3000/meta/callback`;
+2. obter no painel do novo app o **App ID** e copiar o **App Secret diretamente para o `.env.local`**, sem expor o secret no chat;
+3. trocar temporariamente no `.env.local` apenas `META_APP_ID`, `META_APP_SECRET` e `META_LOGIN_CONFIG_ID=1068370819137366`, preservando `META_OAUTH_REDIRECT_URI=http://localhost:3000/meta/callback` e a versão vigente;
+4. reiniciar o servidor local para carregar as novas credenciais;
+5. **não iniciar o OAuth ainda** até o GPT definir como preservar ou conscientemente substituir a conexão ACTIVE atual, porque o callback de reautorização pode atualizar a credencial da conexão viva da organização.
+
+O próximo gate é preparar o app/local sem mutar a conexão real; depois o GPT define o procedimento seguro do OAuth.
 
 ## 9. Continua NÃO autorizado
 
@@ -183,7 +189,7 @@ Se as permissões mínimas puderem ser habilitadas individualmente, recriar a co
 - remover suporte BISU;
 - associar o app de teste ao portfólio Quoron apenas para habilitar BISU;
 - substituir definitivamente o app oficial;
-- alterar `.env.local` antes de a configuração USER estar concluída e o GPT orientar a troca temporária;
+- iniciar OAuth USER antes do gate de preservação da conexão ACTIVE atual;
 - criar novo portfólio empresarial;
 - usar conta de terceiro;
 - criar `Quoron 1`;
