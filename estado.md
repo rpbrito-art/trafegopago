@@ -23,23 +23,19 @@ Promovidas: **000–003A**.
 - merge 003A: `546838db8e7ced4e9045c05feb8c7b2f0c476cc2`.
 - CI final 003A: `32772710738` — verde.
 
-003A está **EXECUTADA, AUDITADA E PROMOVIDA**. Permanecem canônicos: Facebook Login for Business + Graph API v26.0; token Meta server-side no Vault; OAuth `state` de uso único; membership reconferida; suporte/classificação de BISU; desconexão segura.
+003A está **EXECUTADA, AUDITADA E PROMOVIDA**.
 
-## 3. Rodada 003B — EM EXECUÇÃO, NÃO PROMOVIDA
+## 3. Rodada 003B — EXECUTADA/AUDITADA EM CÓDIGO, NÃO PROMOVIDA
 
 Mandato: `rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`
 
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
-PR: **#12 draft, open, não mergeado**.
+PR #12: **draft, open, não mergeado, mergeable=true**.
 
-HEAD anterior auditado: `1771965805a09082579da1f1baea58b674f24084`.
+HEAD reconciliado e auditado: `377756b08b02895b900cad04c6bf7ec13e6e0fd5`.
 
-CI anterior auditada: `32844721885` — success.
-
-HEAD da Correção 003B-06: `c1b3ba01abd44503777adaf6b5ea4507063bce34`.
-
-Situação atual do PR: branch divergiu da `main`, PR temporariamente não mergeável; o HEAD `c1b3ba0...` ainda não possui CI associada.
+CI final auditada: `32848304161` — **success**.
 
 Já executado/auditado:
 
@@ -51,7 +47,10 @@ Já executado/auditado:
 - investigação 003B-05: **EXECUTADA E AUDITADA**;
 - complemento Page direta: **EXECUTADO, AUDITADO E APROVADO COMO EVIDÊNCIA READ-ONLY**;
 - complemento IG User + Insights: **EXECUTADO, AUDITADO E APROVADO COMO EVIDÊNCIA READ-ONLY**;
-- Correção 003B-06 credential-aware discovery: **EXECUTADA E AUDITADA; APROVADA NO NÍVEL DE CÓDIGO/ARQUITETURA DOCUMENTADA; NÃO É PROVA E2E BISU**.
+- Correção 003B-06 credential-aware discovery: **EXECUTADA E AUDITADA; APROVADA NO NÍVEL DE CÓDIGO/ARQUITETURA DOCUMENTADA; NÃO É PROVA E2E BISU**;
+- reconciliação da branch com `main`: **EXECUTADA, AUDITADA E APROVADA**;
+- testes após reconciliação: **228/228** nos módulos Meta/actions/componentes; typecheck e lint limpos;
+- CI do HEAD reconciliado: **verde**.
 
 003B continua **NÃO PROMOVIDA**.
 
@@ -61,7 +60,7 @@ Canônico específico: `docs/01-produto/PAID_MEDIA_CANONICAL.md`.
 
 Mídia paga é pilar central; orgânico também entrega valor. Permissão Ads não equivale a criar campanha/gastar. Gasto exige aprovação humana explícita, comando de domínio, idempotência e auditoria.
 
-`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` permanece obrigatório para simplicidade guiada: complexidade técnica pertence ao sistema, não ao pequeno empresário.
+`docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` permanece obrigatório para simplicidade guiada.
 
 ## 5. Arquitetura Meta vigente
 
@@ -96,7 +95,7 @@ Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 - `instagram_accounts=0`;
 - `ad_accounts=0`.
 
-O GPT reconfirmou esse snapshot no Supabase após a execução 003B-06; não houve persistência de seleção nem mutação externa.
+O GPT reconfirmou esse snapshot no Supabase após a reconciliação; não houve persistência de seleção nem mutação externa.
 
 Ativos de fixture diagnóstica:
 
@@ -115,23 +114,20 @@ Com o mesmo User Access Token:
 - `media_count=9`;
 - Insights `reach/day` → HTTP 200.
 
-Sem `business_management`, `ads_management` ou Page Access Token.
-
 Falha observada:
 
 - `/me/accounts` → HTTP 200, 0 Pages.
 
-A causa interna da Meta permanece não provada. USER continua não canônico porque não satisfez descoberta automática no E2E real.
+USER continua não canônico porque não satisfez descoberta automática no E2E real.
 
-## 8. Correção 003B-06 — resultado da auditoria
+## 8. Correção 003B-06 — arquitetura aprovada
 
 Documentos:
 
 - `rodadas/gpt/CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`;
 - `rodadas/claude/RELATORIO_CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`;
-- `rodadas/gpt/AUDITORIA_CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`.
-
-A afirmação anterior de que `assigned_pages` era apenas hipótese fica **SUPERADA**.
+- `rodadas/gpt/AUDITORIA_CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`;
+- `rodadas/gpt/AUDITORIA_RECONCILIACAO_003B_06_CI_FINAL.md`.
 
 Evidência primária verificada: o SDK oficial da Meta `facebook-nodejs-business-sdk`, objeto `SystemUser`, implementa `getAssignedPages()` usando `/assigned_pages` e objetos `Page`.
 
@@ -147,38 +143,36 @@ Arquitetura aprovada no código:
 
 A execução não deve ser revertida.
 
-## 9. O que a 003B-06 NÃO provou
+## 9. Gate E2E BISU ainda aberto
 
 Ainda não há prova E2E real de BISU para:
 
-1. chamada de `assigned_pages` com um BISU ativo do fluxo real;
+1. chamada de `assigned_pages` com BISU ativo do fluxo real;
 2. permissões efetivamente exigidas pelo edge nesse arranjo;
 3. expansão `instagram_business_account` no retorno real desse edge;
 4. descoberta/seleção completa usando uma entidade cliente elegível separada do portfólio dono do app.
 
-No BISU anterior, o portfólio Quoron apareceu desabilitado com `This Meta Business Account owns the app`. Esse fato permanece válido.
+No BISU anterior, o portfólio Quoron apareceu desabilitado com `This Meta Business Account owns the app`.
+
+Esse gap é material porque descoberta/seleção de ativos é a função central da 003B. Por isso a rodada **não deve ser promovida apenas com prova documental + testes**, apesar do código estar auditado e da CI estar verde.
 
 Não usar empresa/portfólio de terceiro sem nova decisão explícita do fundador.
 
-## 10. Próxima ação autorizada — RECONCILIAÇÃO + CI
+## 10. Próxima ação autorizada
 
-Próximo a agir: **Claude Code**.
+**Nenhuma nova execução do Claude está autorizada neste momento.**
 
-Claude deve somente:
+Próximo a agir: **GPT/fundador somente quando houver uma decisão sobre como obter uma fixture E2E BISU elegível**.
 
-1. atualizar a branch 003B com a `main` atual;
-2. resolver o conflito documental preservando esta auditoria como estado mais novo;
-3. não mudar o comportamento aprovado da 003B-06 salvo necessidade estrita de reconciliação;
-4. executar testes Meta relevantes, typecheck e lint;
-5. publicar o novo HEAD remoto e obter CI do PR;
-6. entregar HEAD, estado do PR e CI;
-7. parar em `AGUARDANDO AUDITORIA GPT`.
+Até lá:
 
-Essa autorização é apenas de integração técnica e CI. Não autoriza novo E2E, OAuth ou alteração Meta.
+- não enviar `/proxima` ao Claude;
+- não promover/mergear 003B;
+- não iniciar Fase 4.
 
 ## 11. Continua NÃO autorizado
 
-- promover/mergear 003B automaticamente;
+- promover/mergear 003B;
 - iniciar Fase 4;
 - declarar USER arquitetura definitiva;
 - remover BISU;
@@ -195,8 +189,8 @@ Essa autorização é apenas de integração técnica e CI. Não autoriza novo E
 
 ## 12. Pendências
 
-- reconciliar PR #12 com `main` e obter CI verde no novo HEAD;
-- depois decidir o critério final de E2E/promoção da 003B;
+- decidir como obter um E2E BISU real com entidade elegível;
+- depois decidir promoção da 003B;
 - corrigir UX que hoje afirma ausência de Page quando API devolve lista vazia;
 - harmonizar canônicos de mídia paga pós-003B;
 - redaction do callback em logs antes de produção;
