@@ -141,40 +141,40 @@ Autorização: `rodadas/gpt/AUTORIZACAO_003B_04_APP_META_TESTE_SEM_PORTFOLIO.md`
 
 Status: **AUTORIZADO PARA EXPERIMENTO CONTROLADO — NÃO É DECISÃO ARQUITETURAL DEFINITIVA**.
 
-Motivo:
+O app **Trafego Pago E2E Test** foi criado com sucesso sem Business Portfolio associado na criação.
 
-- o fundador não quer usar conta de terceiro;
-- não dispõe atualmente de outro portfólio empresarial utilizável;
-- não quer assumir custo pago apenas para destravar o teste;
-- há evidência contemporânea de que um Meta App pode ser criado escolhendo `I don't want to connect a business portfolio yet` e depois receber Facebook Login for Business.
+Fato novo observado no painel `Adicionar mais casos de uso`:
 
-Hipótese a provar: um segundo app exclusivamente de desenvolvimento, sem portfólio conectado na criação, poderá apresentar o portfólio Quoron como cliente porque Quoron não será dono desse app de teste.
+- marcar **Autenticar e solicitar dados de usuários com o Login do Facebook** bloqueia **Gerenciar mensagens e conteúdo no Instagram**;
+- marcar o caso de uso do Instagram bloqueia o Login do Facebook genérico;
+- portanto esses dois casos de uso são tratados pela UI atual como incompatíveis no mesmo app.
+
+Correção de entendimento do GPT:
+
+- o cartão **Autenticar e solicitar dados de usuários com o Login do Facebook** é o Login do Facebook genérico e não deve ser confundido com **Facebook Login for Business**;
+- para a arquitetura vigente do produto, o caminho a investigar é o caso de uso **Gerenciar mensagens e conteúdo no Instagram** e, dentro dele, verificar se a Meta expõe **Instagram API setup with Facebook Login / Facebook Login for Business**, como ocorreu no app oficial;
+- isso é continuidade do experimento, não decisão definitiva de arquitetura.
 
 ## 8. Próxima ação autorizada
 
 Próximo a agir: **fundador no Meta for Developers**.
 
-Criar **somente** um novo Meta App de teste, sem conectá-lo a Business Portfolio durante a criação.
+No app `Trafego Pago E2E Test`:
 
-Sequência esperada:
+1. deixar desmarcado **Autenticar e solicitar dados de usuários com o Login do Facebook**;
+2. marcar somente **Gerenciar mensagens e conteúdo no Instagram**;
+3. clicar **Salvar**;
+4. parar quando o painel/fluxo de configuração do Instagram abrir e retornar ao GPT com a tela.
 
-1. Meta for Developers → Meus aplicativos → Criar aplicativo;
-2. nome sugerido: `Trafego Pago E2E Test`;
-3. escolher o caminho que permita um app do tipo **Business** / criação sem caso de uso, conforme a UI disponível;
-4. quando a Meta perguntar qual Business Portfolio conectar, escolher **`I don't want to connect a business portfolio yet` / `Não quero conectar um portfólio empresarial ainda`**;
-5. concluir a criação até chegar ao dashboard do novo app;
-6. **parar no dashboard** e retornar ao GPT com a tela/resultado.
-
-Não revelar App Secret no chat.
-
-Depois disso o GPT verifica no painel real se esse app oferece Facebook Login for Business e se permite criar a configuração com System-user access token antes de autorizar qualquer alteração local.
+O objetivo do próximo gate é verificar se esse app sem portfólio oferece o setup **Instagram API com Facebook Login / Facebook Login for Business** sem forçar associação proprietária a um Business Portfolio.
 
 ## 9. Continua NÃO autorizado
 
-- conectar o novo app de teste ao portfólio Quoron durante a criação;
+- associar o novo app de teste ao portfólio Quoron;
 - substituir definitivamente o app oficial;
 - alterar ainda `.env.local` para o novo app;
-- criar configuração de login no novo app antes do próximo gate do GPT;
+- criar configuração de Business Login no novo app antes de verificar o próximo painel;
+- marcar o Login do Facebook genérico apenas para contornar o fluxo;
 - criar novo portfólio empresarial;
 - usar conta de terceiro;
 - criar `Quoron 1`;
