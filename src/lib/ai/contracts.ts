@@ -119,8 +119,29 @@ export const AI_ERROR_CLASSES = [
   "PROVIDER_UNAVAILABLE",
   "PROVIDER_RATE_LIMITED",
   "PROVIDER_REJECTED",
+  /**
+   * O input não satisfez o schema da task.
+   *
+   * Separado de `OUTPUT_SCHEMA_INVALID` de propósito: este é erro de quem
+   * chamou, detectado antes de qualquer gasto, e por isso **não escala** para
+   * modelo melhor (`AI_ARCHITECTURE.md` §6). Confundir os dois esconderia qual
+   * lado está quebrado.
+   */
+  "INPUT_SCHEMA_INVALID",
   /** O provider respondeu, mas o output não satisfez o schema da task. */
   "OUTPUT_SCHEMA_INVALID",
+  /** O usage relatado pelo provider não é confiável (negativo, fracionário). */
+  "USAGE_INVALID",
+  /** Havia usage e preço, mas o custo não pôde ser calculado com confiança. */
+  "COST_CALCULATION_FAILED",
+  /**
+   * A escrita do ledger falhou.
+   *
+   * Sem registro não há prova do que aconteceu — e uma execução que o sistema
+   * não consegue provar não pode ser entregue como sucesso
+   * (Correção 004A-01 §4).
+   */
+  "LEDGER_WRITE_FAILED",
   "TIMEOUT",
   "UNKNOWN",
 ] as const;

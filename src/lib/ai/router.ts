@@ -17,7 +17,7 @@ import type { AIRunLedger } from "./run-ledger";
 import type { AITaskRegistry } from "./task-registry";
 
 /**
- * AI Router (Rodada 004A §5.6).
+ * AI Router (Rodada 004A §5.6, endurecido pela Correção 004A-01).
  *
  * Recebe uma **task** e devolve output validado. Nenhuma feature escolhe
  * provider, modelo, temperatura ou endpoint — é essa indireção que permite
@@ -28,16 +28,26 @@ import type { AITaskRegistry } from "./task-registry";
  *
  * 1. resolver a definição versionada da task;
  * 2. conferir escopo tenant/global — antes de qualquer leitura;
- * 3. escolher candidato por tier e capacidades;
- * 4. resolver **um** preço vigente, ou falhar;
- * 5. abrir o run `STARTED`;
- * 6. só então chamar o adapter;
- * 7. validar o output pelo schema;
- * 8. fechar o run com custo, ou com a classe de erro.
+ * 3. validar o input;
+ * 4. escolher candidato por tier, vigência e capacidades;
+ * 5. resolver **um** preço vigente, ou falhar;
+ * 6. abrir o run `STARTED`;
+ * 7. só então chamar o adapter;
+ * 8. calcular o custo e validar o output;
+ * 9. fechar o run — e **conferir que fechou**.
  *
- * Tudo que falha antes do passo 5 falha **sem ledger** — não há execução para
+ * Tudo que falha antes do passo 6 falha **sem ledger**: não há execução para
  * registrar, e inventar um run com modelo nulo poluiria a conta de custo com
- * linhas que nunca chamaram ninguém. Tudo que falha depois é registrado.
+ * linhas que nunca chamaram ninguém. Do passo 6 em diante, todo desfecho é
+ * registrado — inclusive a ausência de adapter, que é falha de configuração
+ * digna de auditoria e não um silêncio (Correção 004A-01 §10).
+ *
+ * ## Sucesso exige prova
+ *
+ * O Router só devolve `ok: true` depois de o ledger confirmar a conclusão. Um
+ * output entregue sem registro seria uma chamada paga que a contabilidade não
+ * conhece — e, se o custo não puder ser calculado com confiança, a execução
+ * termina em falha mesmo que o provider tenha respondido bem (§§4 e 5).
  */
 
 export type AIRouterDeps = {
@@ -45,7 +55,7 @@ export type AIRouterDeps = {
   catalog: AICatalog;
   adapters: AIAdapterRegistry;
   ledger: AIRunLedger;
-  /** Injetável para o custo de um teste ser reproduzível. */
+  /** Injetável para o custo e a vigência de um teste serem reproduzíveis. */
   agora?: () => Date;
   gerarCorrelationId?: () => string;
 };
@@ -138,17 +148,19 @@ export function criarAIRouter(deps: AIRouterDeps) {
         return falha("NO_CANDIDATE_MODEL", null);
       }
 
-      // ------------------------------------------------------------ input
+      // --------------------------------------------------------------- input
       const inputValidado = definicao.inputSchema.safeParse(request.input);
 
       if (!inputValidado.success) {
-        // Input inválido é erro de quem chamou, não do provider — e por isso
-        // não escala para modelo melhor (`AI_ARCHITECTURE.md` §6).
-        return falha("OUTPUT_SCHEMA_INVALID", null);
+        // Classe própria: isto é erro de quem chamou, detectado antes de
+        // qualquer gasto, e por isso não escala para modelo melhor nem abre run
+        // pago (`AI_ARCHITECTURE.md` §6, Correção 004A-01 §9).
+        return falha("INPUT_SCHEMA_INVALID", null);
       }
 
-      // ---------------------------------------------------------- candidato
-      const todos = await deps.catalog.listarCandidatos();
+      // ----------------------------------------------------------- candidato
+      const instante = agora();
+      const todos = await deps.catalog.listarCandidatos(instante);
 
       const elegiveis = todos.filter(
         (candidato) =>
@@ -165,8 +177,7 @@ export function criarAIRouter(deps: AIRouterDeps) {
 
       if (!escolhido) return falha("NO_CANDIDATE_MODEL", null);
 
-      // -------------------------------------------------------------- preço
-      const instante = agora();
+      // --------------------------------------------------------------- preço
       const precos = await deps.catalog.listarPrecosVigentes(
         escolhido.id,
         instante,
@@ -179,15 +190,7 @@ export function criarAIRouter(deps: AIRouterDeps) {
 
       const preco: AIPriceVersion = precos[0];
 
-      // ------------------------------------------------------------ adapter
-      const adapter = deps.adapters.resolve(escolhido.providerKey);
-
-      // Nada de fallback silencioso para fake: sem adapter, a execução falha e
-      // fica registrada. Uma aplicação que responde com dados inventados e
-      // custo zero é pior do que uma que falha (mandato §10.14).
-      if (!adapter) return falha("ADAPTER_NOT_REGISTERED", null);
-
-      // ---------------------------------------------------------------- run
+      // ----------------------------------------------------------------- run
       const runId = await deps.ledger.abrir({
         organizationId,
         correlationId: request.correlationId ?? gerarCorrelationId(),
@@ -202,7 +205,40 @@ export function criarAIRouter(deps: AIRouterDeps) {
         fallbackFromRunId: request.fallbackFromRunId ?? null,
       });
 
-      if (!runId) return falha("UNKNOWN", null);
+      if (!runId) return falha("LEDGER_WRITE_FAILED", null);
+
+      /** Fecha o run em falha e devolve o desfecho. */
+      const encerrarComFalha = async (
+        errorClass: AIErrorClass,
+        extras: Partial<{
+          latencyMs: number | null;
+          inputTokens: number;
+          outputTokens: number;
+          cachedTokens: number | null;
+          estimatedCost: string | null;
+          currency: string | null;
+        }> = {},
+      ): Promise<AITaskResult<TOutput>> => {
+        const registrou = await deps.ledger.falhar({
+          runId,
+          organizationId,
+          errorClass,
+          latencyMs: extras.latencyMs ?? null,
+          ...extras,
+        });
+
+        // Nem a falha pôde ser registrada: o desfecho passa a ser o do próprio
+        // ledger, que é o problema mais grave dos dois.
+        return falha(registrou ? errorClass : "LEDGER_WRITE_FAILED", runId);
+      };
+
+      // ------------------------------------------------------------- adapter
+      const adapter = deps.adapters.resolve(escolhido.providerKey);
+
+      // Nada de fallback silencioso para fake. Com o run já aberto, a ausência
+      // de adapter vira `FAILED / ADAPTER_NOT_REGISTERED` — auditável, e sem
+      // nenhuma chamada externa (Correção 004A-01 §10).
+      if (!adapter) return encerrarComFalha("ADAPTER_NOT_REGISTERED");
 
       // ------------------------------------------------------------ execução
       let resultado;
@@ -219,25 +255,32 @@ export function criarAIRouter(deps: AIRouterDeps) {
         // Adapter que lança em vez de devolver erro normalizado ainda produz
         // ledger — e a exceção não sobe com a mensagem original, que pode
         // citar credencial.
-        await deps.ledger.falhar({
-          runId,
-          errorClass: "UNKNOWN",
-          latencyMs: null,
-        });
-        return falha("UNKNOWN", runId);
+        return encerrarComFalha("UNKNOWN");
       }
 
       if (!resultado.ok) {
-        await deps.ledger.falhar({
-          runId,
-          errorClass: resultado.errorClass,
+        return encerrarComFalha(resultado.errorClass, {
           latencyMs: resultado.latencyMs ?? null,
         });
-        return falha(resultado.errorClass, runId);
       }
 
+      const latencyMs = resultado.latencyMs ?? null;
+
       // --------------------------------------------------------------- custo
+      //
+      // Depois de o provider ter sido chamado, custo desconhecido encerra a
+      // execução. Concluir `SUCCEEDED` com custo nulo criaria uma chamada paga
+      // fora da conta do mês — e o banco também recusa (§§5 e 7).
       const custo = calcularCusto({ usage: resultado.usage, price: preco });
+
+      if (!custo.ok) {
+        return encerrarComFalha(
+          custo.motivo === "USAGE_INVALIDO"
+            ? "USAGE_INVALID"
+            : "COST_CALCULATION_FAILED",
+          { latencyMs },
+        );
+      }
 
       // ------------------------------------------------------------ validação
       //
@@ -249,29 +292,33 @@ export function criarAIRouter(deps: AIRouterDeps) {
       if (!validado.success) {
         // A chamada consumiu tokens mesmo tendo produzido lixo. O custo entra
         // no ledger: escondê-lo faria a conta do mês não fechar.
-        await deps.ledger.falhar({
-          runId,
-          errorClass: "OUTPUT_SCHEMA_INVALID",
-          latencyMs: resultado.latencyMs ?? null,
+        return encerrarComFalha("OUTPUT_SCHEMA_INVALID", {
+          latencyMs,
           inputTokens: resultado.usage.inputTokens,
           outputTokens: resultado.usage.outputTokens,
           cachedTokens: resultado.usage.cachedTokens ?? null,
-          estimatedCost: custo.ok ? custo.custo : null,
-          currency: custo.ok ? custo.currency : null,
+          estimatedCost: custo.custo,
+          currency: custo.currency,
         });
-        return falha("OUTPUT_SCHEMA_INVALID", runId);
       }
 
-      await deps.ledger.concluir({
+      // ------------------------------------------------------------ conclusão
+      const concluiu = await deps.ledger.concluir({
         runId,
+        organizationId,
         inputTokens: resultado.usage.inputTokens,
         outputTokens: resultado.usage.outputTokens,
         cachedTokens: resultado.usage.cachedTokens ?? null,
-        estimatedCost: custo.ok ? custo.custo : null,
-        currency: custo.ok ? custo.currency : null,
-        latencyMs: resultado.latencyMs ?? null,
+        estimatedCost: custo.custo,
+        currency: custo.currency,
+        latencyMs,
         confidence: resultado.confidence ?? null,
       });
+
+      // Sem confirmação de escrita não há sucesso. O output existe, mas
+      // entregá-lo afirmaria uma execução que o sistema não consegue provar —
+      // e o run ficaria `STARTED` para sempre, sem explicação.
+      if (!concluiu) return falha("LEDGER_WRITE_FAILED", runId);
 
       return {
         ok: true,
@@ -279,8 +326,8 @@ export function criarAIRouter(deps: AIRouterDeps) {
         runId,
         modelKey: escolhido.modelKey,
         tier: escolhido.tier,
-        estimatedCost: custo.ok ? custo.custo : null,
-        currency: custo.ok ? custo.currency : null,
+        estimatedCost: custo.custo,
+        currency: custo.currency,
       };
     },
   };

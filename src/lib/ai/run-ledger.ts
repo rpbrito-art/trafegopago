@@ -12,6 +12,19 @@ import type { AIErrorClass, AITier } from "./contracts";
  * fica registrado como iniciado em vez de desaparecer — um ledger que só
  * escreve no sucesso não é um ledger de custo, é um relatório de sucessos.
  *
+ * ## Toda mutação terminal é fail-closed
+ *
+ * `concluir` e `falhar` alcançam **apenas** um run `STARTED` da organização
+ * informada, e exigem que exatamente uma linha tenha mudado. Zero linhas é
+ * falha, não sucesso silencioso: um `update` que não achou nada significa que o
+ * run não existe, pertence a outro tenant ou já é terminal — e nos três casos
+ * quem chamou está prestes a afirmar algo que não aconteceu
+ * (Correção 004A-01 §4).
+ *
+ * `service_role` é BYPASSRLS, então o filtro por `organization_id` **é** o
+ * isolamento aqui. Sem ele, um `runId` vazado de outro tenant seria suficiente
+ * para reescrever o ledger alheio.
+ *
  * ## O que nunca entra aqui
  *
  * Prompt, input, output e PII. A tabela guarda contagem, custo, latência,
@@ -27,7 +40,8 @@ export type AbrirRunInput = {
   taskVersion: string;
   providerId: string;
   aiModelId: string;
-  aiPriceVersionId: string | null;
+  /** Obrigatório: o banco recusa run sem versão de preço. */
+  aiPriceVersionId: string;
   tier: AITier;
   promptVersion: string;
   schemaVersion: string;
@@ -36,18 +50,21 @@ export type AbrirRunInput = {
 
 export type ConcluirRunInput = {
   runId: string;
+  /** Escopo do run. `null` para tarefa global — e o filtro exige `IS NULL`. */
+  organizationId: string | null;
   inputTokens: number;
   outputTokens: number;
   cachedTokens: number | null;
-  /** Texto decimal exato, nunca `number`. */
-  estimatedCost: string | null;
-  currency: string | null;
+  /** Texto decimal exato, nunca `number`. O banco recusa sucesso sem ele. */
+  estimatedCost: string;
+  currency: string;
   latencyMs: number | null;
   confidence: number | null;
 };
 
 export type FalharRunInput = {
   runId: string;
+  organizationId: string | null;
   errorClass: AIErrorClass;
   latencyMs: number | null;
   inputTokens?: number;
@@ -97,7 +114,7 @@ export function criarAIRunLedger(
     },
 
     async concluir(input) {
-      const { error } = await supabase
+      const alvo = supabase
         .from("ai_runs")
         .update({
           status: "SUCCEEDED",
@@ -110,21 +127,34 @@ export function criarAIRunLedger(
           confidence: input.confidence,
           completed_at: new Date().toISOString(),
         })
-        .eq("id", input.runId);
+        .eq("id", input.runId)
+        // Terminal só se alcança uma vez: um run já concluído ou já falho não é
+        // reescrito pelo caminho normal da aplicação.
+        .eq("status", "STARTED");
+
+      const escopado =
+        input.organizationId === null
+          ? alvo.is("organization_id", null)
+          : alvo.eq("organization_id", input.organizationId);
+
+      const { data, error } = await escopado.select("id");
 
       if (error) {
         console.error("falha ao concluir ai_run", { code: error.code });
         return false;
       }
 
-      return true;
+      // Exatamente uma linha. Zero significa run inexistente, de outro tenant
+      // ou já terminal; mais de uma seria um `id` não único, que não pode
+      // acontecer — e nenhum dos casos é sucesso.
+      return (data ?? []).length === 1;
     },
 
     async falhar(input) {
       // Um run que falhou depois de consumir tokens ainda custou dinheiro. O
       // usage entra quando existir; quando não existir, fica nulo em vez de
       // zero — `0` afirmaria que a chamada foi gratuita.
-      const { error } = await supabase
+      const alvo = supabase
         .from("ai_runs")
         .update({
           status: "FAILED",
@@ -145,14 +175,22 @@ export function criarAIRunLedger(
           ...(input.currency === undefined ? {} : { currency: input.currency }),
           completed_at: new Date().toISOString(),
         })
-        .eq("id", input.runId);
+        .eq("id", input.runId)
+        .eq("status", "STARTED");
+
+      const escopado =
+        input.organizationId === null
+          ? alvo.is("organization_id", null)
+          : alvo.eq("organization_id", input.organizationId);
+
+      const { data, error } = await escopado.select("id");
 
       if (error) {
         console.error("falha ao registrar ai_run com falha", { code: error.code });
         return false;
       }
 
-      return true;
+      return (data ?? []).length === 1;
     },
   };
 }

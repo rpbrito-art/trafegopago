@@ -99,8 +99,11 @@ let concluidos: ConcluirRunInput[] = [];
 let falhados: FalharRunInput[] = [];
 let abrirDevolve: string | null = RUN_ID;
 
+let instanteRecebido: Date | null = null;
+
 const catalogo: AICatalog = {
-  async listarCandidatos() {
+  async listarCandidatos(em) {
+    instanteRecebido = em;
     return candidatos;
   },
   async listarPrecosVigentes() {
@@ -335,17 +338,19 @@ describe("resolução de preço", () => {
 // ---------------------------------------------------------------------------
 
 describe("adapter", () => {
-  it("sem adapter registrado, falha — e não cai em fake", async () => {
+  it("sem adapter registrado, falha de forma auditável — e não cai em fake", async () => {
     // Uma aplicação que responde com dados inventados e custo zero é pior do
-    // que uma que falha.
+    // que uma que falha. E a falha de configuração fica registrada: o run já
+    // estava aberto quando a ausência foi descoberta.
     const r = await router([]).run(PEDIDO);
 
     expect(r).toEqual({
       ok: false,
       errorClass: "ADAPTER_NOT_REGISTERED",
-      runId: null,
+      runId: RUN_ID,
     });
     expect(concluidos).toHaveLength(0);
+    expect(falhados[0]?.errorClass).toBe("ADAPTER_NOT_REGISTERED");
   });
 
   it("o registro de produção não tem nenhum adapter", async () => {
@@ -402,12 +407,19 @@ describe("structured output", () => {
     expect(falhados[0]?.currency).toBe("USD");
   });
 
-  it("input inválido falha antes de qualquer leitura de catálogo", async () => {
+  it("input inválido tem classe própria e falha antes do catálogo", async () => {
     const adapter = adapterOk();
 
     const r = await router([adapter]).run({ ...PEDIDO, input: { texto: 123 } });
 
-    expect(r.ok).toBe(false);
+    // Distinto de `OUTPUT_SCHEMA_INVALID`: um é erro de quem chamou, antes de
+    // qualquer gasto; o outro é o provider devolvendo lixo depois de consumir
+    // tokens.
+    expect(r).toEqual({
+      ok: false,
+      errorClass: "INPUT_SCHEMA_INVALID",
+      runId: null,
+    });
     expect(adapter.chamadas).toHaveLength(0);
     expect(abertos).toHaveLength(0);
   });
@@ -433,6 +445,7 @@ describe("falha de provider", () => {
     });
     expect(falhados[0]).toEqual({
       runId: RUN_ID,
+      organizationId: ORG_A,
       errorClass: "PROVIDER_RATE_LIMITED",
       latencyMs: 12,
     });
@@ -461,7 +474,11 @@ describe("falha de provider", () => {
 
     // Sem run aberto não há onde registrar o gasto — e um gasto que não pode
     // ser registrado não deve acontecer.
-    expect(r.ok).toBe(false);
+    expect(r).toEqual({
+      ok: false,
+      errorClass: "LEDGER_WRITE_FAILED",
+      runId: null,
+    });
     expect(adapter.chamadas).toHaveLength(0);
   });
 });
@@ -645,5 +662,180 @@ describe("registro de tasks", () => {
   it("o registro de produção nasce vazio", async () => {
     const { PRODUCTION_TASKS } = await import("./task-registry");
     expect(PRODUCTION_TASKS).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Correção 004A-01 — sucesso exige prova
+// ---------------------------------------------------------------------------
+
+describe("o ledger é a condição do sucesso", () => {
+  it("conclusão não confirmada não vira sucesso", async () => {
+    // O output existe, mas entregá-lo afirmaria uma execução que o sistema não
+    // consegue provar — e o run ficaria `STARTED` para sempre.
+    const ledgerMudo: AIRunLedger = {
+      async abrir(i) {
+        abertos.push(i);
+        return RUN_ID;
+      },
+      async concluir(i) {
+        concluidos.push(i);
+        return false;
+      },
+      async falhar(i) {
+        falhados.push(i);
+        return true;
+      },
+    };
+
+    const r = await criarAIRouter({
+      tasks: criarTaskRegistry([TASK]),
+      catalog: catalogo,
+      adapters: criarAdapterRegistry([adapterOk()]),
+      ledger: ledgerMudo,
+      agora: () => AGORA,
+    }).run(PEDIDO);
+
+    expect(r).toEqual({
+      ok: false,
+      errorClass: "LEDGER_WRITE_FAILED",
+      runId: RUN_ID,
+    });
+  });
+
+  it("falha não registrada devolve a falha do próprio ledger", async () => {
+    // Não conseguir registrar a falha é o problema mais grave dos dois, e é
+    // ele que sobe.
+    const ledgerMudo: AIRunLedger = {
+      async abrir(i) {
+        abertos.push(i);
+        return RUN_ID;
+      },
+      async concluir(i) {
+        concluidos.push(i);
+        return true;
+      },
+      async falhar(i) {
+        falhados.push(i);
+        return false;
+      },
+    };
+
+    const adapter = criarFakeAdapter({
+      providerKey: "fixture",
+      desfecho: { tipo: "erro", errorClass: "PROVIDER_UNAVAILABLE" },
+    });
+
+    const r = await criarAIRouter({
+      tasks: criarTaskRegistry([TASK]),
+      catalog: catalogo,
+      adapters: criarAdapterRegistry([adapter]),
+      ledger: ledgerMudo,
+      agora: () => AGORA,
+    }).run(PEDIDO);
+
+    expect(r).toEqual({
+      ok: false,
+      errorClass: "LEDGER_WRITE_FAILED",
+      runId: RUN_ID,
+    });
+  });
+
+  it("a organização vai junto em toda mutação terminal", async () => {
+    // É o filtro por organização que impede um `runId` vazado de outro tenant
+    // de reescrever o ledger alheio — `service_role` ignora RLS.
+    await router([adapterOk()]).run(PEDIDO);
+
+    expect(concluidos[0]?.organizationId).toBe(ORG_A);
+  });
+
+  it("run global conclui com organização nula", async () => {
+    await router([adapterOk()]).run({
+      taskType: TASK_GLOBAL.taskType,
+      taskVersion: TASK_GLOBAL.taskVersion,
+      input: { texto: "manutenção" },
+      organizationId: null,
+    });
+
+    expect(concluidos[0]?.organizationId).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Custo fail-closed
+// ---------------------------------------------------------------------------
+
+describe("custo desconhecido encerra a execução", () => {
+  it("usage fracionário depois do adapter não vira SUCCEEDED", async () => {
+    const adapter = criarFakeAdapter({
+      providerKey: "fixture",
+      desfecho: { tipo: "ok", output: OUTPUT_BOM, usage: { input: 1.5, output: 10 } },
+    });
+
+    const r = await router([adapter]).run(PEDIDO);
+
+    expect(r).toEqual({ ok: false, errorClass: "USAGE_INVALID", runId: RUN_ID });
+    expect(concluidos).toHaveLength(0);
+    expect(falhados[0]?.errorClass).toBe("USAGE_INVALID");
+  });
+
+  it("usage negativo depois do adapter não vira SUCCEEDED", async () => {
+    const adapter = criarFakeAdapter({
+      providerKey: "fixture",
+      desfecho: { tipo: "ok", output: OUTPUT_BOM, usage: { input: -1, output: 0 } },
+    });
+
+    const r = await router([adapter]).run(PEDIDO);
+
+    expect(!r.ok && r.errorClass).toBe("USAGE_INVALID");
+    expect(concluidos).toHaveLength(0);
+  });
+
+  it("preço ilegível não entrega o output como sucesso", async () => {
+    // Concluir com custo nulo criaria uma chamada paga fora da conta do mês.
+    precos = [preco({ inputPricePerMillion: "grátis" })];
+
+    const r = await router([adapterOk()]).run(PEDIDO);
+
+    expect(r).toEqual({
+      ok: false,
+      errorClass: "COST_CALCULATION_FAILED",
+      runId: RUN_ID,
+    });
+    expect(concluidos).toHaveLength(0);
+  });
+
+  it("sucesso sempre carrega custo e moeda", async () => {
+    const r = await router([adapterOk()]).run(PEDIDO);
+
+    expect(r.ok && r.estimatedCost).toBeTruthy();
+    expect(r.ok && r.currency).toBe("USD");
+    expect(concluidos[0]?.estimatedCost).toBeTruthy();
+    expect(concluidos[0]?.currency).toBe("USD");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Vigência de modelo
+// ---------------------------------------------------------------------------
+
+describe("vigência do catálogo", () => {
+  it("o instante do Router é o mesmo passado ao catálogo", async () => {
+    // Mesmo relógio para candidato e preço: usar dois tornaria a seleção
+    // dependente do intervalo entre duas chamadas.
+    await router([adapterOk()]).run(PEDIDO);
+
+    expect(instanteRecebido).toEqual(AGORA);
+  });
+
+  it("modelo expirado não é selecionado mesmo continuando ACTIVE", async () => {
+    // Status descreve saúde; vigência descreve se ainda deve ser usado. O
+    // filtro real vive na query, e aqui se prova o contrato: o catálogo recebe
+    // o instante e o Router respeita o que ele devolve.
+    candidatos = [];
+
+    const r = await router([adapterOk()]).run(PEDIDO);
+
+    expect(!r.ok && r.errorClass).toBe("NO_CANDIDATE_MODEL");
   });
 });

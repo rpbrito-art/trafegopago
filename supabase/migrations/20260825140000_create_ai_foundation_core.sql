@@ -171,6 +171,12 @@ comment on column public.ai_models.model_key is
 create unique index ai_models_provider_model_key_uniq
   on public.ai_models (provider_id, model_key);
 
+-- Alvo da FK composta de `ai_runs`: é este par que permite ao banco exigir que
+-- o provider registrado num run seja **o provider daquele modelo**, e não outro
+-- qualquer que exista no catálogo.
+create unique index ai_models_id_provider_uniq
+  on public.ai_models (id, provider_id);
+
 -- Consulta do Router: candidatos ativos de um tier.
 create index ai_models_status_tier_idx
   on public.ai_models (status, tier);
@@ -252,6 +258,12 @@ create unique index ai_price_versions_one_open_per_model
 create index ai_price_versions_model_effective_from_idx
   on public.ai_price_versions (ai_model_id, effective_from desc);
 
+-- Alvo da FK composta de `ai_runs`: o preço usado no cálculo tem de pertencer
+-- ao modelo que executou. Sem isto, um run poderia registrar o custo de um
+-- modelo barato para uma chamada feita por um caro.
+create unique index ai_price_versions_id_model_uniq
+  on public.ai_price_versions (id, ai_model_id);
+
 alter table public.ai_price_versions enable row level security;
 
 revoke all on table public.ai_price_versions from anon, authenticated;
@@ -288,8 +300,12 @@ create table public.ai_runs (
 
   -- Versão de preço efetivamente usada no cálculo. É o que torna o custo
   -- auditável: sem ela, refazer a conta depende de adivinhar qual preço valia.
-  ai_price_version_id uuid
-    references public.ai_price_versions(id) on delete restrict,
+  --
+  -- `not null`: o Router resolve — e exige — um preço vigente **antes** de
+  -- abrir o run. Um run sem versão de preço seria uma execução cujo custo
+  -- ninguém consegue reproduzir, que é exatamente o que este ledger existe
+  -- para impedir (Correção 004A-01 §7).
+  ai_price_version_id uuid not null,
 
   tier smallint not null,
 
@@ -381,7 +397,19 @@ create table public.ai_runs (
       'PROVIDER_UNAVAILABLE',
       'PROVIDER_RATE_LIMITED',
       'PROVIDER_REJECTED',
+      -- Input e output são falhas distintas: uma é erro de quem chamou, antes
+      -- de qualquer gasto; a outra é o provider tendo devolvido lixo depois de
+      -- consumir tokens. Confundi-las esconderia qual das duas está quebrada.
+      'INPUT_SCHEMA_INVALID',
       'OUTPUT_SCHEMA_INVALID',
+      -- Usage que não dá para acreditar e custo que não dá para calcular
+      -- encerram a execução: sucesso com custo desconhecido seria uma chamada
+      -- fora da conta do mês.
+      'USAGE_INVALID',
+      'COST_CALCULATION_FAILED',
+      -- A escrita do próprio ledger falhou. Sem ela não há prova do que
+      -- aconteceu, e o Router não pode entregar o output como sucesso.
+      'LEDGER_WRITE_FAILED',
       'TIMEOUT',
       'UNKNOWN'
     )),
@@ -392,6 +420,21 @@ create table public.ai_runs (
     check (status <> 'FAILED' or error_class is not null),
   constraint ai_runs_succeeded_has_no_error_class
     check (status <> 'SUCCEEDED' or error_class is null),
+
+  -- Sucesso sem custo é uma chamada que aconteceu e não entrou na conta do
+  -- mês. Depois que um provider foi chamado, ou o custo é conhecido ou a
+  -- execução não é sucesso (Correção 004A-01 §§5 e 7).
+  constraint ai_runs_succeeded_requires_cost
+    check (status <> 'SUCCEEDED'
+           or (estimated_cost is not null and currency is not null)),
+
+  -- Estado terminal tem hora de término; `STARTED` não tem. Comparar com
+  -- `created_at` seria outra coisa — e a 002A já mostrou que comparar dois
+  -- relógios diferentes num CHECK transforma skew de NTP em erro de escrita.
+  constraint ai_runs_terminal_requires_completed_at
+    check (status = 'STARTED' or completed_at is not null),
+  constraint ai_runs_started_has_no_completed_at
+    check (status <> 'STARTED' or completed_at is null),
 
   -- Fallback só existe dentro de um tenant nesta sub-rodada. Um run global
   -- encadeado a outro não teria como ser barrado pela FK composta abaixo — com
@@ -416,6 +459,24 @@ alter table public.ai_runs
   add constraint ai_runs_fallback_same_organization
   foreign key (fallback_from_run_id, organization_id)
   references public.ai_runs (id, organization_id)
+  on delete restrict;
+
+-- Coerência provider → model: o provider do run é o provider daquele modelo.
+-- Uma FK simples em cada coluna deixaria passar a combinação cruzada, e o
+-- resultado seria um ledger que atribui a um provider chamadas que outro fez
+-- (Correção 004A-01 §6).
+alter table public.ai_runs
+  add constraint ai_runs_model_belongs_to_provider
+  foreign key (ai_model_id, provider_id)
+  references public.ai_models (id, provider_id)
+  on delete restrict;
+
+-- Coerência model → price: o preço que explica o custo pertence ao modelo que
+-- executou.
+alter table public.ai_runs
+  add constraint ai_runs_price_belongs_to_model
+  foreign key (ai_price_version_id, ai_model_id)
+  references public.ai_price_versions (id, ai_model_id)
   on delete restrict;
 
 comment on table public.ai_runs is

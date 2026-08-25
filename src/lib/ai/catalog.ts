@@ -19,8 +19,15 @@ import {
  */
 
 export type AICatalog = {
-  /** Candidatos elegíveis a receber tarefa nova, na ordem do banco. */
-  listarCandidatos(): Promise<AIModelCandidate[]>;
+  /**
+   * Candidatos elegíveis a receber tarefa nova **naquele instante**.
+   *
+   * A vigência entra aqui, e não só o status: um modelo cujo `effective_to` já
+   * passou está fora do catálogo mesmo continuando `ACTIVE` — status descreve
+   * saúde, vigência descreve se ele ainda deve ser usado
+   * (Correção 004A-01 §8).
+   */
+  listarCandidatos(em: Date): Promise<AIModelCandidate[]>;
   /** Preços que abrangem `em` para um modelo. Mais de um = ambiguidade. */
   listarPrecosVigentes(
     aiModelId: string,
@@ -54,18 +61,25 @@ export function criarAICatalog(
   supabase: ReturnType<typeof createSupabasePrivilegedClient> = createSupabasePrivilegedClient(),
 ): AICatalog {
   return {
-    async listarCandidatos() {
+    async listarCandidatos(em) {
+      const instante = em.toISOString();
+
       // Provider e modelo precisam **os dois** estar elegíveis: um modelo
       // `ACTIVE` sob um provider `DISABLED` é um candidato que não pode
       // executar, e oferecê-lo ao Router só adiaria a falha para depois da
       // escolha.
+      //
+      // A vigência usa o mesmo relógio injetável do Router, para o resultado
+      // de um teste não depender da hora em que ele roda.
       const { data, error } = await supabase
         .from("ai_models")
         .select(
           "id, provider_id, model_key, tier, capability_tags, status, supports_structured_output, context_window_tokens, max_output_tokens, ai_providers!inner(key, status)",
         )
         .in("status", ["ACTIVE", "DEGRADED"])
-        .in("ai_providers.status", ["ACTIVE", "DEGRADED"]);
+        .in("ai_providers.status", ["ACTIVE", "DEGRADED"])
+        .lte("effective_from", instante)
+        .or(`effective_to.is.null,effective_to.gt.${instante}`);
 
       if (error) {
         console.error("falha ao listar candidatos de modelo", { code: error.code });
