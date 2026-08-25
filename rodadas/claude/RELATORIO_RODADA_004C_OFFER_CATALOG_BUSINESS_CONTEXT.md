@@ -105,6 +105,17 @@ Pós-estado remoto: trigger habilitada; `service_role` sem UPDATE de tabela e co
 
 ## 8. Handoff
 
-Branch `claude/rodada-004c-offer-catalog-business-context`, HEAD publicado em `origin`. PR #15, draft, base `main`, apontando para o HEAD final. CI verde nos dois commits: `32885622248` (delta) e `32885781773` (só documentação). `estado.md` da branch em **EXECUTADA — AGUARDANDO AUDITORIA GPT**. Working tree limpa.
+Branch `claude/rodada-004c-offer-catalog-business-context`, HEAD publicado em `origin`. PR #15 mantido **aberto, draft, base `main`, não mergeado**.
 
-Nenhuma pendência técnica. Próximo ator: **GPT auditor**.
+Branch atualizada com a `main` documental por merge, preservando o delta da 004C; o único conflito foi `estado.md`, resolvido pela versão da `main`, que é o estado soberano.
+
+Migrations aplicadas nesta branch, nenhuma reescrita:
+
+- `20260825210000_create_business_offers` (004C);
+- `20260825220000_enforce_offer_version_immutability` (004C-01).
+
+CI verde em cada etapa: `32885622248` e `32885781773` (004C), `32885900669` (HEAD auditado) e `32887912322` (correção 004C-01) — 864/864 testes, lint, typecheck, Edge Functions e build.
+
+`estado.md` da branch em **CORREÇÃO 004C-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**. Working tree limpa.
+
+Nenhuma pendência técnica. Próximo ator: **GPT auditor**, para reauditoria.
