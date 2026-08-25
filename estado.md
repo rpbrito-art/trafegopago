@@ -87,7 +87,7 @@ Configuração histórica 003A ainda não apagar:
 Ativos reais:
 
 - Página Facebook **Quoron** — ID **`1356474050873300`**;
-- Instagram profissional **@goquoron**.
+- Instagram profissional **@goquoron** — ID observado anteriormente `17841429590351285`.
 
 ## 6. Conexão real atual — PÓS-OAUTH USER
 
@@ -163,13 +163,13 @@ Portanto não há mais ambiguidade: o perfil usado no OAuth está **diretamente 
 
 A documentação oficial Meta/Postman continua mostrando User Access Token + `/me/accounts` como caminho para listar Pages gerenciadas; logo o vazio exige diagnóstico técnico do token/edge, não mais tentativa manual de permissões da Página.
 
-## 8. Próxima ação autorizada
+## 8. Próxima ação autorizada — INVESTIGAÇÃO JÁ EM EXECUÇÃO
 
-Próximo a agir: **Claude Code, investigação read-only**.
+Próximo a agir: **Claude Code, investigação read-only já iniciada**.
 
 Mandato: `rodadas/gpt/INVESTIGACAO_003B_05_PAGE_ZERO_GRANULAR_SCOPES.md`.
 
-Objetivo: sem mutações, provar:
+Objetivo do mandato atualizado: sem mutações, provar:
 
 1. `debug_token`: validade/tipo/scopes e `granular_scopes/target_ids` sanitizados;
 2. identidade `GET /me?fields=id,name`;
@@ -177,7 +177,22 @@ Objetivo: sem mutações, provar:
 4. testar diretamente a Page conhecida `1356474050873300` com `GET /{page-id}?fields=id,name` e, se permitido, expansão `instagram_business_account`;
 5. usar `/me/adaccounts?fields=id,name,account_status` como controle independente de `ads_read`.
 
-Claude não deve expor token/secret, não deve editar código de produto nem iniciar OAuth. Ao final, relatório factual e parar para auditoria GPT.
+### Estado de execução no momento do handoff
+
+O Claude Code **já estava rodando** quando o fundador trouxe a segunda prova visual da Page e quando o GPT atualizou o mandato com o item 4 (prova direta do Page ID).
+
+Consequência: a execução atual **pode não conter** a prova direta da Page `1356474050873300`.
+
+Regra:
+
+- **não interromper** a execução atual;
+- quando Claude terminar, primeiro localizar e auditar o relatório produzido;
+- **não mandar `/proxima` novamente automaticamente**;
+- verificar se A/B/C/E já explicam o problema;
+- se a prova direta da Page estiver ausente e ainda for necessária, executar somente a complementação read-only, sem repetir toda a investigação;
+- só depois considerar correção ou decisão arquitetural.
+
+Handoff micro detalhado: `rodadas/gpt/HANDOFF_CHAT_20260825_003B05_USER_TOKEN_PAGE_ZERO.md`.
 
 ## 9. Continua NÃO autorizado
 
@@ -205,3 +220,10 @@ Claude não deve expor token/secret, não deve editar código de produto nem ini
 - harmonizar canônicos de mídia paga pós-003B;
 - redaction do callback em logs antes de produção;
 - leaked-password protection, SMTP/domínio, App Review/Business Verification quando aplicável.
+
+## 11. Regra de comunicação para continuidade
+
+- Sempre que o fundador for instruído a abrir uma página/tela externa, fornecer o **link direto** junto com o caminho.
+- O fundador não é programador: toda ação manual precisa dizer o que fazer, onde fazer e por quê, sem pressupor conhecimento de siglas/comandos/telas.
+- Não fragmentar uma sequência lógica conhecida em pedidos sucessivos que poderiam ter sido dados juntos.
+- Não tratar hipótese sobre comportamento da Meta como fato antes de prova; houve hipóteses anteriores erradas que geraram trabalho desnecessário.
