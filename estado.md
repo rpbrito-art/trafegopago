@@ -155,21 +155,30 @@ O fundador autorizou testar o caminho `Token de acesso do usuário` no app `Traf
 
 Motivo: a Meta oferece explicitamente User Access Token nessa configuração; a documentação oficial do Instagram com Facebook Login trabalha com Facebook User Access Token; a Marketing API também admite User Access Token; e o gateway atual já contém caminho distinto para reconhecer/revogar token USER. Isso torna a hipótese relevante, mas ainda não provada no E2E específico do produto.
 
+Fato novo provado pela UI da Meta em 2026-08-25:
+
+- ao escolher `Token de acesso do usuário`, a etapa `Ativos` fica indisponível;
+- a própria Meta informa: `Não é possível selecionar ativos porque você optou por usar um token de acesso do usuário com essa configuração.`;
+- isso não é, por si só, erro do experimento: no modelo USER a configuração passa a definir permissões, enquanto os ativos gerenciados são descobertos depois a partir do usuário autorizado;
+- a documentação oficial do Instagram/Facebook usa `GET /me/accounts` com `user_access_token` para listar as Pages administradas e obter `instagram_business_account`, exatamente compatível com a descoberta planejada na 003B.
+
 A autorização **não** promove User Access Token como arquitetura definitiva e **não** remove BISU do produto.
 
 ## 8. Próxima ação autorizada
 
-Próximo a agir: **fundador no Meta for Developers, no app `Trafego Pago E2E Test`**.
+Próximo a agir: **fundador no Meta for Developers, no app `Trafego Pago E2E Test`**, na etapa `Permissões` da configuração USER.
 
-Na criação da configuração de `Login do Facebook para Empresas`:
+Selecionar privilégio mínimo para provar Instagram:
 
-1. selecionar **Token de acesso do usuário**;
-2. avançar para `Ativos`;
-3. configurar apenas os tipos de ativo necessários ao experimento, sem criar/mover ativos;
-4. em `Permissões`, usar privilégio mínimo coerente com a 003B;
-5. antes de qualquer passo que exija associar Business Portfolio, criar novo ativo, ampliar permissões de escrita ou alterar o app oficial, parar e retornar ao GPT.
+- `pages_show_list`;
+- `pages_read_engagement`;
+- `instagram_basic`;
+- `instagram_manage_insights`;
+- `ads_read` apenas se estiver disponível e sem impor dependência de escrita/portfólio.
 
-Depois de criada a configuração, o GPT deve registrar o novo `config_id`, orientar a troca **temporária** das credenciais locais para o app E2E sem expor segredo e conduzir o OAuth real. A conexão atual deve ser preservada até o gate seguro definido pelo GPT.
+Se a Meta adicionar automaticamente `business_management`, `ads_management` ou outra permissão material não prevista, parar antes de criar e retornar ao GPT. Se não houver ampliação material, criar a configuração USER e registrar o `config_id` para o próximo gate.
+
+Depois de criada a configuração, o GPT deve orientar a troca **temporária** das credenciais locais para o app E2E sem expor segredo e conduzir o OAuth real. A conexão atual deve ser preservada até o gate seguro definido pelo GPT.
 
 ## 9. Continua NÃO autorizado
 
