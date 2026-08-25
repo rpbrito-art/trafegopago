@@ -83,7 +83,26 @@ Experimento USER:
 - User Access Token;
 - evidência diagnóstica válida, mas **não canônica**.
 
-## 6. Conexão USER real atual
+## 6. Limite real de Business Portfolios da conta — RESTRIÇÃO OPERACIONAL
+
+Fato operacional recuperado do histórico e agora incorporado ao estado canônico:
+
+- o fundador já possui **dois Meta Business Portfolios**;
+- a conta atingiu o limite atual de criação de portfolios;
+- um deles é **Quoron**, que possui o app canônico;
+- o outro é **BizzManiq1**;
+- `BizzManiq1` está **bloqueado/inutilizável** no estado atual;
+- portanto **não é possível criar um terceiro Business Portfolio** nessa conta agora.
+
+Regra permanente até mudança observada na Meta:
+
+- não instruir criação de terceiro portfolio;
+- não excluir `BizzManiq1` por tentativa apenas para liberar vaga;
+- não usar empresa/portfolio de terceiro sem decisão explícita do fundador.
+
+A decisão anterior `DECISAO_003B_07_FIXTURE_BISU_CLIENTE_PROPRIO.md`, que propôs criar `Tráfego Pago Cliente Teste`, foi **RETRATADA — NÃO EXECUTAR**.
+
+## 7. Conexão USER real atual
 
 Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 
@@ -95,14 +114,12 @@ Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 - `instagram_accounts=0`;
 - `ad_accounts=0`.
 
-O GPT reconfirmou esse snapshot no Supabase após a reconciliação; não houve persistência de seleção nem mutação externa.
-
 Ativos de fixture diagnóstica:
 
 - Page Quoron `1356474050873300`;
 - Instagram profissional `@goquoron` `17841429590351285`.
 
-## 7. Evidência USER consolidada
+## 8. Evidência USER consolidada
 
 Com o mesmo User Access Token:
 
@@ -120,14 +137,7 @@ Falha observada:
 
 USER continua não canônico porque não satisfez descoberta automática no E2E real.
 
-## 8. Correção 003B-06 — arquitetura aprovada
-
-Documentos:
-
-- `rodadas/gpt/CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`;
-- `rodadas/claude/RELATORIO_CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`;
-- `rodadas/gpt/AUDITORIA_CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`;
-- `rodadas/gpt/AUDITORIA_RECONCILIACAO_003B_06_CI_FINAL.md`.
+## 9. Correção 003B-06 — arquitetura aprovada
 
 Evidência primária verificada: o SDK oficial da Meta `facebook-nodejs-business-sdk`, objeto `SystemUser`, implementa `getAssignedPages()` usando `/assigned_pages` e objetos `Page`.
 
@@ -143,53 +153,39 @@ Arquitetura aprovada no código:
 
 A execução não deve ser revertida.
 
-## 9. Gate E2E BISU — fixture própria decidida
+## 10. Gate E2E BISU — próximo caminho real
 
 Ainda falta E2E real de BISU para provar:
 
-1. chamada de `assigned_pages` com BISU ativo do fluxo real;
-2. permissões efetivamente exigidas pelo edge nesse arranjo;
+1. `assigned_pages` com BISU ativo do fluxo real;
+2. permissões exigidas pelo edge nesse arranjo;
 3. expansão `instagram_business_account` no retorno real;
-4. descoberta/seleção completa em um portfólio cliente elegível.
+4. descoberta/seleção completa em entidade cliente elegível.
 
-No BISU anterior, o portfólio Quoron apareceu desabilitado com `This Meta Business Account owns the app`.
+Quoron não serve como cliente do próprio app: no fluxo anterior apareceu desabilitado com `This Meta Business Account owns the app`.
 
-Decisão registrada em:
+Como não há vaga para terceiro portfolio, a primeira alternativa própria é **recuperar/reativar BizzManiq1**, se a Meta permitir.
 
-`rodadas/gpt/DECISAO_003B_07_FIXTURE_BISU_CLIENTE_PROPRIO.md`
+Só se BizzManiq1 for formalmente irrecuperável será investigada uma fixture criada por API (`owned_businesses`/mecanismo equivalente). Essa alternativa NÃO está aprovada como elegível para Facebook Login for Business até prova oficial específica.
 
-Solução escolhida:
+## 11. Próxima ação autorizada
 
-- criar um segundo Meta Business Portfolio controlado pelo próprio fundador, chamado **Tráfego Pago Cliente Teste**;
-- ele funciona como cliente do E2E e **não** como terceiro;
-- o app continua pertencendo ao portfólio Quoron;
-- preferir compartilhamento de acesso aos ativos existentes, sem transferência de ownership;
-- somente criar Page/Instagram isolados dentro da fixture se a Meta não aceitar ativos compartilhados no fluxo.
+Próximo a agir: **GPT + fundador para inspeção read-only do bloqueio de BizzManiq1**.
 
-Evidência oficial: documentação Meta/WhatsApp de 2026 afirma que uma empresa pode criar múltiplos Meta Business Portfolios.
+Única ação manual permitida agora:
 
-## 10. Próxima ação autorizada
+- abrir a área de suporte/qualidade da Meta e inspecionar o motivo/status de restrição de `BizzManiq1`;
+- não solicitar exclusão;
+- não alterar ativos;
+- não executar OAuth;
+- não criar portfolio.
 
-Próximo a agir: **fundador**.
+Com o status exato, o GPT deve escolher e conduzir imediatamente o caminho de revisão/recuperação suportado, se existir.
 
-Única ação manual autorizada agora:
+## 12. Continua NÃO autorizado
 
-**criar na própria conta Meta o Business Portfolio `Tráfego Pago Cliente Teste`.**
-
-Depois da criação, o GPT deve continuar imediatamente com o compartilhamento mínimo de ativos e o E2E BISU, sem reabrir a decisão arquitetural.
-
-Nesta ação inicial, NÃO:
-
-- compartilhar ativos ainda;
-- transferir ownership;
-- mover o app;
-- alterar Business Login Configuration;
-- alterar scopes;
-- executar novo OAuth;
-- mexer em `.env.local`.
-
-## 11. Continua NÃO autorizado
-
+- criar terceiro Business Portfolio;
+- excluir `BizzManiq1` por tentativa;
 - promover/mergear 003B antes do E2E BISU;
 - iniciar Fase 4;
 - declarar USER arquitetura definitiva;
@@ -202,10 +198,12 @@ Nesta ação inicial, NÃO:
 - campanha/anúncio/gasto;
 - importar conteúdo.
 
-## 12. Pendências
+## 13. Pendências
 
-- criar `Tráfego Pago Cliente Teste`;
-- compartilhar acesso mínimo aos ativos necessários sem transferir ownership;
+- identificar bloqueio exato de `BizzManiq1`;
+- tentar recuperação/revisão suportada, se disponível;
+- se recuperado, usar BizzManiq1 como cliente do E2E BISU;
+- se formalmente irrecuperável, investigar fixture por API com prova oficial de elegibilidade;
 - executar E2E BISU real;
 - se passar, decidir promoção da 003B;
 - corrigir UX que hoje afirma ausência de Page quando API devolve lista vazia;
@@ -213,9 +211,10 @@ Nesta ação inicial, NÃO:
 - redaction do callback em logs antes de produção;
 - leaked-password protection, SMTP/domínio, App Review/Business Verification quando aplicável.
 
-## 13. Regra de comunicação para continuidade
+## 14. Regra de comunicação para continuidade
 
 - sempre fornecer link direto quando instruir o fundador a abrir página/tela externa;
 - explicar toda ação manual em linguagem simples;
 - não fragmentar sequência lógica conhecida;
-- não tratar hipótese sobre comportamento da Meta como fato antes de prova.
+- não tratar hipótese sobre comportamento da Meta como fato antes de prova;
+- antes de instrução manual dependente de limite/capacidade externa, conferir o estado específico da conta já conhecido no histórico.
