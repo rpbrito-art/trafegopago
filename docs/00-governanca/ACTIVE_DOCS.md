@@ -1,7 +1,7 @@
 # ACTIVE DOCS — QUORON
 
 Status: índice canônico estável.
-Atualizado: 2026-08-24.
+Atualizado: 2026-08-25.
 
 ## Regra
 
@@ -24,9 +24,10 @@ Claude Code não lê este arquivo por padrão em toda rodada; o mandato vigente 
 ## Produto ativo
 
 - `docs/01-produto/PAID_MEDIA_CANONICAL.md` — **prevalece especificamente sobre o papel estratégico de orgânico x mídia paga**. Mídia paga é pilar central do produto; uso orgânico pode existir sozinho, mas gasto é sempre separado de permissão técnica e exige aprovação humana explícita. Leitura obrigatória em rodadas que toquem Meta, onboarding, Conteúdo, Oportunidades, Financial Approval, Ads, Experimentos, Scale, Leads, Conversões, Hoje ou Insights até a harmonização direta dos documentos antigos.
+- `docs/01-produto/META_ONBOARDING_CANONICAL.md` — **prevalece na experiência futura de conexão/onboarding Meta**. A configuração técnica deve ficar no Quoron e o usuário deve lidar apenas com identidade, consentimento, propriedade dos ativos e decisões financeiras sempre que tecnicamente possível. A implementação está BLOQUEADA até o fundador informar que resolveu a restrição atual do portfólio empresarial Meta e o GPT autorizar uma nova rodada após rever a documentação oficial vigente. Leitura obrigatória em qualquer rodada que toque conexão/autorização Meta, descoberta/seleção de ativos, Instagram conectado, conta de anúncios, campanhas ou recuperação da integração.
 - `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md` — prevalece em modelo de crescimento, jornada, conteúdo/criativo, personas/públicos e simplicidade guiada; na dimensão orgânico/pago, fica subordinado ao `PAID_MEDIA_CANONICAL.md` onde houver conflito.
 - `docs/01-produto/LEAD_NURTURING_CANONICAL.md` — prevalece em Micro-CRM, nutrição, estágio x temperatura, score auditável, follow-up, reativação e Next Best Action. **Leitura obrigatória em qualquer rodada que toque Leads, Lead Ads, CRM, Conversões, Hoje, Notificações ou jornada comercial.**
-- `docs/01-produto/MVP_CANONICAL.md` — escopo funcional do MVP, subordinado ao Growth Intelligence onde houver conflito, ao `PAID_MEDIA_CANONICAL.md` na centralidade de mídia paga e refinado pelo Lead Nurturing no domínio comercial.
+- `docs/01-produto/MVP_CANONICAL.md` — escopo funcional do MVP, subordinado ao Growth Intelligence onde houver conflito, ao `PAID_MEDIA_CANONICAL.md` na centralidade de mídia paga, ao `META_ONBOARDING_CANONICAL.md` na experiência de conexão Meta e refinado pelo Lead Nurturing no domínio comercial.
 
 ## Contratos técnicos ativos
 
