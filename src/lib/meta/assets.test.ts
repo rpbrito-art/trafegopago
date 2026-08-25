@@ -36,6 +36,20 @@ type PaginaMeta = {
   paging?: { cursors?: { after?: string }; next?: string };
 };
 let paginasDeContas: PaginaMeta[] = [];
+/** Páginas devolvidas pelo edge do system user. */
+let paginasAtribuidas: PaginaMeta[] = [];
+/**
+ * O que `GET /me?fields=client_business_id` responde.
+ *
+ * É a classificação da credencial, e é ela que decide a qual edge o token
+ * será apresentado. `bisu` traz o `client_business_id`; `user` omite o campo.
+ */
+let credencial:
+  | { tipo: "user"; id?: string }
+  | { tipo: "bisu"; business: string; id?: string | null }
+  | { tipo: "http"; http: number; code?: number }
+  | { tipo: "corpo"; corpo: unknown }
+  | { tipo: "rede" } = { tipo: "user" };
 let respostaAdAccounts: PaginaMeta = { data: [] };
 let falhaDaMeta: { http: number; code?: number } | null = null;
 let redeQuebrada = false;
@@ -152,6 +166,8 @@ beforeEach(() => {
   erroLeituraToken = null;
   erroRpc = {};
   paginasDeContas = [{ data: [pagina("page-1", "ig-1")] }];
+  paginasAtribuidas = [{ data: [] }];
+  credencial = { tipo: "user" };
   respostaAdAccounts = { data: [] };
   falhaDaMeta = null;
   redeQuebrada = false;
@@ -179,6 +195,52 @@ beforeEach(() => {
             },
           }),
         } as Response;
+      }
+
+      // Classificação da credencial — antes de qualquer edge de Pages.
+      if (alvo.includes("/me?") && alvo.includes("client_business_id")) {
+        // Capturado num `const` para o narrowing sobreviver aos closures.
+        const classe = credencial;
+
+        if (classe.tipo === "rede") throw new Error("rede");
+
+        if (classe.tipo === "http") {
+          return {
+            ok: false,
+            status: classe.http,
+            json: async () => ({
+              error: { type: "OAuthException", code: classe.code ?? 1 },
+            }),
+          } as Response;
+        }
+
+        if (classe.tipo === "corpo") {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => classe.corpo,
+          } as Response;
+        }
+
+        const id = classe.id === undefined ? "system-user-1" : classe.id;
+
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ...(id === null ? {} : { id }),
+            ...(classe.tipo === "bisu"
+              ? { client_business_id: classe.business }
+              : {}),
+          }),
+        } as Response;
+      }
+
+      if (alvo.includes("/assigned_pages")) {
+        const cursor = new URL(alvo).searchParams.get("after");
+        const indice = cursor ? Number(cursor) : 0;
+        const pagina = paginasAtribuidas[indice] ?? { data: [] };
+        return { ok: true, status: 200, json: async () => pagina } as Response;
       }
 
       if (alvo.includes("/me/accounts")) {
@@ -776,5 +838,281 @@ describe("membership removida durante a ida à Meta", () => {
     // Duas checagens: uma para começar, outra imediatamente antes da escrita.
     expect(checagensDeMembership).toBe(2);
     expect(rpcCalls.some((c) => c.fn === "select_instagram_account")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Roteamento por classe de credencial — Correção 003B-06
+// ---------------------------------------------------------------------------
+
+describe("descoberta sensível ao tipo de credencial", () => {
+  /** Só as listagens de Páginas, na ordem em que foram pedidas. */
+  function edgesDePaginas() {
+    return fetchCalls.filter(
+      (u) => u.includes("/me/accounts") || u.includes("/assigned_pages"),
+    );
+  }
+
+  it("token de usuário comum continua em /me/accounts", async () => {
+    credencial = { tipo: "user", id: "999" };
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r.ok && r.candidates.map((c) => c.externalInstagramAccountId)).toEqual([
+      "ig-1",
+    ]);
+    expect(edgesDePaginas()).toHaveLength(1);
+    expect(edgesDePaginas()[0]).toContain("/me/accounts");
+  });
+
+  it("BISU usa assigned_pages do system user, não /me/accounts", async () => {
+    // `/me/accounts` responderia 200 com lista vazia para um system user — a
+    // forma mais cara de errar, porque parece "não tem Página".
+    credencial = { tipo: "bisu", business: "biz-1", id: "system-user-1" };
+    paginasAtribuidas = [{ data: [pagina("page-9", "ig-9")] }];
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r.ok && r.candidates.map((c) => c.externalInstagramAccountId)).toEqual([
+      "ig-9",
+    ]);
+    expect(edgesDePaginas()).toHaveLength(1);
+    expect(edgesDePaginas()[0]).toContain("/system-user-1/assigned_pages");
+    expect(fetchCalls.some((u) => u.includes("/me/accounts"))).toBe(false);
+  });
+
+  it("a classe é decidida antes de qualquer edge de Páginas", async () => {
+    credencial = { tipo: "bisu", business: "biz-1", id: "system-user-1" };
+    paginasAtribuidas = [{ data: [] }];
+
+    await discoverInstagramAccounts(PEDIDO);
+
+    const classificacao = fetchCalls.findIndex((u) =>
+      u.includes("client_business_id"),
+    );
+    const listagem = fetchCalls.findIndex((u) => u.includes("/assigned_pages"));
+
+    expect(classificacao).toBeGreaterThanOrEqual(0);
+    expect(listagem).toBeGreaterThan(classificacao);
+  });
+
+  it("não usa debug_token nem external_business_id para decidir", async () => {
+    // `debug_token.type` devolve `SYSTEM_USER` tanto para BISU quanto para o
+    // system user clássico do Business Manager: não distingue o que importa.
+    credencial = { tipo: "bisu", business: "biz-1", id: "system-user-1" };
+
+    await discoverInstagramAccounts(PEDIDO);
+
+    expect(fetchCalls.some((u) => u.includes("debug_token"))).toBe(false);
+    expect(fetchCalls.some((u) => u.includes("external_business_id"))).toBe(false);
+  });
+
+  it("client_business_id ausente é usuário comum, não system user", async () => {
+    // A ausência do contrato de gerenciamento BISU é o que classifica USER.
+    credencial = { tipo: "user", id: "999" };
+
+    await discoverInstagramAccounts(PEDIDO);
+
+    expect(edgesDePaginas()[0]).toContain("/me/accounts");
+  });
+
+  it("client_business_id vazio falha fechado e não consulta edge nenhum", async () => {
+    // Presente mas inválido é resposta que não sabemos ler — não é "não é BISU".
+    credencial = { tipo: "corpo", corpo: { id: "999", client_business_id: "" } };
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_UNAVAILABLE" });
+    expect(edgesDePaginas()).toHaveLength(0);
+  });
+
+  it("classificação sem identidade não escolhe edge por chute", async () => {
+    credencial = { tipo: "corpo", corpo: {} };
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_UNAVAILABLE" });
+    expect(edgesDePaginas()).toHaveLength(0);
+  });
+
+  it("BISU sem identidade não cai de volta em /me/accounts", async () => {
+    // Sem o id do system user não há o que ancorar; voltar para `/me/accounts`
+    // reintroduziria exatamente o defeito que esta correção remove.
+    credencial = { tipo: "bisu", business: "biz-1", id: null };
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_UNAVAILABLE" });
+    expect(edgesDePaginas()).toHaveLength(0);
+  });
+
+  it("credencial recusada pela Meta vira estado de tela, sem listagem", async () => {
+    credencial = { tipo: "http", http: 400, code: 190 };
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r).toEqual({ ok: false, reason: "CONNECTION_REJECTED" });
+    expect(edgesDePaginas()).toHaveLength(0);
+  });
+
+  it("classificação sem rede falha fechado", async () => {
+    credencial = { tipo: "rede" };
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_UNAVAILABLE" });
+    expect(edgesDePaginas()).toHaveLength(0);
+  });
+
+  it("assigned_pages respeita cursor, host controlado e teto de páginas", async () => {
+    credencial = { tipo: "bisu", business: "biz-1", id: "system-user-1" };
+    paginasAtribuidas = Array.from({ length: 20 }, (_, i) => ({
+      data: [pagina(`page-${i}`, null)],
+      paging: {
+        cursors: { after: String(i + 1) },
+        next: "https://atacante.example/roubar?token=1",
+      },
+    }));
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r.ok).toBe(true);
+
+    const listagens = fetchCalls.filter((u) => u.includes("/assigned_pages"));
+    expect(listagens).toHaveLength(5);
+    expect(listagens[1]).toContain("after=1");
+    for (const url of listagens) {
+      expect(url.startsWith("https://graph.facebook.com/v26.0/")).toBe(true);
+    }
+    expect(fetchCalls.some((u) => u.includes("atacante.example"))).toBe(false);
+  });
+
+  it("BISU com Página sem Instagram é estado vazio, não erro", async () => {
+    credencial = { tipo: "bisu", business: "biz-1", id: "system-user-1" };
+    paginasAtribuidas = [{ data: [pagina("page-9", null)] }];
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r).toEqual({ ok: true, pagesFound: 1, candidates: [] });
+  });
+
+  it("BISU com várias Páginas devolve todos os candidatos", async () => {
+    credencial = { tipo: "bisu", business: "biz-1", id: "system-user-1" };
+    paginasAtribuidas = [
+      {
+        data: [
+          pagina("page-9", "ig-9"),
+          pagina("page-8", null),
+          pagina("page-7", "ig-7"),
+        ],
+      },
+    ];
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r.ok && r.pagesFound).toBe(3);
+    expect(r.ok && r.candidates.map((c) => c.externalInstagramAccountId)).toEqual([
+      "ig-9",
+      "ig-7",
+    ]);
+  });
+
+  it("a seleção redescobre pelo mesmo caminho credential-aware", async () => {
+    credencial = { tipo: "bisu", business: "biz-1", id: "system-user-1" };
+    paginasAtribuidas = [{ data: [pagina("page-9", "ig-9")] }];
+
+    const r = await selectInstagramAccount({
+      ...PEDIDO,
+      externalInstagramAccountId: "ig-9",
+    });
+
+    expect(r).toEqual({ ok: true });
+    expect(fetchCalls.some((u) => u.includes("/assigned_pages"))).toBe(true);
+    expect(fetchCalls.some((u) => u.includes("/me/accounts"))).toBe(false);
+
+    const gravou = rpcCalls.find((c) => c.fn === "select_instagram_account");
+    expect(gravou?.args.p_external_page_id).toBe("page-9");
+  });
+
+  it("id de outra conexão continua fail-closed no caminho BISU", async () => {
+    credencial = { tipo: "bisu", business: "biz-1", id: "system-user-1" };
+    paginasAtribuidas = [{ data: [pagina("page-9", "ig-9")] }];
+
+    const r = await selectInstagramAccount({
+      ...PEDIDO,
+      externalInstagramAccountId: "ig-de-outra-conexao",
+    });
+
+    expect(r).toEqual({ ok: false, reason: "ASSET_NOT_FOUND" });
+    expect(rpcCalls.some((c) => c.fn === "select_instagram_account")).toBe(false);
+  });
+
+  it("contas de anúncios não mudam de edge por simetria", async () => {
+    // `ads_read` é independente da capacidade orgânica: mexer nele só por
+    // simetria seria ampliar o raio da correção sem evidência.
+    credencial = { tipo: "bisu", business: "biz-1", id: "system-user-1" };
+    conexaoAtiva = conexao([...ESCOPOS_INSTAGRAM, "ads_read"]);
+    respostaAdAccounts = { data: [{ id: "act_123", name: "Conta" }] };
+
+    const r = await discoverAdAccounts(PEDIDO);
+
+    expect(r).toEqual({
+      ok: true,
+      authorized: true,
+      accounts: [
+        {
+          externalAdAccountId: "act_123",
+          name: "Conta",
+          currency: null,
+          timezoneName: null,
+          providerAccountStatus: null,
+        },
+      ],
+    });
+    expect(fetchCalls.some((u) => u.includes("/me/adaccounts"))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Identidade da credencial — Correção 003B-06 §4.1
+// ---------------------------------------------------------------------------
+
+describe("identidade da credencial", () => {
+  it("BISU cuja identidade diverge da conexão não descobre nada", async () => {
+    // Um token que responde por outra identidade não pode listar ativos aqui:
+    // seria oferecer para seleção Páginas que não pertencem a esta conexão.
+    conexaoAtiva = { ...conexao(), external_user_id: "system-user-1" };
+    credencial = { tipo: "bisu", business: "biz-1", id: "system-user-OUTRO" };
+    paginasAtribuidas = [{ data: [pagina("page-9", "ig-9")] }];
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_UNAVAILABLE" });
+    expect(fetchCalls.some((u) => u.includes("/assigned_pages"))).toBe(false);
+  });
+
+  it("BISU com identidade coerente segue para assigned_pages", async () => {
+    conexaoAtiva = { ...conexao(), external_user_id: "system-user-1" };
+    credencial = { tipo: "bisu", business: "biz-1", id: "system-user-1" };
+    paginasAtribuidas = [{ data: [pagina("page-9", "ig-9")] }];
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r.ok && r.candidates.map((c) => c.externalInstagramAccountId)).toEqual([
+      "ig-9",
+    ]);
+    expect(
+      fetchCalls.some((u) => u.includes("/system-user-1/assigned_pages")),
+    ).toBe(true);
+  });
+
+  it("usuário comum cuja identidade diverge da conexão falha fechado", async () => {
+    conexaoAtiva = { ...conexao(), external_user_id: "999" };
+    credencial = { tipo: "user", id: "OUTRO" };
+
+    const r = await discoverInstagramAccounts(PEDIDO);
+
+    expect(r).toEqual({ ok: false, reason: "PROVIDER_UNAVAILABLE" });
+    expect(fetchCalls.some((u) => u.includes("/me/accounts"))).toBe(false);
   });
 });

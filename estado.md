@@ -180,28 +180,42 @@ Consequência:
 - antes de decidir que o E2E BISU está bloqueado somente pela separação provedor/cliente, a 003B precisa tornar a descoberta sensível ao tipo real de credencial;
 - USER continua não canônico; esse novo achado não reabre a decisão USER.
 
-## 10. Próxima ação autorizada — CORREÇÃO 003B-06
+## 10. Correção 003B-06 — EXECUTADA
 
-Próximo a agir: **Claude Code**.
+Mandato: `rodadas/gpt/CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`.
 
-Mandato:
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
-`rodadas/gpt/CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`
+Relatório: `rodadas/claude/RELATORIO_CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`.
 
-Objetivo, em linguagem simples: fazer o sistema parar de usar a mesma rota da Meta para todos os tipos de autorização. Ele deve reconhecer no servidor qual credencial recebeu e usar o mecanismo oficial correspondente para descobrir as Pages.
+Mecanismo confirmado por fonte oficial vigente (Graph API Reference):
 
-Regras principais:
+- **USER** → `GET /me/accounts`, preservado sem alteração;
+- **BISU/System User** → `GET /{system-user-id}/assigned_pages`, edge listado nos nós System User e Business User; a referência do edge descreve retorno de nós Page com `tasks`/`permitted_tasks`.
 
-- reutilizar/centralizar a classificação segura já existente;
-- USER continua em `/me/accounts`;
-- BISU/System User deve usar o mecanismo oficial de Pages atribuídas confirmado por fonte oficial vigente durante a implementação;
-- não usar `external_business_id` como proxy;
-- não assumir `SYSTEM_USER` sozinho == BISU;
-- se o edge correto não puder ser estabelecido com evidência suficiente, parar em `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`;
-- sem novo OAuth, sem alteração no painel Meta, sem novos scopes e sem Page Access Token;
-- sem merge/promoção.
+Arquivos alterados:
 
-Depois da execução, Claude deve entregar relatório e parar aguardando auditoria GPT.
+- `src/lib/meta/credential.ts` — **novo**, classificação centralizada read-only e fail-closed;
+- `src/lib/meta/gateway.ts` — passa a consumir o módulo; classificação local removida;
+- `src/lib/meta/assets.ts` — descoberta de Pages escolhe o edge pela classe da credencial;
+- `src/lib/meta/assets.test.ts` — +19 provas.
+
+Nenhuma migration, coluna, RPC ou UI tocada. Ads não alterado: `ads_read` segue em `/me/adaccounts`.
+
+Classificação **extraída** da 003A, não duplicada. Preservado: `client_business_id` presente e não vazio é a única prova de BISU; presente-mas-inválido falha fechado; ausência exige identidade positiva e coerente. `debug_token.type` continua não sendo prova; `external_business_id` não é proxy. Acrescentado apenas o `subjectId` devolvido pela Meta, que ancora `assigned_pages`; a requisição externa segue idêntica à auditada na 003A.
+
+Fail-closed no roteamento: classificação inconclusiva não consulta edge nenhum; BISU sem `subjectId` não cai de volta em `/me/accounts`; identidade divergente falha fechado nos dois ramos.
+
+Provas: `vitest run src/lib/meta src/lib/actions src/components/meta` **228/228**, com `assets.test.ts` **58/58**. `tsc --noEmit` limpo; `npm run lint` limpo.
+
+Limitações registradas no relatório:
+
+- o edge BISU **não foi exercitado contra a Meta real** — a conexão viva é USER e novo OAuth é proibido; prova é documental e por teste;
+- a documentação oficial não declara as permissões exigidas por `assigned_pages`; se exigir `business_management`, aparecerá como recusa `10`/`200` → `MISSING_PERMISSION`. Nenhum escopo foi adicionado;
+- a expansão `instagram_business_account` nesse edge não foi verificada contra a API real, pelo mesmo motivo;
+- o caso Quoron continua com `/me/accounts` devolvendo zero para credencial USER; a correção não promete resolvê-lo nem mascara o zero com ID fixo.
+
+Próximo a agir: **GPT** — auditar a correção no PR #12.
 
 ## 11. Gate externo BISU — AINDA NÃO CLASSIFICADO COMO BLOQUEIO FINAL
 

@@ -8,6 +8,11 @@ import {
   readMetaEnv,
 } from "./config";
 import {
+  classifyCredential,
+  describeExternalFailure,
+  type CredentialFailure,
+} from "./credential";
+import {
   generateState,
   hashState,
   intentExpiresAt,
@@ -548,30 +553,12 @@ export async function checkMetaDisconnection(input: {
  * Nada aqui carrega token, App Secret ou URL: só HTTP status, código de erro
  * da Meta e um rótulo de causa.
  */
-type FalhaExterna = {
-  http?: number;
-  code?: number;
-  subcode?: number;
-  causa?: string;
-};
+type FalhaExterna = CredentialFailure;
 
 type Revogacao = { ok: true } | { ok: false; motivo: FalhaExterna };
 
 /** Lê o erro da Meta sem tocar em `message`, que pode citar o token. */
-async function descreverFalha(resposta: Response): Promise<FalhaExterna> {
-  const corpo = (await resposta.json().catch(() => null)) as {
-    error?: { code?: unknown; error_subcode?: unknown };
-  } | null;
-
-  const code = corpo?.error?.code;
-  const subcode = corpo?.error?.error_subcode;
-
-  return {
-    http: resposta.status,
-    ...(typeof code === "number" ? { code } : {}),
-    ...(typeof subcode === "number" ? { subcode } : {}),
-  };
-}
+const descreverFalha = describeExternalFailure;
 
 /** Registra a etapa que barrou e falha fechado. */
 function pare(etapa: string, motivo: FalhaExterna): { ok: false } {
@@ -622,16 +609,16 @@ async function encerrarNoProvider(input: {
   // O token está ativo. Antes de escolher qualquer primitive, descobrir o que
   // ele é de fato — `debug_token.type` sozinho não distingue BISU de system
   // user clássico, e essa confusão já custou uma tentativa real.
-  const classe = await classificarCredencial({
+  const classificada = await classifyCredential({
     accessToken: input.accessToken,
     externalUserId: input.externalUserId,
     base,
   });
 
-  if (!classe.ok) return pare("CLASSIFICACAO", classe.motivo);
+  if (!classificada.ok) return pare("CLASSIFICACAO", classificada.motivo);
 
   // BISU: a Meta encerra pelo ambiente dela. Nada é chamado, nada é limpo.
-  if (classe.bisu) {
+  if (classificada.classe.bisu) {
     return { ok: false, externo: true };
   }
 
@@ -663,93 +650,6 @@ async function encerrarNoProvider(input: {
   }
 
   return { ok: true };
-}
-
-/**
- * A credencial é um BISU?
- *
- * Business Integration System User: o token que o Facebook Login for Business
- * emite quando a configuração pede token de usuário do sistema. `debug_token`
- * chama isso de `SYSTEM_USER`, o mesmo rótulo do system user clássico do
- * Business Manager — e os dois não têm o mesmo ciclo de vida. O que distingue
- * é o contrato de gerenciamento BISU responder `client_business_id`.
- *
- * Foi essa confusão que fez a primeira tentativa real de desconexão chamar
- * `oauth/revoke` e não revogar nada (Investigações 003A-05 e 003A-06A).
- *
- * **"Não é BISU" é uma afirmação, e afirmação exige prova.** Um HTTP 200 com
- * corpo `{}` não diz que a credencial não é BISU — diz que não sabemos o que
- * ela é. Como o único caminho que sobra depois daqui executa uma mutação
- * externa, a resposta precisa identificar positivamente a credencial: `id`
- * presente, coerente com o que persistimos, e `client_business_id` ausente de
- * verdade, não vazio nem de tipo estranho.
- *
- * Somente leitura.
- */
-async function classificarCredencial(input: {
-  accessToken: string;
-  externalUserId: string | null;
-  base: string;
-}): Promise<{ ok: true; bisu: boolean } | { ok: false; motivo: FalhaExterna }> {
-  const url = new URL(`${input.base}/me`);
-  url.searchParams.set("fields", "client_business_id");
-  url.searchParams.set("access_token", input.accessToken);
-
-  try {
-    const resposta = await fetch(url, { method: "GET" });
-
-    if (!resposta.ok) {
-      return { ok: false, motivo: await descreverFalha(resposta) };
-    }
-
-    const corpo = (await resposta.json().catch(() => null)) as Record<
-      string,
-      unknown
-    > | null;
-
-    if (!corpo || typeof corpo !== "object") {
-      return { ok: false, motivo: { http: resposta.status, causa: "CORPO_VAZIO" } };
-    }
-
-    // Presente: só é BISU se vier como identificador de verdade. Vazio, nulo
-    // ou de outro tipo é resposta que não sabemos ler — não é "não é BISU".
-    if ("client_business_id" in corpo) {
-      const negocio = corpo.client_business_id;
-
-      if (typeof negocio === "string" && negocio.length > 0) {
-        return { ok: true, bisu: true };
-      }
-
-      return {
-        ok: false,
-        motivo: { http: resposta.status, causa: "NEGOCIO_INVALIDO" },
-      };
-    }
-
-    // Daqui em diante a conclusão seria "não é BISU", que libera mutação. Ela
-    // precisa de identidade positiva.
-    const id = corpo.id;
-
-    if (typeof id !== "string" || id.length === 0) {
-      return {
-        ok: false,
-        motivo: { http: resposta.status, causa: "SEM_IDENTIDADE" },
-      };
-    }
-
-    // E a identidade tem que ser a nossa. Revogar permissões de outra conta
-    // seria pior do que não revogar nada.
-    if (input.externalUserId && input.externalUserId !== id) {
-      return {
-        ok: false,
-        motivo: { http: resposta.status, causa: "IDENTIDADE_DIVERGENTE" },
-      };
-    }
-
-    return { ok: true, bisu: false };
-  } catch {
-    return { ok: false, motivo: { causa: "REDE" } };
-  }
 }
 
 /** `DELETE /{user-id}/permissions` — caminho do token de usuário comum. */

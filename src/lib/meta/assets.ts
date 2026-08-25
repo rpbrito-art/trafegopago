@@ -4,6 +4,7 @@ import { createSupabasePrivilegedClient } from "@/lib/supabase/privileged";
 
 import { evaluateCapabilities, type MetaCapabilities } from "./capabilities";
 import { graphApiBaseUrl, readMetaEnv } from "./config";
+import { classifyCredential } from "./credential";
 
 /**
  * MetaAssetGateway — a única fronteira que descobre e seleciona ativos Meta.
@@ -110,6 +111,8 @@ const TAMANHO_PAGINA = 50;
 type Conexao = {
   id: string;
   organizationId: string;
+  /** Identidade que persistimos no OAuth. Âncora da conferência de classe. */
+  externalUserId: string | null;
   grantedScopes: string[];
   capabilities: MetaCapabilities;
   token: string;
@@ -152,7 +155,7 @@ async function carregarConexao(input: {
 
   const { data: conexao, error } = await supabase
     .from("meta_connections")
-    .select("id, granted_scopes")
+    .select("id, granted_scopes, external_user_id")
     .eq("organization_id", organizationId)
     .eq("status", "ACTIVE")
     .maybeSingle();
@@ -188,6 +191,11 @@ async function carregarConexao(input: {
     conexao: {
       id: conexao.id as string,
       organizationId,
+      externalUserId:
+        typeof conexao.external_user_id === "string" &&
+        conexao.external_user_id.length > 0
+          ? conexao.external_user_id
+          : null,
       grantedScopes,
       capabilities: evaluateCapabilities(grantedScopes),
       token,
@@ -328,13 +336,105 @@ function texto(valor: unknown): string | null {
 }
 
 /**
+ * Onde estão as Páginas desta credencial.
+ *
+ * Não existe um edge único: `/me/accounts` lista as Páginas que **uma pessoa**
+ * administra, e um system user não é uma pessoa. Apresentar o token de um BISU
+ * a `/me/accounts` devolve HTTP 200 com lista vazia — a forma mais cara de
+ * errar, porque parece "este negócio não tem Página" em vez de "perguntamos no
+ * lugar errado" (Correção 003B-06 §2).
+ *
+ * Por isso a classe da credencial é estabelecida **antes** de escolher o edge,
+ * pela mesma classificação fail-closed que a desconexão usa — `debug_token.type`
+ * sozinho não distingue BISU de system user clássico, e `external_business_id`
+ * não é proxy de tipo.
+ *
+ * - **USER** → `GET /me/accounts`, caminho documentado do Instagram API with
+ *   Facebook Login;
+ * - **BISU/System User** → `GET /{system-user-id}/assigned_pages`, o edge de
+ *   Pages atribuídas ao usuário do sistema na referência oficial do Graph API.
+ *
+ * Classificação inconclusiva **não** tenta um edge por chute: sem saber o que
+ * é a credencial, qualquer escolha seria adivinhação, e uma lista vazia obtida
+ * por adivinhação é indistinguível de uma lista vazia verdadeira.
+ */
+async function descobrirPaginas(input: {
+  conexao: Conexao;
+  base: string;
+}): Promise<
+  { ok: true; itens: Record<string, unknown>[] } | { ok: false; reason: AssetFailure }
+> {
+  const { conexao, base } = input;
+
+  const classificada = await classifyCredential({
+    accessToken: conexao.token,
+    externalUserId: conexao.externalUserId,
+    base,
+  });
+
+  if (!classificada.ok) {
+    // Sem `message` e sem URL: as duas podem citar o token.
+    console.error("classificacao de credencial meta inconclusiva", {
+      connectionId: conexao.id,
+      http: classificada.motivo.http ?? null,
+      code: classificada.motivo.code ?? null,
+      subcode: classificada.motivo.subcode ?? null,
+      causa: classificada.motivo.causa ?? null,
+    });
+
+    return {
+      ok: false,
+      reason: classificarRecusa(classificada.motivo.code ?? null),
+    };
+  }
+
+  const classe = classificada.classe;
+
+  // O edge do system user é escopado à identidade, e a identidade tem que vir
+  // da Meta — não do que digitamos no banco. Sem ela, não há caminho: cair de
+  // volta em `/me/accounts` seria exatamente o defeito que esta correção
+  // remove.
+  if (classe.bisu) {
+    if (!classe.subjectId) {
+      console.error("credencial bisu sem identidade para ancorar assigned_pages", {
+        connectionId: conexao.id,
+      });
+      return { ok: false, reason: "PROVIDER_UNAVAILABLE" };
+    }
+
+    // A mesma conferência que a classificação faz no ramo de usuário comum. Um
+    // token que responde por outra identidade não descobre ativos aqui.
+    if (conexao.externalUserId && conexao.externalUserId !== classe.subjectId) {
+      console.error("identidade da credencial diverge da conexao", {
+        connectionId: conexao.id,
+      });
+      return { ok: false, reason: "PROVIDER_UNAVAILABLE" };
+    }
+
+    return lerListagem({
+      base,
+      path: `${encodeURIComponent(classe.subjectId)}/assigned_pages`,
+      fields: "id,name,instagram_business_account",
+      accessToken: conexao.token,
+    });
+  }
+
+  return lerListagem({
+    base,
+    path: "me/accounts",
+    fields: "id,name,instagram_business_account",
+    accessToken: conexao.token,
+  });
+}
+
+/**
  * Páginas administradas → conta profissional do Instagram vinculada.
  *
- * Caminho documentado do **Instagram API with Facebook Login**: `/me/accounts`
- * devolve as Páginas, e `instagram_business_account` é o vínculo com a conta
- * profissional (mandato §4.1). Página sem esse vínculo simplesmente não vira
- * candidata — não é erro, é um negócio que ainda não conectou o Instagram à
- * Página.
+ * O edge de Páginas é escolhido por `descobrirPaginas`, conforme a classe da
+ * credencial; daqui para a frente o pipeline é o mesmo, e
+ * `instagram_business_account` é o vínculo com a conta profissional (mandato
+ * §4.1). Página sem esse vínculo simplesmente não vira candidata — não é erro,
+ * é um negócio que ainda não conectou o Instagram à Página.
  *
  * `access_token` da Página **não** é pedido aqui: a 003B precisa primeiro
  * provar se o token da conexão basta, e persistir Page Access Token é decisão
@@ -368,12 +468,7 @@ async function descobrirInstagram(
 
   const base = graphApiBaseUrl(readMetaEnv().META_GRAPH_API_VERSION);
 
-  const paginas = await lerListagem({
-    base,
-    path: "me/accounts",
-    fields: "id,name,instagram_business_account",
-    accessToken: conexao.token,
-  });
+  const paginas = await descobrirPaginas({ conexao, base });
 
   if (!paginas.ok) return { ok: false, reason: paginas.reason };
 
