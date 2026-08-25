@@ -58,6 +58,20 @@ A decisão é determinística — Tier 0 de `AI_ARCHITECTURE.md` §3 — e separ
 
 A entrada autenticada padrão é `/inicio`, que apresenta um passo por vez em linguagem de negócio. `/conta` permanece como superfície de conta/configuração. Não é o App Shell definitivo.
 
+### 3.3.2 Declared Context Review
+
+Primeira capacidade do produto apoiada em provider real de IA (Rodada 004E).
+
+Revisa **apenas o contexto declarado** — negócio, ofertas, objetivo e foco — e não afirma nada sobre mercado, público, desempenho ou conteúdo, porque nada disso foi observado ainda.
+
+Fronteiras:
+
+- a chamada só acontece por ação explícita do usuário; nenhuma página chama o provider ao renderizar;
+- cache por fingerprint do snapshot canônico + versões de task/prompt/schema;
+- limite de 3 chamadas não cacheadas por organização por hora, medido em `ai_runs`;
+- todo `evidenceRef` devolvido é validado contra o snapshot enviado — referência inventada invalida o output inteiro;
+- o artefato persistido é imutável.
+
 ### 3.4 Meta Auth
 
 Autorização, conexões, ativos vinculados, escopos, expiração/renovação e saúde da integração.

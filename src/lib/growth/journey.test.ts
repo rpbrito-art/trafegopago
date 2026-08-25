@@ -186,6 +186,57 @@ describe("decideJourneyStep — trilha da base inicial", () => {
     expect(passo.progresso).toEqual({ etapa: 4, total: 4 });
   });
 
+  /**
+   * Rodada 004E §11: com a base pronta, o próximo passo passa a ser revisar o
+   * contexto. A decisão é determinística — comparação de fingerprint feita
+   * antes de chegar aqui —, e **nada nela chama IA**.
+   */
+  it("base pronta sem revisão atual orienta para a revisão", () => {
+    const passo = decidir({
+      objetivo: definido(objetivo({ focusType: "BUSINESS" })),
+      ofertas: catalogo([oferta(OFERTA_A)]),
+      revisaoAtual: false,
+    });
+
+    expect(passo.kind).toBe("REVISAR_CONTEXTO_DECLARADO");
+    expect(passo.acao?.href).toBe("/revisao");
+  });
+
+  it("com revisão atual, o passo é ver a revisão", () => {
+    const passo = decidir({
+      objetivo: definido(objetivo({ focusType: "BUSINESS" })),
+      ofertas: catalogo([oferta(OFERTA_A)]),
+      revisaoAtual: true,
+    });
+
+    expect(passo.kind).toBe("CONTEXTO_DECLARADO_REVISADO");
+    expect(passo.acao?.href).toBe("/revisao");
+  });
+
+  it("member não recebe ação de revisar, que geraria custo", () => {
+    const passo = decidir({
+      objetivo: definido(objetivo({ focusType: "BUSINESS" }), false),
+      ofertas: catalogo([oferta(OFERTA_A)], false),
+      revisaoAtual: false,
+    });
+
+    expect(passo.kind).toBe("REVISAR_CONTEXTO_DECLARADO");
+    expect(passo.acao).toBeNull();
+  });
+
+  /**
+   * Estado da revisão desconhecido — a leitura falhou. O motor não afirma que
+   * falta revisar algo que talvez já esteja revisado.
+   */
+  it("sem informação sobre a revisão, para em base pronta", () => {
+    const passo = decidir({
+      objetivo: definido(objetivo({ focusType: "BUSINESS" })),
+      ofertas: catalogo([oferta(OFERTA_A)]),
+    });
+
+    expect(passo.kind).toBe("BASE_ESTRATEGICA_PRONTA");
+  });
+
   it("foco em oferta ativa completa a base", () => {
     const passo = decidir({
       objetivo: definido(
@@ -266,6 +317,16 @@ describe("decideJourneyStep — honestidade do conteúdo", () => {
     {
       objetivo: definido(objetivo({ focusType: "BUSINESS" })),
       ofertas: catalogo([oferta(OFERTA_A)]),
+    },
+    {
+      objetivo: definido(objetivo({ focusType: "BUSINESS" })),
+      ofertas: catalogo([oferta(OFERTA_A)]),
+      revisaoAtual: false,
+    },
+    {
+      objetivo: definido(objetivo({ focusType: "BUSINESS" })),
+      ofertas: catalogo([oferta(OFERTA_A)]),
+      revisaoAtual: true,
     },
   ];
 

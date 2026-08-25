@@ -118,6 +118,29 @@ Invariantes:
 - o foco aponta para a identidade da oferta, nunca para uma versão de oferta;
 - escrita somente por RPC `service_role`; browser sem INSERT/UPDATE/DELETE.
 
+### declared_context_reviews
+
+Artefato da revisão do contexto declarado. Implementada na Rodada 004E.
+
+- id
+- organization_id
+- input_fingerprint
+- task_type / task_version
+- prompt_version / schema_version
+- ai_run_id
+- input_snapshot_json
+- review_json
+- created_at
+
+Invariantes:
+
+- FK composta `(ai_run_id, organization_id)` → `ai_runs (id, organization_id)`;
+- único por `(organization_id, input_fingerprint, task_version, prompt_version, schema_version)` — é a chave do cache, e ela nunca cruza tenant;
+- imutável: nenhum UPDATE é aceito, e `service_role` não tem grant de UPDATE nem DELETE;
+- browser lê apenas as próprias revisões, por RLS; não escreve.
+
+O JSONB aqui é artefato versionado de IA, não fuga de modelagem relacional: o formato pertence à versão do schema da task e muda junto com ela.
+
 ## 3. Integração Meta
 
 ### meta_connections

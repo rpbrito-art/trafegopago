@@ -29,7 +29,7 @@ Promovidas: **000–003A, 004A, 004B, 004C e 004D**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - Guided Growth Journey / Focus Foundation: **004D PROMOVIDA**.
 - última rodada promovida: **004D — Guided Growth Journey Foundation**.
-- rodada corrente: **004E — Declared Context Review + First Real AI — PLANEJADA E AUTORIZADA, AINDA NÃO EXECUTADA**.
+- rodada corrente: **004E — Declared Context Review + First Real AI — IMPLEMENTADA ATÉ GATE DE CREDENCIAL PAGA**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -287,57 +287,56 @@ Provas do Claude:
 
 Reauditoria GPT independente no Supabase remoto confirmou migration aplicada, perda do UPDATE amplo, atualização restrita às colunas de arquivamento, trigger presente e guarda indisponível ao browser.
 
-## 10. Rodada 004E — AUTORIZADA PARA EXECUÇÃO
+## 10. Rodada 004E — IMPLEMENTADA ATÉ GATE DE CREDENCIAL PAGA
 
 Mandato:
 
 `rodadas/gpt/RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
 
-Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
+Branch: `claude/rodada-004e-declared-context-review-first-real-ai`.
 
-Branch sugerida:
+Base: `main` em `0ad811f`.
 
-`claude/rodada-004e-declared-context-review-first-real-ai`
+Status: **004E IMPLEMENTADA ATÉ GATE DE CREDENCIAL PAGA — AGUARDANDO AÇÃO GPT/FUNDADOR PARA PROVA E2E REAL**.
 
-Objetivo resumido:
+Relatório: `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`.
 
-- criar primeira revisão por IA do **contexto declarado** do negócio, sem afirmar observação de mercado inexistente;
-- criar `/revisao` e integrar o próximo passo determinístico da 004D sem chamada automática de provider;
-- persistir artefato de revisão com snapshot/evidence refs/fingerprint/cache tenant-safe;
-- validar grounding e falhar fechado em referência inventada;
-- implementar controle de custo/abuso: ação explícita, cache e 3 chamadas não cacheadas por organização por hora;
-- inaugurar o primeiro provider real atrás do Router 004A;
-- provider autorizado: **Google Gemini Developer API, Paid Tier**;
-- modelo inicial autorizado: `gemini-2.5-flash-lite`;
-- usar SDK oficial `@google/genai` fixado em versão exata;
-- catalogar provider/modelo/preço por migration aditiva com preço oficial verificado em 2026-08-25;
-- executar prova E2E real apenas com dado sintético e ledger/custo auditáveis;
-- manter Meta, Ads, CRM, Content Intelligence e demais capacidades externas fora do escopo.
+### 10.1 Gate
 
-### 10.1 Decisão de privacidade/custo
+`GEMINI_API_KEY` não existe em nenhum runtime alcançável — ambiente, `.env.local` e secrets do repositório verificados por presença, sem leitura de valor.
 
-Para dados reais de clientes, **Free Tier do Gemini não é autorizado**. A documentação oficial vigente consultada pelo GPT informa que o Free Tier usa conteúdo para melhoria de produtos, enquanto o Paid Tier não.
+Nenhuma chamada ao provider foi feita; nenhum custo foi gerado; nenhum fake substituiu o provider. `scripts/e2e-declared-context-review.mjs` está versionado e para com mensagem de gate quando a chave falta.
 
-Preço Standard Paid verificado para `gemini-2.5-flash-lite`, por 1M tokens:
+O runtime que precisa da variável é o servidor da aplicação e o shell que roda `npm run e2e:review`. Nenhum segredo foi exposto. **GPT conduz a ação manual.**
 
-- input: USD 0.10;
-- output: USD 0.40;
-- cached input: USD 0.01 quando aplicável.
+### 10.2 Delta executado
 
-Se preço/modelo/documentação oficial mudar materialmente durante a execução, Claude deve parar e devolver a decisão ao GPT; não substituir silenciosamente.
+- task `DECLARED_BUSINESS_CONTEXT_REVIEW@v1`, prompt `v1`, schema `v1`: tenant-scoped, Tier 1, capacidades `STRUCTURED_EXTRACTION`/`JSON_SCHEMA_NATIVE`/`LOW_COST`;
+- nenhuma feature, página ou componente conhece provider ou modelo — há teste que varre o código provando isso;
+- adapter nativo Gemini com `@google/genai` **2.18.0** fixado, chave server-only, raciocínio desabilitado, saída limitada, timeout explícito;
+- usage normalizado: cache disjunto da entrada, raciocínio somado à saída, contagem incoerente vira `USAGE_INVALID`;
+- catálogo real por migration aditiva: provider `google_gemini`, modelo `gemini-2.5-flash-lite`, preço Standard Paid USD 0.10/0.40/0.01 por 1M tokens, com fonte oficial e data de verificação 2026-08-25;
+- `declared_context_reviews` tenant-safe, imutável, com cache único por `(organização, fingerprint, versões)`;
+- grounding fail-closed: referência inventada invalida o output inteiro;
+- custo controlado: clique explícito, cache primeiro, owner/admin, 3 chamadas não cacheadas por organização por hora medidas em `ai_runs`;
+- `/revisao` em português simples, com aviso estático de que nada além do declarado foi observado;
+- motor da 004D ganhou `REVISAR_CONTEXTO_DECLARADO` e `CONTEXTO_DECLARADO_REVISADO`, ambos determinísticos;
+- `AI_ARCHITECTURE.md`, `DATA_MODEL.md`, `TECHNICAL_SPEC.md` e `IMPLEMENTATION_ROADMAP.md` harmonizados.
 
-### 10.2 Gate de credencial paga
+### 10.3 Supabase remoto da 004E
 
-Secret previsto: `GEMINI_API_KEY`, exclusivamente server-side.
+Migration aplicada: `20260825250000_create_declared_context_review`, publicada na branch antes do `db push`. Não deve ser reescrita.
 
-A disponibilidade atual de uma chave Paid Tier segura **ainda não foi presumida nem comprovada pelo GPT**.
+Prova: **25 casos, 25 passaram, 0 falharam**, transacional com rollback e zero fixtures residuais. Advisors idênticos ao baseline.
 
-Claude deve executar todo o delta que não dependa da chave. Quando chegar à prova paga real:
+### 10.4 Provas locais
 
-- se a credencial segura já estiver disponível no runtime, executar somente a prova sintética prevista;
-- se não estiver, parar sem improvisar e registrar: **004E IMPLEMENTADA ATÉ GATE DE CREDENCIAL PAGA — AGUARDANDO AÇÃO GPT/FUNDADOR PARA PROVA E2E REAL**.
+- suíte completa **973/973** em 48 arquivos;
+- eval sintética com 12 fixtures em português, sem dado real de cliente;
+- `tsc --noEmit` e `eslint` limpos;
+- CI final do PR.
 
-Claude não deve pedir que o fundador cole chave em chat, GitHub, SQL ou comando compartilhado. O GPT conduz eventual ação manual.
+Três testes da 004A foram atualizados: afirmavam registro vazio e ausência de marca de provider — verdades daquela rodada, que a 004E torna falsas por design. As invariantes foram reescritas de forma mais precisa, e continuam provando que quem decide não conhece marca.
 
 ## 11. Continua NÃO autorizado fora do mandato 004E
 
@@ -398,26 +397,14 @@ Claude não deve pedir que o fundador cole chave em chat, GitHub, SQL ou comando
 
 ## 12. Próxima ação autorizada
 
-Próximo ator: **Claude Code**.
+Próximo ator: **GPT**.
 
-O fundador pode ativá-lo pelo fluxo normal do projeto (`/proxima`).
+Duas coisas, nesta ordem:
 
-Claude deve:
+1. conduzir a disponibilização segura de `GEMINI_API_KEY` de projeto no **Paid Tier**, em linguagem simples e uma ação por vez, sem que o segredo passe por chat, GitHub, SQL ou terminal compartilhado;
+2. depois disso, a prova E2E real roda por `npm run e2e:review`, e só então a 004E pode ser considerada executada integralmente e seguir para auditoria.
 
-1. partir da `main` atualizada;
-2. ler `estado.md`;
-3. ler `rodadas/gpt/RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`;
-4. cumprir somente o READ SET obrigatório e abrir itens sob demanda quando houver dependência concreta;
-5. criar `claude/rodada-004e-declared-context-review-first-real-ai`;
-6. executar somente o delta autorizado;
-7. manter 003B/Meta intocados;
-8. nunca usar Free Tier com dado real de cliente;
-9. parar no gate da credencial paga se a prova E2E real não puder ser feita com secret seguro já disponível;
-10. finalizar com relatório, PR, CI e `estado.md` da branch no status real definido pelo mandato.
-
-Claude não deve promover nem mergear a rodada.
-
-Depois da execução completa ou do gate de credencial, o próximo ator volta a ser o **GPT auditor/orquestrador**.
+Claude não promove, não mergeia e não declara a rodada aprovada.
 
 ## 13. Regra de continuidade
 

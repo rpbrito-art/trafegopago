@@ -8,6 +8,8 @@ As fases descrevem **dependências e capacidades**, não um funil obrigatório q
 
 Mídia paga não entra nessa lista. Ela é pilar central da trajetória do produto (`docs/01-produto/PAID_MEDIA_CANONICAL.md` §2): o usuário não é obrigado a gastar para começar, mas a capacidade deve estar disponível e integrada. Permissão técnica, campanha, aprovação e gasto continuam sendo etapas distintas, e nenhuma delas é automática.
 
+A Fase 6 (AI Foundation) ganhou seu **primeiro provider real** na Rodada 004E — Google Gemini, nível pago, atrás do Router. Ela permanece **aberta**: segundo provider, fallback real multi-provider e evals mais amplas ainda não existem.
+
 Antes de iniciar cada fase que toque Meta, produto ou experiência, revalidar:
 
 1. aderência ao `GROWTH_INTELLIGENCE_CANONICAL.md`, lido integralmente;
