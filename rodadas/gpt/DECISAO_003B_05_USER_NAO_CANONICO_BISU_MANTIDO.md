@@ -18,62 +18,72 @@ Também provou uma anomalia específica:
 
 - `/me/accounts` retorna HTTP 200 com zero Pages, apesar de o mesmo token conseguir ler diretamente a Page Quoron e seu Instagram vinculado.
 
-A documentação oficial Meta continua documentando `/me/accounts` como o caminho de listagem das Pages gerenciadas por User Access Token e a consulta direta por `page_id` quando esse ID já é conhecido.
+A documentação oficial Meta continua documentando `/me/accounts` como caminho de listagem de Pages para User Access Token e a consulta direta por `page_id` quando esse ID já é conhecido.
 
-## Decisão
+## Decisão preservada
 
 O **User Access Token NÃO é adotado como arquitetura canônica de descoberta/seleção da 003B**.
 
-Motivo: ele não satisfaz, neste E2E, o requisito de descoberta automática e genérica de ativos. O produto não pode depender de:
+Motivo: ele não satisfez, neste E2E, o requisito de descoberta automática e genérica de ativos. O produto não pode depender de:
 
 - Page ID previamente conhecido;
 - ID técnico informado manualmente pelo cliente;
 - fixture hardcoded;
-- scraping ou mecanismo não oficial para resolver Page/Instagram;
+- scraping ou mecanismo não oficial;
 - scopes adicionais por tentativa.
 
 Isso violaria a lei de produto `Simplicidade Guiada`: a complexidade técnica deve pertencer ao sistema, não ao pequeno empresário.
 
-## Arquitetura mantida
+Permanece canônico para produção o desenho de **Facebook Login for Business com System-user access token / BISU e seleção de ativos**, estabelecido na 003A.
 
-Permanece canônico para produção o desenho de **Facebook Login for Business com System-user access token / BISU e seleção de ativos**, já estabelecido na 003A.
+O experimento USER permanece como evidência útil de compatibilidade downstream, não como substituição do BISU.
 
-O experimento USER fica registrado como evidência útil de compatibilidade downstream, não como substituição do BISU.
+## CORREÇÃO DA CONCLUSÃO DE GATE
 
-Não remover suporte a USER de forma destrutiva nesta decisão; apenas não promovê-lo a caminho canônico de descoberta.
+Após a primeira versão desta decisão, a auditoria do código da 003B encontrou um fato material adicional:
 
-## Restrição do E2E atual
+`src/lib/meta/assets.ts` usa atualmente `GET /me/accounts` como mecanismo de descoberta de Pages **para qualquer conexão**, sem distinguir User Access Token de BISU/System User.
 
-O portfólio Quoron é dono do app de desenvolvimento e a Meta bloqueou seu uso simultâneo como portfólio cliente no fluxo BISU (`This Meta Business Account owns the app`).
+A 003A, por outro lado, já contém infraestrutura server-side para inspecionar/classificar a credencial. Ela registra que `debug_token.type` sozinho não distingue com segurança BISU de system user clássico e usa evidência complementar como `client_business_id` para a classificação segura.
 
-Isso impede provar o E2E canônico usando exatamente a mesma entidade como provedor e cliente.
+Portanto, a conclusão anterior de que o bloqueio restante era **somente** uma fixture Meta externa é prematura e fica **SUPERSEDIDA NESTE PONTO**.
 
-Não foi encontrada evidência oficial atual de um Business Portfolio de teste aplicável que elimine essa separação, e o fundador já rejeitou usar portfólio/empresa de terceiro apenas para contornar o teste.
+Antes de classificar o gate como exclusivamente externo, a 003B deve corrigir a premissa de que `/me/accounts` é universal e tornar a descoberta **sensível ao tipo real da credencial**.
 
-Portanto, o que resta é um **gate externo de fixture elegível**, não uma falha comprovada do código downstream.
+## Próxima correção autorizada
+
+Mandato:
+
+`rodadas/gpt/CORRECAO_003B_06_DISCOVERY_CREDENTIAL_AWARE.md`
+
+Objetivo:
+
+- reutilizar/centralizar a classificação server-side segura de credencial já existente na 003A;
+- manter `/me/accounts` para USER onde esse é o caminho documentado;
+- para BISU/System User, usar o mecanismo oficial de Pages atribuídas compatível com essa classe de credencial, comprovado durante a implementação por documentação/SDK/sample oficial vigente;
+- não persistir tipo de token por conveniência se a classificação por request resolver com segurança;
+- não usar `external_business_id` como proxy de tipo de token;
+- não assumir que `debug_token.type=SYSTEM_USER` sozinho significa BISU;
+- preservar paginação, fail-closed, isolamento e redescoberta antes da seleção.
+
+Se o executor não conseguir estabelecer com evidência suficiente qual é o edge oficial correto para BISU/System User, deve parar em:
+
+`DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`
+
+sem inventar endpoint e sem alterar configuração Meta.
 
 ## Estado da 003B
 
 A 003B continua **NÃO PROMOVIDA**.
 
-Não iniciar Fase 4 enquanto o mecanismo canônico de descoberta/seleção não tiver E2E suficiente ou enquanto o mandato da 003B não for explicitamente revisado com critério de promoção alternativo.
+O gate externo de uma entidade cliente separada pode voltar a ser necessário para o E2E BISU, mas isso só será decidido **depois** da correção e auditoria do mecanismo de descoberta por tipo de credencial.
 
 ## Continua proibido
 
 - pedir Page ID técnico ao cliente como fluxo padrão;
-- adicionar `business_management` ou `ads_management` por tentativa;
+- adicionar `business_management`, `ads_management` ou outro scope por tentativa;
 - pedir/persistir Page Access Token sem necessidade material;
 - tratar a causa do `/me/accounts` vazio como conhecida;
 - promover USER como arquitetura canônica;
-- promover/mergear 003B automaticamente.
-
-## Próxima ação
-
-Próximo a agir: **GPT/fundador em decisão de gate**, não Claude em nova investigação.
-
-Há duas opções legítimas para destravar o projeto:
-
-1. disponibilizar futuramente uma entidade Meta cliente elegível e separada do portfólio dono do app para o E2E BISU; ou
-2. o GPT formular uma revisão explícita do critério de promoção da 003B, baseada no conjunto de provas já obtidas, para decisão do fundador — sem fingir que o E2E canônico ocorreu.
-
-Até essa escolha, nenhuma nova sonda, OAuth ou alteração Meta está autorizada.
+- promover/mergear 003B automaticamente;
+- novo OAuth ou alteração no painel Meta durante esta correção.
