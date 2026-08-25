@@ -23,7 +23,7 @@ Promovidas: **000–003A**.
 - merge commit 003A: `546838db8e7ced4e9045c05feb8c7b2f0c476cc2`.
 - CI final 003A: `32772710738` — verde.
 
-A 003A está **EXECUTADA, AUDITADA E PROMOVIDA**. Permanecem canônicos: Facebook Login for Business + Graph API v26.0; token Meta server-side no Vault; OAuth `state` de uso único; membership reconferida; BISU classificado por `client_business_id`; desconexão BISU por remoção da integração em Apps conectados; `190` genérico não prova revogação; assinatura `190/464` só vale no fluxo de remoção externa previamente marcado e com prova composta; E2E real de desconexão 003A concluído.
+A 003A está **EXECUTADA, AUDITADA E PROMOVIDA**. Permanecem canônicos: Facebook Login for Business + Graph API v26.0; token Meta server-side no Vault; OAuth `state` de uso único; membership reconferida; suporte e classificação de BISU; desconexão segura; E2E real de desconexão 003A concluído.
 
 ## 3. Rodada 003B — EM EXECUÇÃO, NÃO PROMOVIDA
 
@@ -68,9 +68,9 @@ Antes da próxima rodada substantiva pós-003B, harmonizar diretamente as formul
 
 ## 5. Configuração externa Meta da 003B
 
-App oficial/dev corrente: **Trafego Pago Business Dev** — App ID `2940404272985831`.
+App oficial/dev anterior: **Trafego Pago Business Dev** — App ID `2940404272985831`.
 
-Configuração usada pelo produto até aqui:
+Configuração BISU anterior da 003B:
 
 - nome: `Quoron Instagram Dev Login`;
 - Configuration ID: `38307908848822330`;
@@ -88,120 +88,115 @@ Ativos reais do portfólio **Quoron**:
 - Página Facebook: **Quoron**;
 - Instagram profissional: **@goquoron**.
 
-No primeiro OAuth real 003B, apesar de Página + Instagram terem sido selecionados, o token veio somente com `pages_show_list`, `pages_read_engagement`, `public_profile`. Faltaram `instagram_basic` e `instagram_manage_insights`.
+No primeiro OAuth real 003B, o token veio somente com `pages_show_list`, `pages_read_engagement`, `public_profile`. Faltaram `instagram_basic` e `instagram_manage_insights`.
 
-O caso de uso correto de Instagram com Facebook Login foi habilitado e `instagram_basic` + `instagram_manage_insights` foram salvos na configuração `Quoron Instagram Dev Login`, mas o token já emitido não ganha novos escopos retroativamente.
+## 6. Conexão real atual — BASELINE PRÉ-OAUTH USER
 
-## 6. Conexão real atual — PRESERVAR
-
-Conexão real atual:
+Conexão atual:
 
 - id: `655da6e6-9056-456d-a81d-5e2570da5faf`;
 - status: **ACTIVE**;
 - referência de token no Vault: presente;
-- escopos atuais persistidos: `pages_show_list`, `pages_read_engagement`, `public_profile`;
+- escopos: `pages_show_list`, `pages_read_engagement`, `public_profile`;
+- expiração: `2026-10-23 23:30:58.46+00`;
 - `instagram_accounts`: 0 linhas;
 - `ad_accounts`: 0 linhas.
 
-A tentativa de reautorização posterior não foi concluída, portanto nenhum novo token foi persistido.
+O GPT reconfirmou esse baseline diretamente no Supabase imediatamente antes de liberar o OAuth USER. Essa credencial é uma fixture intermediária da 003B e não possui os escopos necessários para completar Instagram/Insights.
 
-## 7. Gate E2E atual
+## 7. Gates E2E
 
-### 7.1 Bloqueio do portfólio dono do app
+### 7.1 Portfólio dono do app não elegível como cliente
 
-Na reautorização real, o seletor **Portfólio empresarial** exibiu **Quoron** desabilitado com a mensagem literal:
+Na reautorização BISU, o seletor exibiu **Quoron** desabilitado com:
 
 `This Meta Business Account owns the app`
-
-Fato consolidado: neste fluxo/configuração, o portfólio que possui o app não pode ocupar também o papel de portfólio cliente integrado.
 
 Gate: `rodadas/gpt/GATE_003B_PORTFOLIO_DONO_DO_APP_NAO_ELEGIVEL_COMO_CLIENTE.md`
 
 ### 7.2 Registro 003B-04 anterior — decisão prematura anulada
 
-Arquivo de trilha: `rodadas/gpt/DECISAO_003B_04_SEPARAR_PROVEDOR_E_CLIENTE_FIXTURE.md`
+`rodadas/gpt/DECISAO_003B_04_SEPARAR_PROVEDOR_E_CLIENTE_FIXTURE.md`
 
-Status: **ANULADO COMO DECISÃO**. O fundador estava apenas debatendo e não havia autorizado aquela solução.
+Status: **ANULADO COMO DECISÃO**. Era hipótese em debate, não autorização do fundador.
 
-### 7.3 Experimento 003B-04 — app Meta de teste sem portfólio / BISU
+### 7.3 Experimento 003B-04 — app sem portfólio / BISU
 
 Autorização: `rodadas/gpt/AUTORIZACAO_003B_04_APP_META_TESTE_SEM_PORTFOLIO.md`
 
 Resultado: `rodadas/gpt/RESULTADO_003B_04_APP_META_TESTE_SEM_PORTFOLIO.md`
 
-Status: **EXPERIMENTO EXECUTADO — HIPÓTESE BISU REPROVADA**.
+Status: **EXECUTADO — HIPÓTESE BISU REPROVADA**.
 
-Fatos provados pela UI atual da Meta:
-
-- foi criado `Trafego Pago E2E Test` sem Business Portfolio associado;
-- o caso de uso `Gerenciar mensagens e conteúdo no Instagram` expôs `API setup with Facebook login`;
-- o app recebeu `Login do Facebook para Empresas` e permitiu iniciar `Criar configuração`;
-- na etapa `Escolher o token de acesso`, `Token de acesso do usuário` ficou disponível;
-- **`Token de acesso do usuário do sistema` ficou desabilitado** porque o app não está associado a um portfólio empresarial.
-
-Conclusão limitada: **não é possível reproduzir o contrato BISU vigente usando um app de teste sem portfólio empresarial**.
-
-Nada foi alterado em `.env.local`; nenhum novo OAuth foi concluído; nenhum token novo foi persistido; o app de teste continua sem portfólio associado.
+Fato central: `System-user access token` fica indisponível quando o app não está associado a Business Portfolio.
 
 ### 7.4 Experimento 003B-05 — User Access Token
 
 Autorização: `rodadas/gpt/AUTORIZACAO_003B_05_USER_ACCESS_TOKEN_E2E.md`
 
-Status: **AUTORIZADO PELO FUNDADOR PARA EXPERIMENTO CONTROLADO — NÃO É DECISÃO ARQUITETURAL DEFINITIVA**.
+Status: **AUTORIZADO PARA EXPERIMENTO CONTROLADO — NÃO É DECISÃO ARQUITETURAL DEFINITIVA**.
 
-O fundador autorizou testar o caminho `Token de acesso do usuário` no app `Trafego Pago E2E Test` para provar ou reprovar a cadeia:
+App E2E:
 
-`configuração USER → OAuth real → Quoron elegível → escopos corretos → Page descoberta → @goquoron descoberto → seleção persistida → leitura IG User → Insights`
+- `Trafego Pago E2E Test`;
+- criado sem Business Portfolio;
+- caso de uso Instagram no caminho **API setup with Facebook login**;
+- `Login do Facebook para Empresas` disponível;
+- configuração criada: **`Quoron E2E Login`**;
+- Configuration ID: **`1068370819137366`**;
+- token: **User Access Token**;
+- etapa `Ativos` indisponível por desenho no modo USER;
+- permissões mínimas configuradas no app/configuração para o experimento.
 
-Motivo: a Meta oferece explicitamente User Access Token nessa configuração; a documentação oficial do Instagram com Facebook Login trabalha com Facebook User Access Token; a Marketing API também admite User Access Token; e o gateway atual já contém caminho distinto para reconhecer/revogar token USER. Isso torna a hipótese relevante, mas ainda não provada no E2E específico do produto.
+O fundador informou que já:
 
-Fatos provados pela UI da Meta em 2026-08-25:
+- cadastrou `http://localhost:3000/meta/callback` no app E2E;
+- trocou localmente `META_APP_ID`, `META_APP_SECRET` e `META_LOGIN_CONFIG_ID=1068370819137366` no `.env.local`, sem expor o secret;
+- preservou o redirect URI;
+- reiniciou o servidor local.
 
-- ao escolher `Token de acesso do usuário`, a etapa `Ativos` fica indisponível;
-- a própria Meta informa: `Não é possível selecionar ativos porque você optou por usar um token de acesso do usuário com essa configuração.`;
-- no modelo USER, os ativos precisam ser descobertos depois a partir do usuário autorizado, compatível com `GET /me/accounts` previsto na 003B;
-- inicialmente, o seletor de permissões da configuração USER apareceu vazio;
-- a página geral `Permissões e recursos` do app confirmou que existem `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_manage_insights` e `ads_read` no catálogo do app;
-- após a configuração das permissões, foi criada com sucesso a configuração **`Quoron E2E Login`** no app **`Trafego Pago E2E Test`**;
-- Configuration ID da configuração USER: **`1068370819137366`**.
+### 7.5 Gate de substituição controlada da credencial — LIBERADO
 
-A configuração USER está **CRIADA NO PAINEL META**, mas o OAuth real com ela ainda **NÃO FOI EXECUTADO**. Nada foi alterado ainda em `.env.local` e a conexão real atual permanece preservada.
+Gate: `rodadas/gpt/GATE_003B_05_OAUTH_USER_SUBSTITUICAO_CONTROLADA.md`
 
-A autorização **não** promove User Access Token como arquitetura definitiva e **não** remove BISU do produto.
+Auditoria do código provou:
+
+- antes de receber novo token, cancelamento/negação/troca de code falha sem substituir a credencial atual;
+- `begin_meta_connection` retoma a conexão viva preservando o token existente;
+- somente `activate_meta_connection`, após emissão do novo token, substitui o segredo no Vault e marca `ACTIVE`;
+- se a ativação USER tiver sucesso, a credencial 003B atual será **conscientemente substituída** pelo User Access Token para o experimento.
+
+Isso é aceitável dentro do experimento já autorizado porque a credencial atual é intermediária da 003B, não fecha Instagram e a evidência promovida da 003A não depende dessa conexão viva específica.
 
 ## 8. Próxima ação autorizada
 
-Próximo a agir: **GPT + fundador na preparação segura do OAuth E2E USER**.
+Próximo a agir: **fundador no software local**.
 
-Antes de iniciar o OAuth real:
+1. abrir `http://localhost:3000/conta`;
+2. clicar **Atualizar autorização**;
+3. no diálogo Meta, entrar/continuar com a conta Facebook administradora usada no teste;
+4. conceder somente o que a configuração `Quoron E2E Login` apresentar;
+5. **não criar** Business Portfolio, Page, Instagram, Ad Account ou qualquer outro ativo;
+6. se a Meta exigir `business_management`, `ads_management`, associação do app a portfólio ou criação de ativo, parar antes de aceitar e retornar ao GPT;
+7. se o OAuth concluir e retornar ao localhost, **não clicar ainda em `Usar esta conta` / selecionar Instagram ou Ad Account**; retornar ao GPT para auditoria imediata do token/scopes/estado.
 
-1. cadastrar no app `Trafego Pago E2E Test` o redirect URI de desenvolvimento exatamente como o produto espera: `http://localhost:3000/meta/callback`;
-2. obter no painel do novo app o **App ID** e copiar o **App Secret diretamente para o `.env.local`**, sem expor o secret no chat;
-3. trocar temporariamente no `.env.local` apenas `META_APP_ID`, `META_APP_SECRET` e `META_LOGIN_CONFIG_ID=1068370819137366`, preservando `META_OAUTH_REDIRECT_URI=http://localhost:3000/meta/callback` e a versão vigente;
-4. reiniciar o servidor local para carregar as novas credenciais;
-5. **não iniciar o OAuth ainda** até o GPT definir como preservar ou conscientemente substituir a conexão ACTIVE atual, porque o callback de reautorização pode atualizar a credencial da conexão viva da organização.
-
-O próximo gate é preparar o app/local sem mutar a conexão real; depois o GPT define o procedimento seguro do OAuth.
+Após o retorno, o GPT audita Supabase antes da descoberta/seleção.
 
 ## 9. Continua NÃO autorizado
 
 - declarar User Access Token arquitetura definitiva antes do E2E e da análise de ciclo de vida/segurança;
 - remover suporte BISU;
-- associar o app de teste ao portfólio Quoron apenas para habilitar BISU;
+- associar o app E2E ao portfólio Quoron apenas para habilitar BISU;
 - substituir definitivamente o app oficial;
-- iniciar OAuth USER antes do gate de preservação da conexão ACTIVE atual;
 - criar novo portfólio empresarial;
 - usar conta de terceiro;
 - criar `Quoron 1`;
 - inventar site/domínio;
 - mover Página Quoron ou `@goquoron` entre portfólios;
 - transferir a propriedade do app oficial;
-- desconectar a conexão real atual sem gate específico;
-- remover novamente a integração em Apps conectados sem gate específico;
-- apagar a configuração histórica da 003A;
-- migrar para Instagram Login/`instagram_business_*`;
+- expor App Secret/token;
+- ampliar permissões de escrita por tentativa;
 - persistir Page Access Token sem decisão arquitetural;
-- ampliar permissões por tentativa;
 - criar campanha, anúncio ou gasto;
 - importar conteúdo do Instagram;
 - iniciar Fase 4;
@@ -210,7 +205,7 @@ O próximo gate é preparar o app/local sem mutar a conexão real; depois o GPT 
 ## 10. Pendências não bloqueantes
 
 - se USER passar no E2E, revisar formalmente duração/expiração, renovação/reautorização, revogação, impacto em Ads e segurança antes de decidir arquitetura definitiva;
-- investigar, sem presumir resultado, como o próprio Quoron poderá usar o SaaS sendo o portfólio dono do app em produção;
+- investigar, sem presumir resultado, como o próprio Quoron usará o SaaS em produção caso o app definitivo permaneça no portfólio Quoron;
 - harmonização dos canônicos antigos com `PAID_MEDIA_CANONICAL.md` antes da próxima rodada substantiva pós-003B;
 - revisar onboarding final para não depender de configurações manuais desnecessárias no painel Meta;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
