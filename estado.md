@@ -151,29 +151,67 @@ Falha de execução:
 - o relatório obrigatório `rodadas/claude/RELATORIO_CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md` não existe no HEAD;
 - o Supabase permanece `ACTIVE`.
 
-## 8. Próxima ação autorizada — CLAUDE DEVE CONCLUIR A 003B-09
+## 8. Correção 003B-09 — EXECUTADA PARCIALMENTE, BLOQUEADA POR DECISÃO ARQUITETURAL
 
-Próximo a agir: **Claude Code**.
+Mandato: `rodadas/gpt/CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`.
 
-Não abrir nova arquitetura e não criar nova fase. Concluir somente a parte faltante da 003B-09:
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**, com o objetivo do reset **NÃO ATINGIDO**.
 
-1. executar o harness E2E real já criado com a flag explícita prevista;
-2. usar o backend canônico `disconnectMeta()`; não simular sucesso via SQL;
-3. observar somente resposta sanitizada da Meta;
-4. se o comportamento real exigir ajuste mínimo do parser USER, corrigir dentro da mesma 003B-09 e repetir;
-5. terminar com prova no Supabase de:
-   - `status=REVOKED`;
-   - sem referência de token;
-   - `token_expires_at=null`;
-   - scopes vazios;
-   - `disconnected_at` preenchido;
-   - nenhum ativo selecionado;
-6. **não reconectar**;
-7. escrever `rodadas/claude/RELATORIO_CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`;
-8. se houver novo código, rerodar testes/typecheck/lint/CI;
-9. parar em **AGUARDANDO AUDITORIA GPT**.
+Relatório: `rodadas/claude/RELATORIO_CORRECAO_003B_09_RESET_E2E_CONEXAO_META.md`.
 
-O fundador não precisa executar nenhum comando técnico além de acionar `/proxima` no Claude Code.
+### 8.1 Implementado
+
+- `revokeUserPermissions` aceita JSON literal `true` além de `{success:true}`; token sai da URL do `DELETE` e vai em `Authorization: Bearer`;
+- `MetaSection` ganha `credencialRecusada`: no estado `conectado`, cala em vez de afirmar saúde;
+- `conexao-recusada` ganha ação secundária **Desconectar e começar de novo**, pela action canônica;
+- `MetaDisconnectButton` com rótulo configurável; `ContaPage` liga as duas leituras;
+- harness E2E em `scripts/e2e/` com config própria, fora do `include` da CI e armado por variável explícita.
+
+Provas: **242/242** em `src/lib/meta`, `src/lib/actions`, `src/components/meta`; `gateway.test.ts` 76/76; componentes 49/49. `tsc --noEmit` e `lint` limpos.
+
+### 8.2 E2E real executado — falhou fechado sem tocar a Meta
+
+Antes e depois idênticos: `ACTIVE`, referência de token presente, 6 escopos, `disconnected_at` nulo.
+
+Resultado: `{ ok: false, reason: "PROVIDER_REVOKE_FAILED" }`; log `etapa: CLASSIFICACAO, http: 400, code: 190`; **nenhuma** chamada a `/permissions`. O parser corrigido não chegou a ser exercitado.
+
+### 8.3 Causa real provada
+
+Token íntegro: `debug_token` → `is_valid: true`, `type: USER`, app corrente, 6 escopos. `GET /me?fields=id,name` → 200.
+
+Sonda `scripts/meta-classify-field-003b-09-probe.mjs` — mesmo nó, mesmo token, mesma versão, mudando só `fields`:
+
+- `id,name` → **HTTP 200**;
+- `client_business_id` → **HTTP 400, code 190, OAuthException**;
+- `id,client_business_id` → **HTTP 400, code 190, OAuthException**.
+
+**Pedir `client_business_id` com User Access Token é recusado com `190`.** `classifyCredential` pede exatamente isso. Consequências:
+
+1. **desconexão USER bloqueada** — a classificação vem antes da primitive e falha fechada; `/permissions` nunca é chamado. É o "Desconectar não funciona" relatado;
+2. **descoberta de ativos bloqueada** — a 003B-06 passou a usar a mesma classificação em `assets.ts`; o `190` vira `CONNECTION_REJECTED` e a tela diz "A Meta não aceitou mais a autorização atual" **sobre um token válido**. É a origem do `conexao-recusada` observado.
+
+A 003B-06 foi aprovada, mas nenhuma prova até aqui exercitou a classificação contra um User Token real — eram duplos de teste.
+
+### 8.4 Por que a correção não coube neste mandato
+
+O §4.2 autoriza ajuste **restrito ao contrato de desconexão USER**. `classifyCredential` é compartilhada e governa também a descoberta e a distinção BISU; mudar como ela conclui "não é BISU" mexe na invariante de que essa afirmação exige prova positiva — criada pela 003A depois de `oauth/revoke` não revogar nada.
+
+Alternativas identificadas, sem escolha do Claude:
+
+- **(a)** interpretar `190` na leitura de `client_business_id` como ausência do contrato BISU, com identidade positiva obtida à parte;
+- **(b)** inverter a ordem: identidade por `fields=id` e `client_business_id` em chamada isolada, tratando a recusa desse campo como sinal de não-BISU;
+- **(c)** adotar outro sinal oficial de BISU, hoje proibido isoladamente pelo canônico;
+- **(d)** manter como está — e então USER não desconecta nem descobre ativos.
+
+Nenhuma implementada, nenhuma testada contra a Meta.
+
+`DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`
+
+### 8.5 Estado do ambiente
+
+Conexão `655da6e6-9056-456d-a81d-5e2570da5faf` continua **ACTIVE**, token e escopos intactos. Nada revogado, apagado ou reconectado. Nenhuma alteração em `.env.local`, Meta App, configuração, escopos, portfólios ou ativos. O critério de saída — ambiente desconectado e pronto para teste do zero — **não foi atingido**.
+
+Próximo a agir: **GPT** — decidir o mecanismo de classificação e autorizar a correção.
 
 ## 9. Continua NÃO autorizado
 
