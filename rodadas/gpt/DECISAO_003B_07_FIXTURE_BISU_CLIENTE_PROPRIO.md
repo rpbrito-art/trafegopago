@@ -8,45 +8,46 @@ Rodada-mãe: **003B — Meta Asset Discovery & Selection**.
 
 A decisão anterior de criar um novo Meta Business Portfolio chamado `Tráfego Pago Cliente Teste` foi incorreta e está formalmente retratada.
 
-O fundador já possui **dois Meta Business Portfolios**, que é o limite atualmente imposto à sua conta. Um deles é **Quoron** e o outro é **BizzManiq1**. O portfólio `BizzManiq1` está bloqueado/inutilizável no estado atual.
+Fatos operacionais confirmados:
 
-Consequências:
-
-- não existe vaga disponível para criar um terceiro portfólio;
-- não pedir ao fundador para criar outro Business Portfolio;
-- não excluir `BizzManiq1` por tentativa apenas para liberar vaga: o histórico já registrou que excluir pode não liberar capacidade imediatamente e pode piorar a situação;
-- não usar empresa/portfólio de terceiro apenas para o E2E;
-- Quoron continua dono do app e continua inelegível como cliente do próprio app no fluxo BISU observado.
+- a conta do fundador já atingiu o limite atual de **dois Meta Business Portfolios**;
+- portanto não existe vaga disponível para criar um terceiro portfólio;
+- o portfólio que está **bloqueado/inutilizável é `Bizzman5po`**;
+- **não confundir `Bizzman5po` com `BizzManiq1`**;
+- `BizzManiq1` não deve ser descrito como bloqueado sem nova evidência;
+- Quoron continua sendo o portfólio dono do app canônico e, no E2E observado, apareceu inelegível para atuar como cliente do próprio app (`This Meta Business Account owns the app`).
 
 ## 2. Causa da falha de decisão
 
-A pesquisa oficial usada na versão anterior provava apenas que a Meta admite múltiplos Business Portfolios em geral. Ela **não provava que esta conta específica ainda tinha capacidade para criar outro**.
+A versão anterior deste documento misturou identidades de recursos Meta diferentes e registrou incorretamente `BizzManiq1` como o portfólio bloqueado.
 
-O GPT tinha contexto anterior suficiente para saber que a conta do fundador já havia atingido o limite de dois portfolios. Esse estado operacional não estava preservado em `estado.md`, e a ausência documental foi tratada incorretamente como ausência do fato.
+A busca atual no repositório não encontrou registro histórico anterior suficiente para sustentar essa associação. O fato correto foi reafirmado diretamente pelo fundador e passa a ser canônico: **o bloqueio é de `Bizzman5po`**.
 
-Regra corrigida: antes de instrução manual que dependa de capacidade/limite externo, conferir também o estado específico da conta já conhecido no histórico, não apenas a possibilidade abstrata documentada pela plataforma.
+Regra reforçada: nomes de portfólios, apps, configurações e contas Meta não podem ser inferidos por semelhança nominal. Quando a identidade não estiver documentalmente comprovada, registrar a incerteza em vez de preencher por hipótese.
 
-## 3. Caminho de resolução agora
+## 3. Consequências
 
-A única fixture própria potencialmente elegível já existente é `BizzManiq1`.
+- não pedir criação de terceiro Business Portfolio;
+- não excluir `Bizzman5po` por tentativa apenas para liberar vaga;
+- não usar empresa/portfólio de terceiro apenas para o E2E;
+- não tratar `BizzManiq1` como bloqueado;
+- não decidir ainda qual recurso existente poderá servir como cliente BISU até reconstruir corretamente o inventário dos dois portfolios existentes e seus estados.
 
-Portanto, o próximo trabalho deixa de ser "criar cliente de teste" e passa a ser:
+## 4. Próximo trabalho autorizado
 
-1. identificar exatamente a restrição/bloqueio atual de `BizzManiq1`;
-2. verificar se a Meta oferece revisão/recuperação suportada;
-3. se recuperável, usar `BizzManiq1` como cliente separado no E2E BISU;
-4. somente se a Meta declarar esse portfólio irrecuperável, reavaliar alternativas técnicas como fixture criada por API/owned business — sem assumir elegibilidade para Facebook Login for Business até prova oficial.
+GPT deve reconstruir o inventário Meta real e distinguir, por evidência:
 
-## 4. Ação manual permitida
+1. quais são exatamente os dois Business Portfolios que contam para o limite da conta;
+2. qual o papel atual de `BizzManiq1`;
+3. qual o estado e a restrição de `Bizzman5po`;
+4. se algum dos portfolios existentes pode legitimamente funcionar como cliente separado no E2E BISU.
 
-Nenhuma criação, exclusão, transferência ou OAuth está autorizada por este documento.
-
-É permitido apenas **inspecionar o estado/restrição de `BizzManiq1` na Meta Business Support Home / Account Quality**, sem solicitar exclusão e sem alterar ativos.
+Nenhuma criação, exclusão, transferência, alteração de app, alteração de scopes ou OAuth está autorizada enquanto esse inventário não estiver reconstruído.
 
 ## 5. Continua proibido
 
 - criar terceiro Business Portfolio;
-- excluir `BizzManiq1` por tentativa;
+- excluir `Bizzman5po` por tentativa;
 - empresa/portfólio de terceiro;
 - transferir o app;
 - transferir ownership de Page/Instagram/Ad Account;
