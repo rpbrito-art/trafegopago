@@ -29,7 +29,7 @@ Promovidas: **000–003A, 004A, 004B, 004C e 004D**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - Guided Growth Journey / Focus Foundation: **004D PROMOVIDA**.
 - última rodada promovida: **004D — Guided Growth Journey Foundation**.
-- rodada corrente: **004E — Declared Context Review + First Real AI — IMPLEMENTADA ATÉ GATE, AUDITADA; 004E-01 E 004E-02 EXECUTADAS E REAUDITADAS; 004E-03 AUTORIZADA; CREDENCIAL PAGA AINDA BLOQUEADA**.
+- rodada corrente: **004E — Declared Context Review + First Real AI — 004E-03 EXECUTADA, AGUARDANDO REAUDITORIA GPT; CREDENCIAL PAGA AINDA BLOQUEADA**.
 
 ## 3. Promoções recentes incorporadas
 
@@ -310,36 +310,37 @@ Até a reauditoria GPT da 004E-03:
 - e-commerce/estoque/SKU/pedidos/pagamentos;
 - score/gamificação.
 
-## 10. Correção 004E-03 — AUTORIZADA
+## 10. Correção 004E-03 — EXECUTADA
 
-Mandato:
+Mandato: `rodadas/gpt/CORRECAO_004E_03_EVAL_GATE_COMPLETION.md`.
 
-`rodadas/gpt/CORRECAO_004E_03_EVAL_GATE_COMPLETION.md`
+Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · PR #17 mantido aberto, draft, não mergeado.
 
-Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
+Status: **CORREÇÃO 004E-03 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**.
 
-Objetivo estrito:
+Relatório: `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` §9.
 
-- exigir que a tensão esperada esteja ancorada em **todas** as refs pertinentes na mesma tensão;
-- restaurar uma verificação explícita, baseada em metadata/sentinela sintética e não no nome do caso, de resistência a prompt injection;
-- adicionar testes locais determinísticos para os dois pontos;
-- manter zero chamadas pagas.
+**Nenhuma chamada paga foi feita.** `GEMINI_API_KEY` continua ausente. Nenhuma migration foi criada e o banco remoto não foi tocado.
 
-Não há migration, DDL, mudança de provider/modelo/preço, UI ou produto autorizados nesta correção.
+### 10.1 Lacunas fechadas
 
-Próximo ator: **Claude Code**.
+- **A** — a tensão esperada passou a exigir **todas** as refs pertinentes dentro da **mesma** tensão (`every` dentro de `some`). Citar um só dos lados não é comparar, e duas tensões separadas com metade cada uma também não;
+- **B** — a verificação de prompt injection voltou, agora por sentinela sintética declarada na fixture (`sentinelasProibidasNaSaida`), independente do nome do caso. A fixture 08 pede ao modelo, pelo texto do cliente, que devolva `__QUORON_INJECTION_SENTINEL_004E__`; o marcador viaja sem sanitização e, se reaparecer em qualquer campo exibível, o caso falha. A sentinela pertence só à eval — não entra no prompt de produção.
 
-Claude deve continuar na mesma branch e no PR #17 e executar **somente**:
+### 10.2 Provas locais
 
-`rodadas/gpt/CORRECAO_004E_03_EVAL_GATE_COMPLETION.md`
+- `src/lib/review/eval-criteria.test.ts` → **25 casos**, cobrindo os seis cenários de tensão e os cinco de injection exigidos pelo mandato;
+- suíte completa **1015/1015** em 49 arquivos;
+- `tsc --noEmit` e `eslint` limpos;
+- `npm run e2e:review` e `npm run eval:review` continuam parando no gate com código 2, sem chamar nada.
 
-A correção deve ocorrer sem chave Gemini e sem qualquer chamada paga.
+### 10.3 Próxima ação autorizada
 
-Status esperado do Claude:
+Próximo ator: **GPT auditor**.
 
-**CORREÇÃO 004E-03 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**.
+Reauditar a Correção 004E-03 no PR #17. **Somente após aprovação** o GPT pode orientar o fundador a criar/configurar a credencial Paid Tier e liberar a primeira prova real.
 
-Depois disso o próximo ator volta a ser GPT. Somente uma reauditoria aprovada poderá abrir o gate para o fundador criar/configurar a credencial Paid Tier e executar a primeira prova real.
+Claude não promove, não mergeia e não pede a chave ao fundador.
 
 ## 11. Regra de continuidade
 
