@@ -168,6 +168,7 @@ Achado no caminho: o detector de afirmações externas exigia adjacência, entã
 | avaliador da eval | `src/lib/review/eval-criteria.test.ts` — 17 casos |
 | suíte local | **1007/1007** em 49 arquivos |
 | gate dos scripts pagos | `e2e:review` e `eval:review` seguem parando com código 2 |
+| CI da correção | `32910217675` — success, 1007/1007 |
 
 Correção durante a execução: a fixture da prova criava `ai_runs` com status `SUCCEEDED` sem custo, e a constraint `ai_runs_succeeded_requires_cost` da 004A recusou — corretamente, porque é exatamente a invariante que impede uma chamada paga entrar no ledger como gratuita. A fixture passou a registrar custo, que é o cenário real.
 
