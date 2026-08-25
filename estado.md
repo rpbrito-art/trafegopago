@@ -10,8 +10,6 @@ Nome canônico do produto: **Quoron**.
 
 Decisão: `rodadas/gpt/DECISAO_NOME_PRODUTO_QUORON.md`.
 
-A migração de branding no runtime/documentação ativa ainda não foi executada. Ela deve abrir a próxima rodada substantiva, sem criar uma rodada apenas de housekeeping.
-
 Identificadores técnicos legados permanecem temporariamente:
 
 - repo: `rpbrito-art/trafegopago`;
@@ -35,31 +33,17 @@ Promovidas: **000–003A e 004A**.
 
 PR #13: **MERGEADA**.
 
-HEAD final auditado:
+HEAD final auditado: `880a7e4665f827fc7ea5707d863fb00299f56811`.
 
-`880a7e4665f827fc7ea5707d863fb00299f56811`
+CI final: `32873495263` — **success**, 734/734 testes.
 
-CI final:
+Merge: `da2862135eab6897fc44ae361da1298c7071a11f`.
 
-`32873495263` — **success**.
+Auditoria final: `rodadas/gpt/AUDITORIA_FINAL_004A_AI_FOUNDATION_CORE.md`.
 
-Merge:
+Veredito: **004A EXECUTADA, CORRIGIDA, AUDITADA, APROVADA E PROMOVIDA.**
 
-`da2862135eab6897fc44ae361da1298c7071a11f`
-
-Auditoria final:
-
-`rodadas/gpt/AUDITORIA_FINAL_004A_AI_FOUNDATION_CORE.md`
-
-Commit documental da auditoria:
-
-`d0dd19aa64d8ba893ec2f6aaa261c8db1c6cd239`
-
-Veredito:
-
-**004A EXECUTADA, CORRIGIDA, AUDITADA, APROVADA E PROMOVIDA.**
-
-A 004A incorporou:
+Incorporado:
 
 - catálogo interno de providers/modelos/preços;
 - contrato `AI Task` sem feature escolher provider/modelo;
@@ -68,75 +52,59 @@ A 004A incorporou:
 - ledger `ai_runs` auditável;
 - custo com precisão fixa, sem float;
 - ledger/custo fail-closed;
-- coerência relacional provider → model → price version;
+- coerência provider → model → price version;
 - vigência de modelos/preços;
 - RLS e ACL server-only;
 - fake adapter exclusivamente em teste.
 
-Não existe ainda provider real, API key, SDK, chamada paga, fallback real, tool calling, embeddings/RAG ou feature de IA de negócio.
+Ainda não existe provider real, API key, SDK, chamada paga, fallback real, tool calling, embeddings/RAG ou feature de IA de negócio.
 
 ### 2.2 Supabase após 004A
 
-Migration incorporada:
+Migration incorporada: `20260825140000_create_ai_foundation_core`.
 
-`20260825140000_create_ai_foundation_core`
+Tabelas remotas: `ai_providers`, `ai_models`, `ai_price_versions`, `ai_runs`.
 
-Tabelas remotas:
-
-- `ai_providers`;
-- `ai_models`;
-- `ai_price_versions`;
-- `ai_runs`.
-
-Snapshot de auditoria:
+Snapshot auditado:
 
 - quatro tabelas presentes;
 - RLS habilitado;
-- zero policies, por desenho server-only;
+- zero policies por desenho server-only;
 - `anon`/`authenticated` sem grants;
 - grants mínimos para `service_role`;
 - zero registros residuais após provas.
 
-Histórico de migrations foi reconciliado trazendo para a `main`, como artefato histórico exato já aplicado, `20260824210000_create_meta_asset_selection.sql`. Isso **não promove funcionalmente a 003B**.
+O histórico de migrations foi reconciliado incluindo na `main`, como artefato histórico exato já aplicado, `20260824210000_create_meta_asset_selection.sql`. Isso **não promove funcionalmente a 003B**.
 
-### 2.3 Dívida de performance não bloqueante
+### 2.3 Dívida de performance 004A
 
-O advisor do Supabase aponta FKs de `ai_runs` sem índice de cobertura, especialmente:
+O advisor apontou FKs de `ai_runs` sem índice de cobertura:
 
 - `ai_runs_fallback_same_organization`;
 - `ai_runs_model_belongs_to_provider`;
 - `ai_runs_price_belongs_to_model`;
 - `ai_runs_provider_id_fkey`.
 
-São INFO de performance, não falha de segurança/correção. Como a camada ainda não recebe carga produtiva e as tabelas estão vazias, não bloquearam a promoção.
-
-Resolver na próxima rodada substantiva que tocar schema/IA, sem rodada isolada de housekeeping.
+São INFO de performance, não falha de segurança. A Rodada 004B está autorizada a quitá-los porque já tocará schema; não criar housekeeping isolado.
 
 ## 3. Rodada 003B — ESTACIONADA, NÃO PROMOVIDA
-
-Mandato: `rodadas/gpt/RODADA_003B_META_ASSET_DISCOVERY_SELECTION.md`.
 
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`.
 
 PR #12: **draft, open, não mergeado**.
 
-HEAD final da execução mais recente:
+HEAD: `053bc7ca3f25b53954579df30bce598894e718dd`.
 
-`053bc7ca3f25b53954579df30bce598894e718dd`.
+CI: `32859795018` — success.
 
-CI:
-
-`32859795018` — **success**.
-
-Já preservado/auditado:
+Preservado/auditado:
 
 - schema remoto de `instagram_accounts` e `ad_accounts` existe;
-- Correção 003B-01: aprovada;
-- Correção 003B-03: aprovada;
-- investigações 003B-05/Page/IG: evidência read-only auditada;
+- Correções 003B-01 e 003B-03 aprovadas;
+- investigações 003B-05/Page/IG auditadas como evidência read-only;
 - endpoint BISU `/{system-user-id}/assigned_pages` preservado;
-- 003B-08 reconexão: aprovada em código;
-- 003B-09 parser/UX: aprovada em código, com E2E real executado.
+- 003B-08 reconexão aprovada em código;
+- 003B-09 parser/UX aprovada em código, com E2E real executado.
 
 003B continua **NÃO PROMOVIDA**.
 
@@ -144,24 +112,16 @@ Já preservado/auditado:
 
 Com o mesmo User Access Token válido:
 
-- `debug_token` confirma `is_valid=true`, `type=USER`;
-- `/me?fields=id,name` → HTTP 200;
-- `/me?fields=client_business_id` → HTTP 400 / code 190;
-- `/me?fields=id,client_business_id` → HTTP 400 / code 190.
+- `debug_token`: `is_valid=true`, `type=USER`;
+- `/me?fields=id,name` → 200;
+- `/me?fields=client_business_id` → 400 / code 190;
+- `/me?fields=id,client_business_id` → 400 / code 190.
 
-Conclusão: o classifier compartilhado da 003B-06 não pode continuar inferindo saúde/tipo da credencial pela leitura de `client_business_id` desse modo.
-
-Consequências:
-
-- desconexão USER pode ser bloqueada antes da primitive real;
-- descoberta pode mostrar `conexao-recusada` sobre token válido;
-- mensagem de conexão recusada não é prova de token morto.
+O classifier compartilhado da 003B-06 não pode continuar inferindo saúde/tipo da credencial por `client_business_id` desse modo.
 
 A parte `assigned_pages` da arquitetura BISU permanece preservada. A trilha Meta só volta com nova decisão arquitetural e condição operacional adequada.
 
 ### 3.2 Restrição operacional Meta
-
-Fatos confirmados:
 
 - limite atual de dois Meta Business Portfolios atingido;
 - portfolio bloqueado/inutilizável: `Bizzman5po`;
@@ -179,51 +139,51 @@ Continua proibido por tentativa:
 
 ## 4. Gate Meta não bloqueia o restante do produto
 
-Decisão:
-
-`rodadas/gpt/DECISAO_DESBLOQUEIO_DESENVOLVIMENTO_META_GATE.md`.
+Decisão: `rodadas/gpt/DECISAO_DESBLOQUEIO_DESENVOLVIMENTO_META_GATE.md`.
 
 O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes podem avançar a partir da `main`.
 
-## 5. Próximo marco obrigatório — Quoron + avanço substantivo
+## 5. Rodada vigente — 004B
 
-A próxima rodada substantiva deve começar incorporando a decisão:
+Rodada: **004B — Quoron Branding + Growth Context Foundation**.
 
-`rodadas/gpt/DECISAO_NOME_PRODUTO_QUORON.md`.
+Mandato: `rodadas/gpt/RODADA_004B_QUORON_GROWTH_CONTEXT.md`.
 
-Objetivo de branding inicial:
+Status: **PLANEJADA E AUTORIZADA — AGUARDANDO EXECUÇÃO CLAUDE CODE.**
 
-- título/metadata e textos visíveis do produto;
-- Home e superfícies novas;
-- constante de nome quando apropriado;
-- package name se seguro;
-- README e documentos canônicos ativos;
-- `.gpt/PROJECT_PROMPT.md`, `CLAUDE.md` e governança ativa quando tratam o nome atual do produto.
+Base: `main` atual.
 
-Não reescrever histórico antigo, migrations, auditorias ou evidências apenas por branding.
+Branch esperada: `claude/rodada-004b-quoron-growth-context`.
 
-A renomeação deve vir acoplada a **avanço real de produto**, não como rodada isolada.
+### 5.1 Objetivos substantivos
 
-## 6. Direção recomendada para a próxima rodada
+1. consolidar **Quoron** nas superfícies ativas do produto/documentação vigente, sem renomear identificadores técnicos de risco;
+2. reduzir o onboarding inicial ao contexto essencial;
+3. criar `growth_objectives` separado de `business_profiles`;
+4. estruturar objetivo atual, destino/jornada e evento de sucesso;
+5. preservar histórico ao alterar objetivo;
+6. permitir somente owner/admin alterar objetivo pelo caminho server-side autorizado;
+7. diferenciar resultado desejado de capacidade real de mensuração;
+8. quitar os INFO de índices de FKs de `ai_runs` registrados na 004A.
 
-Próximo desenvolvimento independente mais coerente: **Contexto do Negócio / Objetivo / Jornada**, aproveitando a fundação já promovida de `business_profiles` e o modelo canônico de crescimento.
+### 5.2 Experiência esperada
 
-Antes de autorizar a rodada, GPT deve inspecionar schema, actions e UI atuais do negócio e definir o menor delta que:
+Após criar o negócio, o usuário deve ser conduzido a responder, em linguagem simples:
 
-- preserve onboarding progressivo;
-- não crie uma tabela gigantesca de perfil;
-- permita estruturar objetivo, jornada desejada e evento de sucesso de forma simples;
-- prepare Conteúdo, Oportunidades, IA e mídia paga futuras;
-- não dependa da Meta nem de provider real de IA.
+- **O que você quer conseguir agora?**
+- **Para onde você quer levar a pessoa?**
+- **Qual ação significa sucesso?**
 
-Essa direção ainda precisa de mandato formal do GPT antes de execução.
+Ausência de objetivo continua sendo estado válido e não bloqueia a conta/Meta, mas deve orientar o próximo passo.
 
-## 7. Continua NÃO autorizado
+Nenhuma terminologia de Ads Manager/API deve aparecer no fluxo normal.
+
+## 6. Continua NÃO autorizado
 
 ### Meta
 
 - promover/mergear 003B;
-- iniciar importação real de Instagram/Fase 4;
+- iniciar importação real Instagram/Fase 4;
 - declarar USER arquitetura definitiva;
 - remover BISU;
 - alterar scopes/app/Business Login Configuration;
@@ -242,29 +202,41 @@ Essa direção ainda precisa de mandato formal do GPT antes de execução.
 - tool calling;
 - embeddings/RAG;
 - geração real de copy/imagem;
+- IA inferir automaticamente objetivo do usuário;
 - qualquer capacidade de IA executar gasto.
 
-### Branding externo/técnico de alto risco
+### Branding externo/técnico
 
 - renomear repositório GitHub;
-- renomear pasta local enquanto sessões/branches dependem dela;
-- recriar ou trocar Supabase project ref;
-- renomear/mover recursos Meta durante o gate estacionado.
+- renomear pasta local;
+- recriar/trocar Supabase project ref;
+- renomear/mover recursos Meta.
 
-## 8. Próximo a agir
+### Produto fora da 004B
 
-**GPT**.
+- importação/publicação Instagram;
+- Content Intelligence/Oportunidades;
+- campanhas/Ads;
+- Financial Approval;
+- CRM/leads;
+- App Shell/Hoje definitivo.
 
-Próxima ação autorizada: planejar e publicar a próxima rodada substantiva independente da Meta, começando pela migração de branding para Quoron e por uma capacidade real de produto compatível com o modelo canônico.
+## 7. Próximo a agir
 
-Claude Code não deve iniciar nova rodada até existir mandato apontado neste `estado.md`.
+**Claude Code**.
 
-## 9. Regra de continuidade
+Executar `/proxima` na janela do projeto e seguir `RODADA_004B_QUORON_GROWTH_CONTEXT.md`.
+
+Se o classificador pedir autorização humana para `supabase db push` ou prova mutável, parar no gate e pedir apenas essa autorização ao fundador. Não contornar.
+
+Ao concluir, parar em **AGUARDANDO AUDITORIA GPT**.
+
+## 8. Regra de continuidade
 
 - distinguir planejado, autorizado, executado, auditado e promovido;
 - não promover por relatório do Claude sem auditoria independente;
 - gate Meta não bloqueia desenvolvimento independente;
-- hipótese sobre comportamento da Meta não vira fato sem prova;
+- hipótese Meta não vira fato sem prova;
 - nomes de recursos Meta só recebem estado/função quando comprovados;
 - não reescrever histórico antigo por branding;
-- evitar housekeeping isolado quando a atualização puder entrar numa rodada substantiva.
+- evitar housekeeping isolado quando puder entrar em rodada substantiva.
