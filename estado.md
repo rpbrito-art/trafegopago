@@ -186,26 +186,33 @@ Não adotar como arquitetura canônica:
 
 Antes de decidir o mecanismo final de descoberta, medir se o User Access Token corrente consegue executar as capacidades downstream necessárias à Fase 4 usando o IG ID já provado apenas como fixture diagnóstica.
 
-## 9. Próxima ação autorizada — COMPLEMENTO READ-ONLY IG + INSIGHTS
+## 9. Complemento 003B-05 IG + Insights — EXECUTADO
 
-Próximo a agir: **Claude Code**.
+Mandato: `rodadas/gpt/COMPLEMENTO_003B_05_IG_DIRECT_INSIGHTS_READONLY.md`.
 
-Mandato:
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
-`rodadas/gpt/COMPLEMENTO_003B_05_IG_DIRECT_INSIGHTS_READONLY.md`
+Relatório: `rodadas/claude/RELATORIO_COMPLEMENTO_003B_05_IG_DIRECT_INSIGHTS.md`.
 
-Executar somente:
+Sonda read-only: `scripts/meta-ig-direct-003b-05-probe.mjs`. Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`, token pelo caminho server-side, Graph API v26.0, header `Authorization`, saída sanitizada. IG ID usado como **fixture diagnóstica**.
 
-1. `GET /17841429590351285?fields=id,username,media_count,followers_count`;
-2. somente se 1 retornar HTTP 200: `GET /17841429590351285/insights?metric=reach&period=day`.
+Provado:
 
-Usar o mesmo User Access Token server-side e Graph API v26.0.
+- `GET /17841429590351285?fields=id,username,media_count,followers_count`: **HTTP 200**, `username=goquoron`, `media_count=9`, `followers_count=0`;
+- `GET /17841429590351285/insights?metric=reach&period=day`: **HTTP 200**, 1 métrica — `name=reach`, `period=day`, 2 pontos na série.
 
-Objetivo: provar se o token USER corrente consegue ler diretamente o IG User e a capacidade mínima de Insights, sem depender da enumeração quebrada de `/me/accounts`.
+Nenhum erro nas duas chamadas. `debug_token`, `/me`, `/me/accounts`, `/me/adaccounts` e a prova direta da Page não foram repetidos.
 
-O ID conhecido é **fixture diagnóstica**, não desenho de produto.
+Consequências factuais:
 
-Não repetir sondas já concluídas. Depois entregar relatório curto e parar aguardando auditoria GPT.
+- o token USER corrente **lê diretamente o IG User** e **executa a capacidade mínima de Insights**;
+- isso ocorre com os escopos já concedidos, **sem** `ads_management`, **sem** `business_management` e **sem** Page Access Token;
+- a condição documentada pela Meta de exigir `ads_management` + `ads_read` em certos arranjos via Business Manager **não se manifestou** aqui — nenhuma chamada foi recusada por falta de escopo;
+- somando às provas anteriores: leitura da Page, resolução do IG vinculado, leitura do IG User e Insights **todas funcionam** com este token; o único ponto quebrado continua sendo a **enumeração em `/me/accounts`**.
+
+Não determinado, por estar fora do escopo da sonda: qual mecanismo de descoberta genérica substitui `/me/accounts`. Nada aqui sustenta descoberta por ID fixo, entrada manual de ID pelo cliente, ampliação de escopo por tentativa ou adoção do USER como arquitetura canônica. `followers_count=0` é fato registrado, não avaliado.
+
+Próximo a agir: **GPT** — auditar o complemento e decidir o mecanismo de descoberta. Nenhum novo OAuth, nenhuma mudança de configuração Meta e nenhuma ampliação de escopo antes dessa decisão.
 
 ## 10. Continua NÃO autorizado
 
