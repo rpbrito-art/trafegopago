@@ -18,7 +18,7 @@ Modelo canônico de crescimento:
 
 `contexto do negócio → objetivo → jornada → público/personas → conteúdo/criativo → distribuição orgânica, paga ou ambas → resultado → aprendizado → nova ação`
 
-Mídia paga é capacidade, não obrigação. O detalhamento vigente está em `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`.
+Mídia paga é pilar central do produto; gastar não é obrigação do usuário. `ter permissão técnica ≠ criar campanha ≠ aprovar orçamento ≠ gerar gasto`. O detalhamento vigente está em `docs/01-produto/PAID_MEDIA_CANONICAL.md` e `docs/01-produto/GROWTH_INTELLIGENCE_CANONICAL.md`.
 
 ## Lei da simplicidade guiada
 

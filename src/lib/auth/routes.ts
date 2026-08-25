@@ -35,6 +35,13 @@ export const ROUTES = {
    */
   objective: "/objetivo",
   /**
+   * Ofertas do negócio.
+   *
+   * O que a empresa oferece deixa de ser uma linha de texto no perfil e passa
+   * a ser catálogo estruturado com histórico (Rodada 004C).
+   */
+  offers: "/ofertas",
+  /**
    * Callback do Facebook Login for Business.
    *
    * Precisa bater exatamente com o URI cadastrado no app Meta e com
@@ -67,6 +74,7 @@ export const PASSWORD_RESET_DONE_PARAM = "redefinida";
 export const PROTECTED_PREFIXES: readonly string[] = [
   ROUTES.account,
   ROUTES.objective,
+  ROUTES.offers,
 ];
 
 /**
