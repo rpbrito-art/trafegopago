@@ -28,7 +28,7 @@ Promovidas: **000–003A, 004A, 004B e 004C**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - última rodada promovida: **004C — Offer Catalog + Business Context Foundation**.
-- rodada corrente: **004D — Guided Growth Journey Foundation — PLANEJADA E AUTORIZADA, AINDA NÃO EXECUTADA**.
+- rodada corrente: **004D — Guided Growth Journey Foundation — EXECUTADA, AUDITADA E BLOQUEADA; CORREÇÃO 004D-01 AUTORIZADA**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -121,7 +121,7 @@ A migration aplicada anteriormente `20260825210000_create_business_offers` não 
 A correção garante no banco:
 
 - `service_role` só pode atualizar `superseded_at` em `business_offer_versions`;
-- conteúdo de uma versão não pode ser reescrito em place;
+- conteúdo de uma versão não pode ser reescrito in place;
 - versão já superseded não pode ser alterada nem reativada;
 - alterar conteúdo junto com o supersede é recusado;
 - a única transição normal de UPDATE é `superseded_at: NULL -> timestamp`;
@@ -207,34 +207,46 @@ Status:
 
 Só retomar depois que o fundador informar que resolveu o problema do portfólio empresarial restrito ou que existe nova condição operacional comprovadamente utilizável. Antes de nova implementação, o GPT deve rever a documentação oficial Meta vigente e decidir a arquitetura comercial de onboarding.
 
-## 9. Rodada corrente 004D — AUTORIZADA PARA EXECUÇÃO
+## 9. Rodada 004D — EXECUTADA, AUDITADA E BLOQUEADA
 
 Mandato:
 
 `rodadas/gpt/RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`
 
-Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
-
-Base: `main` após a promoção da 004C e consolidação do `AGENTIC_PRODUCT_CANONICAL.md`.
-
-Branch sugerida:
+Branch:
 
 `claude/rodada-004d-guided-growth-journey`
 
-Objetivo resumido:
+PR #16: **draft, open, não mergeada**.
 
-- criar o **foco atual** do objetivo: uma oferta específica ou o negócio como um todo;
-- preservar histórico ao definir/mudar foco, sem reescrever objetivo vigente silenciosamente;
-- criar motor determinístico de próximo passo, sem IA real;
-- criar `/inicio` como entrada autenticada guiada inicial, sem ser App Shell/Hoje definitivo;
-- criar escolha simples de foco;
-- conduzir `negócio → objetivo → ofertas → foco → base estratégica pronta`;
-- manter multi-organização fail-closed, RLS e escrita server-side segura;
-- não tocar Meta, provider real de IA, Ads, CRM ou demais capacidades externas.
+HEAD auditado: `76435b8c5c461a35cc27298d6d2158e71aabb63d`.
 
-A 004D é a primeira rodada autorizada a criar o vínculo oferta → objetivo, exclusivamente por meio do conceito de **foco** definido no mandato.
+CI do HEAD auditado: `32893047965` — **success**; lint, typecheck, Edge Functions, testes e build verdes.
 
-## 10. Continua NÃO autorizado fora do mandato 004D
+Auditoria:
+
+`rodadas/gpt/AUDITORIA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`
+
+Veredito:
+
+**004D EXECUTADA E AUDITADA, MAS NÃO APROVADA NEM PROMOVIDA.**
+
+A maior parte do contrato foi aprovada: foco, tenant-safety, histórico pelo fluxo normal, motor determinístico, `/inicio`, `/foco`, redirects e ausência de Meta/IA real.
+
+Bloqueio 004D-01:
+
+- `growth_objectives` é entidade versionada e histórica, mas `service_role` mantém `UPDATE` direto amplo;
+- prova remota independente confirmou `has_table_privilege(...,'UPDATE') = true`;
+- a tabela possui zero trigger customizada de imutabilidade;
+- portanto um caminho privilegiado futuro pode reescrever objetivo, jornada, sucesso ou foco históricos sem criar nova versão.
+
+Correção autorizada:
+
+`rodadas/gpt/CORRECAO_004D_01_IMUTABILIDADE_GROWTH_OBJECTIVES.md`
+
+Regra crítica: **não reescrever migrations já aplicadas**. A correção deve ser aditiva.
+
+## 10. Continua NÃO autorizado fora da Correção 004D-01
 
 ### Meta
 
@@ -261,7 +273,7 @@ A 004D é a primeira rodada autorizada a criar o vínculo oferta → objetivo, e
 - IA inferir automaticamente objetivo, foco ou próximo passo;
 - qualquer capacidade de IA executar gasto.
 
-### Produto fora da 004D
+### Produto fora da correção
 
 - seletor multi-organização;
 - Content Intelligence/Oportunidades;
@@ -279,7 +291,7 @@ A 004D é a primeira rodada autorizada a criar o vínculo oferta → objetivo, e
 - múltiplos focos simultâneos;
 - e-commerce, estoque, SKU, pedidos ou pagamentos;
 - score de maturidade/gamificação;
-- qualquer capacidade substantiva além do escopo explícito da 004D.
+- qualquer capacidade substantiva além da imutabilidade de `growth_objectives`.
 
 ### Branding técnico externo
 
@@ -292,22 +304,20 @@ A 004D é a primeira rodada autorizada a criar o vínculo oferta → objetivo, e
 
 Próximo ator: **Claude Code**.
 
-O fundador pode ativá-lo pelo fluxo normal do projeto (`/proxima`).
+Executar somente a **Correção 004D-01** na mesma branch da 004D.
 
 Claude deve:
 
-1. partir da `main` atualizada;
-2. ler `estado.md`;
-3. ler `rodadas/gpt/RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`;
-4. cumprir integralmente o READ SET obrigatório do mandato;
-5. criar `claude/rodada-004d-guided-growth-journey` e executar somente o delta autorizado;
-6. publicar migration/provas antes de eventual mutação remota e parar em qualquer gate humano/de segurança;
-7. manter Meta e IA real intocados;
-8. finalizar com relatório, PR, CI e `estado.md` da branch em **004D EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+1. atualizar a branch com a `main` documental sem perder o delta da 004D;
+2. ler `estado.md` e `rodadas/gpt/CORRECAO_004D_01_IMUTABILIDADE_GROWTH_OBJECTIVES.md`;
+3. criar migration aditiva, sem editar migrations aplicadas;
+4. reduzir UPDATE de `service_role` ao mínimo necessário para `status`/`archived_at`;
+5. adicionar guarda persistida de imutabilidade que permita apenas `ACTIVE/NULL -> ARCHIVED/timestamp` sem mudança de conteúdo;
+6. provar que `set_active_growth_objective` e `set_growth_objective_focus` continuam funcionando;
+7. manter PR #16 aberto, draft e não mergeado;
+8. finalizar em **CORREÇÃO 004D-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
 
-Claude não deve promover nem mergear a rodada.
-
-Depois da execução, o próximo ator volta a ser o **GPT auditor**.
+Depois disso, o próximo ator volta a ser o **GPT auditor**.
 
 ## 12. Regra de continuidade
 
