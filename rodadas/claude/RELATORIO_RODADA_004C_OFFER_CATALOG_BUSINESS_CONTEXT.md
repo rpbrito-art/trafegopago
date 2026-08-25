@@ -4,7 +4,9 @@ Mandato: `rodadas/gpt/RODADA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`
 
 Branch: `claude/rodada-004c-offer-catalog-business-context` · base: `main` após promoção da 004B.
 
-Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
+Status: **CORREÇÃO 004C-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
+
+Auditoria da 004C: `rodadas/gpt/AUDITORIA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md` — bloqueada por imutabilidade de versão. Correção: `rodadas/gpt/CORRECAO_004C_01_IMUTABILIDADE_VERSOES_OFERTA.md`, executada nesta mesma branch e registrada na §8 abaixo.
 
 ## 1. Preflight
 
@@ -72,7 +74,36 @@ Sem vínculo `offer_id` em `growth_objectives`, sem SKU/estoque/pedido, sem pers
 
 `growth_objectives`, promovida na 004B, não consta em `DATA_MODEL.md`. A lacuna é anterior a esta rodada e o mandato §10 delimitou o que registrar; não foi ampliada por conta própria.
 
-## 7. Handoff
+## 7. Correção 004C-01 — imutabilidade das versões
+
+### 7.1 Defeito
+
+O histórico dependia da disciplina de quem chamava: `service_role` tinha `UPDATE` amplo em `business_offer_versions` e nenhuma guarda no banco impedia reescrever `name`, preço, moeda, `version_no` ou tenant de uma versão já criada, sem criar versão nova.
+
+### 7.2 Delta — `supabase/migrations/20260825220000_enforce_offer_version_immutability.sql`
+
+Aditiva; a migration `20260825210000` não foi tocada.
+
+- `revoke update` de tabela para `service_role`, seguido de `grant update (superseded_at)` — o papel da aplicação escreve exatamente a única coluna que o fluxo normal altera;
+- trigger `business_offer_versions_immutable` (`before update … for each row`): recusa qualquer UPDATE em versão já superseded, qualquer UPDATE que deixe `superseded_at` nulo, e qualquer alteração de conteúdo mesmo quando acompanhada do arquivamento.
+
+Duas camadas de propósito: privilégio não alcança o dono do banco, e é a trigger que faz a invariante valer para quem ignora grants.
+
+A comparação de conteúdo é da linha inteira via `to_jsonb` com `superseded_at` neutralizado nos dois lados, e não campo a campo. Campo a campo seria mais legível e mais frágil: uma coluna acrescentada depois nasceria fora da guarda, e o esquecimento só apareceria quando alguém reescrevesse histórico.
+
+Nada de UI, taxonomia, preço, Meta, IA ou `growth_objectives` foi alterado.
+
+### 7.3 Provas da correção
+
+`scripts/sql/business-offer-versions-immutability-004c01-proof.sql` → **25 casos, 25 passaram, 0 falharam**, transacional com rollback.
+
+Cobre: fluxo normal intacto (v1, supersede + v2, idempotência, conteúdo de v1 preservado); `service_role` recusado com `42501` ao alterar nome, preço/moeda, tenant/oferta/`version_no` e conteúdo de versão superseded; dono do banco recusado com `55000` nos mesmos casos, mais reativação de superseded, alteração junto do arquivamento e UPDATE que não arquiva; a transição permitida continua funcionando para os dois papéis; e a fronteira do browser inalterada — `anon` sem grants, `authenticated` só SELECT, RLS ativa, duas policies.
+
+Regressão: `scripts/sql/business-offers-004c-proof.sql` reexecutado após a mudança → **51/51**, sem falhas. Reexecutado por ter sido alterado um primitive compartilhado (grants e gatilho da tabela), não por ritual.
+
+Pós-estado remoto: trigger habilitada; `service_role` sem UPDATE de tabela e com UPDATE apenas de `superseded_at`; `business_offers` inalterada; função da trigger sem EXECUTE para `anon`/`authenticated`; zero fixtures residuais. Advisors idênticos ao baseline.
+
+## 8. Handoff
 
 Branch `claude/rodada-004c-offer-catalog-business-context`, HEAD publicado em `origin`. PR #15, draft, base `main`, apontando para o HEAD final. CI verde nos dois commits: `32885622248` (delta) e `32885781773` (só documentação). `estado.md` da branch em **EXECUTADA — AGUARDANDO AUDITORIA GPT**. Working tree limpa.
 

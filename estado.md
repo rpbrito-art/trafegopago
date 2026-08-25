@@ -29,7 +29,7 @@ Promovidas: **000–003A, 004A e 004B**.
 - Fase 6 — AI Foundation: **EM ANDAMENTO; 004A FOUNDATION CORE PROMOVIDA**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - última rodada promovida: **004B — Quoron Branding + Growth Context Foundation**.
-- rodada corrente: **004C — Offer Catalog + Business Context Foundation — EXECUTADA, AUDITADA E BLOQUEADA; CORREÇÃO 004C-01 AUTORIZADA**.
+- rodada corrente: **004C — Offer Catalog + Business Context Foundation — CORREÇÃO 004C-01 EXECUTADA, AGUARDANDO REAUDITORIA GPT**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -275,23 +275,40 @@ Correção autorizada:
 
 Regra crítica: **não reescrever** a migration já aplicada `20260825210000_create_business_offers.sql`; a correção deve ser aditiva.
 
-## 9. Próxima ação autorizada
+## 9. Correção 004C-01 — EXECUTADA
 
-Próximo ator: **Claude Code**.
+Mandato: `rodadas/gpt/CORRECAO_004C_01_IMUTABILIDADE_VERSOES_OFERTA.md`.
 
-Executar somente a **Correção 004C-01** na mesma branch da 004C.
+Branch: `claude/rodada-004c-offer-catalog-business-context` · PR #15 mantido aberto, draft, não mergeado.
 
-Claude deve:
+Status: **CORREÇÃO 004C-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
 
-1. atualizar a branch com a `main` documental sem perder o delta da 004C;
-2. ler `estado.md` e `rodadas/gpt/CORRECAO_004C_01_IMUTABILIDADE_VERSOES_OFERTA.md`;
-3. criar migration aditiva, sem editar a migration já aplicada;
-4. provar no banco que conteúdo de versão não pode ser reescrito e que apenas a transição `superseded_at: NULL -> timestamp` permanece válida;
-5. manter o fluxo normal de criação/edição/idempotência funcionando;
-6. manter PR #15 aberto e não mergeado;
-7. finalizar em **CORREÇÃO 004C-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
+Relatório: `rodadas/claude/RELATORIO_RODADA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md` §7.
 
-Depois disso, o próximo ator volta a ser o **GPT auditor**.
+Branch atualizada com a `main` documental por merge, preservando o delta da 004C. Único conflito: `estado.md`, resolvido pela versão da `main`.
+
+### 9.1 Delta da correção
+
+Migration aditiva `20260825220000_enforce_offer_version_immutability`. A migration `20260825210000` **não foi reescrita**.
+
+- `service_role` perde o UPDATE de tabela em `business_offer_versions` e recebe UPDATE apenas da coluna `superseded_at`;
+- trigger `business_offer_versions_immutable` recusa UPDATE em versão já superseded, UPDATE que deixe `superseded_at` nulo e qualquer alteração de conteúdo, inclusive acompanhada do arquivamento;
+- a guarda vale também para quem ignora grants, que é o ponto do bloqueio da auditoria;
+- `save_business_offer` segue com supersede + nova versão atômicos e idempotência;
+- UI, taxonomias, preço, RLS de leitura, Meta, IA e `growth_objectives` intactos.
+
+### 9.2 Provas da correção
+
+- `scripts/sql/business-offer-versions-immutability-004c01-proof.sql` → **25 casos, 25 passaram, 0 falharam**;
+- regressão `scripts/sql/business-offers-004c-proof.sql` reexecutada → **51/51**;
+- pós-estado remoto: trigger habilitada, `service_role` só escreve `superseded_at`, `anon` sem grants, `authenticated` só SELECT, RLS ativa, zero fixtures residuais;
+- advisors idênticos ao baseline.
+
+### 9.3 Próxima ação autorizada
+
+Próximo ator: **GPT auditor**.
+
+Reauditar a 004C com a Correção 004C-01 no PR #15. Claude não promove, não mergeia e não declara a rodada aprovada.
 
 ## 10. Regra de continuidade
 
