@@ -28,7 +28,7 @@ Promovidas: **000–003A, 004A, 004B e 004C**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - última rodada promovida: **004C — Offer Catalog + Business Context Foundation**.
-- rodada corrente: **004D — Guided Growth Journey Foundation — PLANEJADA E AUTORIZADA, AINDA NÃO EXECUTADA**.
+- rodada corrente: **004D — Guided Growth Journey Foundation — EXECUTADA, AGUARDANDO AUDITORIA GPT**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -207,32 +207,57 @@ Status:
 
 Só retomar depois que o fundador informar que resolveu o problema do portfólio empresarial restrito ou que existe nova condição operacional comprovadamente utilizável. Antes de nova implementação, o GPT deve rever a documentação oficial Meta vigente e decidir a arquitetura comercial de onboarding.
 
-## 9. Rodada corrente 004D — AUTORIZADA PARA EXECUÇÃO
+## 9. Rodada 004D — EXECUTADA, AGUARDANDO AUDITORIA
 
 Mandato:
 
 `rodadas/gpt/RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`
 
-Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
+Branch: `claude/rodada-004d-guided-growth-journey`.
 
-Base: `main` após a promoção da 004C e consolidação do `AGENTIC_PRODUCT_CANONICAL.md`.
+Base: `main` em `b389e2d`, após a promoção da 004C.
 
-Branch sugerida:
+Status: **004D EXECUTADA — AGUARDANDO AUDITORIA GPT**. Não promovida, não mergeada.
 
-`claude/rodada-004d-guided-growth-journey`
+Relatório: `rodadas/claude/RELATORIO_RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`.
 
-Objetivo resumido:
+### 9.1 Delta executado
 
-- criar o **foco atual** do objetivo: uma oferta específica ou o negócio como um todo;
-- preservar histórico ao definir/mudar foco, sem reescrever objetivo vigente silenciosamente;
-- criar motor determinístico de próximo passo, sem IA real;
-- criar `/inicio` como entrada autenticada guiada inicial, sem ser App Shell/Hoje definitivo;
-- criar escolha simples de foco;
-- conduzir `negócio → objetivo → ofertas → foco → base estratégica pronta`;
-- manter multi-organização fail-closed, RLS e escrita server-side segura;
-- não tocar Meta, provider real de IA, Ads, CRM ou demais capacidades externas.
+- `growth_objectives` ganha `focus_type` (`BUSINESS|OFFER|NULL`) e `focus_offer_id`;
+- FK composta `(organization_id, focus_offer_id)` → `business_offers (organization_id, id)` impede foco cross-tenant pelo banco;
+- constraints amarram cada estado de foco a uma forma única; foco não confirmado continua sendo `NULL`;
+- o foco aponta para a identidade da oferta, nunca para uma versão;
+- `set_growth_objective_focus` server-only, `service_role`, owner/admin, organização e membership ACTIVE, idempotente, serializada **pela mesma chave** de `set_active_growth_objective`;
+- definir ou trocar foco arquiva a versão vigente e cria a próxima na mesma transação, preservando objetivo, jornada e sucesso;
+- oferta arquivada não pode virar foco, e arquivar a oferta não apaga o foco já registrado;
+- motor determinístico `decideJourneyStep()` puro, com nove estados e sem provider de IA;
+- `/inicio` como entrada autenticada guiada e `/foco` para a decisão humana;
+- destino padrão pós-autenticação passa a `/inicio`, com `PROTECTED_PREFIXES` e allowlist de redirect atualizados; `/conta` preservada;
+- `DATA_MODEL.md` e `TECHNICAL_SPEC.md` harmonizados.
 
-A 004D é a primeira rodada autorizada a criar o vínculo oferta → objetivo, exclusivamente por meio do conceito de **foco** definido no mandato.
+### 9.2 Supabase remoto da 004D
+
+Migration aplicada: `20260825230000_add_growth_objective_focus`, publicada na branch antes do `db push`.
+
+Snapshot independente:
+
+- `focus_type` e `focus_offer_id` presentes e nullable;
+- três constraints de foco presentes;
+- índice de cobertura da FK criado;
+- RPC sem EXECUTE para anon/authenticated, com EXECUTE para service_role;
+- grants de `growth_objectives` inalterados: `authenticated` somente SELECT;
+- zero fixtures residuais;
+- advisors idênticos ao baseline, mais um INFO `unused_index` esperado em coluna nova e vazia.
+
+Esta migration **não deve ser reescrita**.
+
+### 9.3 Provas
+
+- `scripts/sql/growth-objective-focus-004d-proof.sql` → **32 casos, 32 passaram, 0 falharam**, transacional com rollback;
+- motor de condução, action de foco, tela do próximo passo, rotas e regressão de autenticação cobertos por testes novos/atualizados;
+- suíte local completa → **902/902** em 44 arquivos;
+- `tsc --noEmit` e `eslint` limpos;
+- CI final do PR.
 
 ## 10. Continua NÃO autorizado fora do mandato 004D
 
@@ -290,24 +315,9 @@ A 004D é a primeira rodada autorizada a criar o vínculo oferta → objetivo, e
 
 ## 11. Próxima ação autorizada
 
-Próximo ator: **Claude Code**.
+Próximo ator: **GPT auditor**.
 
-O fundador pode ativá-lo pelo fluxo normal do projeto (`/proxima`).
-
-Claude deve:
-
-1. partir da `main` atualizada;
-2. ler `estado.md`;
-3. ler `rodadas/gpt/RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`;
-4. cumprir integralmente o READ SET obrigatório do mandato;
-5. criar `claude/rodada-004d-guided-growth-journey` e executar somente o delta autorizado;
-6. publicar migration/provas antes de eventual mutação remota e parar em qualquer gate humano/de segurança;
-7. manter Meta e IA real intocados;
-8. finalizar com relatório, PR, CI e `estado.md` da branch em **004D EXECUTADA — AGUARDANDO AUDITORIA GPT**.
-
-Claude não deve promover nem mergear a rodada.
-
-Depois da execução, o próximo ator volta a ser o **GPT auditor**.
+Auditar a 004D na branch/PR indicados acima. Claude não promove, não mergeia e não declara a rodada aprovada.
 
 ## 12. Regra de continuidade
 

@@ -90,6 +90,32 @@ Invariantes:
 - FK composta `(organization_id, offer_id)` → `business_offers (organization_id, id)`;
 - no máximo uma versão corrente por oferta (`superseded_at is null`);
 - cada `price_mode` admite exatamente uma forma de valor; `QUOTE`, `FREE` e `NOT_INFORMED` não persistem número;
+- escrita somente por RPC `service_role`; browser sem INSERT/UPDATE/DELETE;
+- conteúdo de versão é imutável: a única transição de UPDATE permitida é `superseded_at: NULL -> timestamp`.
+
+### growth_objectives
+
+Objetivo atual do negócio, versionado. Implementada na Rodada 004B; campos de foco na 004D.
+
+- id
+- organization_id
+- status (`ACTIVE|ARCHIVED`)
+- objective_type / objective_detail
+- destination_type
+- success_event_type / success_event_detail
+- focus_type (`BUSINESS|OFFER|NULL`)
+- focus_offer_id
+- created_by (`auth.users`, `on delete set null`)
+- created_at
+- archived_at
+
+Invariantes:
+
+- no máximo um objetivo `ACTIVE` por organização;
+- alterar objetivo ou foco arquiva a linha vigente e cria a próxima na mesma transação;
+- `focus_type` nulo significa foco ainda não confirmado e exige `focus_offer_id` nulo; `BUSINESS` exige `focus_offer_id` nulo; `OFFER` exige `focus_offer_id` presente;
+- FK composta `(organization_id, focus_offer_id)` → `business_offers (organization_id, id)`;
+- o foco aponta para a identidade da oferta, nunca para uma versão de oferta;
 - escrita somente por RPC `service_role`; browser sem INSERT/UPDATE/DELETE.
 
 ## 3. Integração Meta
