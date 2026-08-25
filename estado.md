@@ -143,40 +143,65 @@ Decisão: `rodadas/gpt/DECISAO_DESBLOQUEIO_DESENVOLVIMENTO_META_GATE.md`.
 
 O gate Meta é trilha pendente, não bloqueio global. Capacidades independentes podem avançar a partir da `main`.
 
-## 5. Rodada vigente — 004B
+## 5. Rodada 004B — EXECUTADA
 
 Rodada: **004B — Quoron Branding + Growth Context Foundation**.
 
 Mandato: `rodadas/gpt/RODADA_004B_QUORON_GROWTH_CONTEXT.md`.
 
-Status: **PLANEJADA E AUTORIZADA — AGUARDANDO EXECUÇÃO CLAUDE CODE.**
+Branch: `claude/rodada-004b-quoron-growth-context`, criada a partir da `main` (`2ad38c1`).
 
-Base: `main` atual.
+Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**.
 
-Branch esperada: `claude/rodada-004b-quoron-growth-context`.
+Relatório: `rodadas/claude/RELATORIO_RODADA_004B_QUORON_GROWTH_CONTEXT.md`.
 
-### 5.1 Objetivos substantivos
+### 5.1 Branding
 
-1. consolidar **Quoron** nas superfícies ativas do produto/documentação vigente, sem renomear identificadores técnicos de risco;
-2. reduzir o onboarding inicial ao contexto essencial;
-3. criar `growth_objectives` separado de `business_profiles`;
-4. estruturar objetivo atual, destino/jornada e evento de sucesso;
-5. preservar histórico ao alterar objetivo;
-6. permitir somente owner/admin alterar objetivo pelo caminho server-side autorizado;
-7. diferenciar resultado desejado de capacidade real de mensuração;
-8. quitar os INFO de índices de FKs de `ai_runs` registrados na 004A.
+Marca por constante compartilhada em `src/lib/brand.ts`. Migrados metadata raiz, sete páginas, `auth-shell`, instrução de remoção Meta e o pacote (`quoron` em `package.json` e lockfile). Documentação ativa migrada em 12 arquivos.
 
-### 5.2 Experiência esperada
+Home reescrita: sem estágio de rodada, sem a afirmação de que não há funcionalidade de domínio, sem prometer campanha ou automação inexistente.
 
-Após criar o negócio, o usuário deve ser conduzido a responder, em linguagem simples:
+Preservadas de propósito duas ocorrências de `tráfego pago` em minúsculas — em `GROWTH_INTELLIGENCE_CANONICAL.md` §19 e `PAID_MEDIA_CANONICAL.md` §7 elas são o **conceito** de mídia paga, não a marca. Repo, pasta local, project ref e recursos Meta não renomeados.
 
-- **O que você quer conseguir agora?**
-- **Para onde você quer levar a pessoa?**
-- **Qual ação significa sucesso?**
+### 5.2 Onboarding progressivo
 
-Ausência de objetivo continua sendo estado válido e não bloqueia a conta/Meta, mas deve orientar o próximo passo.
+Primeiro formulário reduzido de dez para **quatro** campos. `target_audience` e `acquisition_goal` passam a aceitar `NULL`; os `CHECK ..._not_blank` seguem recusando `''`. Nenhum dado apagado ou convertido — `acquisition_goal` permanece contexto livre legado, não migrado para objetivo estruturado.
 
-Nenhuma terminologia de Ads Manager/API deve aparecer no fluxo normal.
+Schemas separados por momento do produto. Campos progressivos forçados no POST não alcançam a RPC. Depois do bootstrap, destino é `/objetivo`.
+
+### 5.3 growth_objectives
+
+Entidade própria. Um único `ACTIVE` por organização por índice único parcial; `ARCHIVED` exige `archived_at` e `ACTIVE` o proíbe; sem DELETE no fluxo normal.
+
+`set_active_growth_objective` arquiva e insere na mesma transação, serializada por advisory lock. Autorização lida do banco (organização e membership `ACTIVE`, papel `owner`/`admin`); identidade de `getClaims()`; organização resolvida server-side. Reenvio idêntico é idempotente.
+
+Browser só `SELECT`, sob policy de membership. RPC não executável por `anon`/`authenticated`.
+
+### 5.4 Experiência
+
+Rota protegida `/objetivo` com três perguntas em português; resumo e CTA em `/conta`. Nenhum enum, UUID ou termo de Ads Manager na tela. Ausência de objetivo é estado válido que orienta e não bloqueia conta nem Meta. O produto declara que registrar o resultado desejado não é o mesmo que já conseguir medi-lo.
+
+### 5.5 Provas
+
+`npx vitest run` → **766/766** em 33 arquivos. `tsc --noEmit`, `lint` e `typecheck:functions` limpos.
+
+Migrations aplicadas: `20260825180000_create_growth_objectives.sql` e `20260825190000_index_growth_objectives_created_by.sql`.
+
+`npx supabase db query --linked --file scripts/sql/growth-objectives-004b-proof.sql` → **29 casos, 29 passaram, 0 falharam**, com `rollback` deixando zero resíduo.
+
+### 5.6 Advisors
+
+Os **quatro INFO de FK de `ai_runs` da 004A foram resolvidos**. O INFO novo introduzido por esta rodada (`growth_objectives_created_by_fkey`) foi quitado na migration `20260825190000`.
+
+Permanecem fora do escopo, por decisão do mandato §10: quatro INFO de FK em `ad_accounts`, `instagram_accounts` e `meta_oauth_intents` — dívida da trilha Meta/003B.
+
+`unused_index` não removidos: em tabela recém-criada e vazia, "não usado" significa "ainda não houve consulta".
+
+Segurança: só os INFO `rls_enabled_no_policy` das tabelas internas server-only — contrato deliberado desde a 002A — e o WARN antigo de leaked password protection.
+
+### 5.7 Não tocado
+
+Sem importação Instagram, provider real de IA, API key, SDK, chamada paga, IA inferindo objetivo, geração de conteúdo, campanha, anúncio, gasto, Financial Approval, CRM ou App Shell. Nenhum segredo novo. A 003B segue estacionada.
 
 ## 6. Continua NÃO autorizado
 
@@ -223,13 +248,7 @@ Nenhuma terminologia de Ads Manager/API deve aparecer no fluxo normal.
 
 ## 7. Próximo a agir
 
-**Claude Code**.
-
-Executar `/proxima` na janela do projeto e seguir `RODADA_004B_QUORON_GROWTH_CONTEXT.md`.
-
-Se o classificador pedir autorização humana para `supabase db push` ou prova mutável, parar no gate e pedir apenas essa autorização ao fundador. Não contornar.
-
-Ao concluir, parar em **AGUARDANDO AUDITORIA GPT**.
+**GPT** — auditar a 004B no PR aberto para `main`.
 
 ## 8. Regra de continuidade
 
