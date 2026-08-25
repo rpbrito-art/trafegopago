@@ -86,8 +86,7 @@ Configuração histórica da 003A permanece existente e não deve ser apagada an
 Ativos reais do portfólio **Quoron**:
 
 - Página Facebook: **Quoron**;
-- Instagram profissional: **@goquoron**;
-- ambos aparecem no Facebook Login for Business.
+- Instagram profissional: **@goquoron**.
 
 ### Diagnóstico de permissões e correção externa
 
@@ -97,21 +96,13 @@ No primeiro OAuth real 003B, apesar de Página + Instagram terem sido selecionad
 - `pages_read_engagement`;
 - `public_profile`.
 
-Faltaram:
+Faltaram `instagram_basic` e `instagram_manage_insights`.
 
-- `instagram_basic`;
-- `instagram_manage_insights`.
+A investigação no Meta for Developers provou que o caso de uso Instagram ainda não estava habilitado no caminho correto. Foi adicionado **Gerenciar mensagens e conteúdo no Instagram** e habilitado **Instagram API setup with Facebook Login**. `instagram_basic` + `instagram_manage_insights` foram salvos na configuração `Quoron Instagram Dev Login`.
 
-A investigação no Meta for Developers provou que o caso de uso Instagram ainda não estava habilitado no caminho correto. Foi adicionado **Gerenciar mensagens e conteúdo no Instagram**, e distinguimos os dois caminhos:
+O token já emitido não ganha novos escopos retroativamente.
 
-- **Instagram Login** / `instagram_business_*` — NÃO é o caminho desta arquitetura;
-- **Instagram API setup with Facebook Login** — caminho correto, compatível com `graph.facebook.com` e com o backend atual.
-
-O fundador habilitou o setup com Facebook Login e salvou `instagram_basic` + `instagram_manage_insights` na configuração `Quoron Instagram Dev Login`.
-
-A configuração externa está, portanto, preparada para novo consentimento. O token já emitido não ganha novos escopos retroativamente.
-
-## 6. Conexão real atual — PRESERVAR ATÉ O NOVO CONSENTIMENTO
+## 6. Conexão real atual — PRESERVAR
 
 Conexão real atual:
 
@@ -122,7 +113,7 @@ Conexão real atual:
 - `instagram_accounts`: 0 linhas;
 - `ad_accounts`: 0 linhas.
 
-Auditoria independente após a execução da 003B-03 confirmou que o Claude não alterou essa conexão, não apagou token e não executou OAuth por engano.
+Auditoria independente após a 003B-03 confirmou que o Claude não alterou essa conexão. A tentativa de reautorização descrita abaixo **não foi concluída**, portanto nenhum novo token foi persistido.
 
 ## 7. Correção 003B-03 — AUDITADA E APROVADA
 
@@ -132,46 +123,49 @@ Autorização: `rodadas/gpt/AUTORIZACAO_003B_03_REAUTORIZACAO_CONEXAO_ATIVA.md`
 
 Auditoria: `rodadas/gpt/AUDITORIA_003B_03_REAUTORIZACAO_CONEXAO_ATIVA.md`
 
-Status: **EXECUTADA, AUDITADA E APROVADA — GATE HUMANO DE REAUTORIZAÇÃO LIBERADO**.
+Status: **EXECUTADA, AUDITADA E APROVADA**.
 
-Resultado:
+Resultado técnico:
 
 - `permissao-faltando` oferece **Atualizar autorização**;
 - usa `MetaConnectButton` + `connectMetaAction` canônicos;
-- preserva linguagem de negócio;
 - não sugere desconectar;
 - nenhum backend, RPC ou migration foi alterado;
-- testes focados e regressão verdes;
-- CI `32792662569` verde em todas as etapas.
+- testes e CI verdes.
+
+### 7.1 Novo bloqueio E2E — portfólio dono do app não elegível como cliente
+
+Gate: `rodadas/gpt/GATE_003B_PORTFOLIO_DONO_DO_APP_NAO_ELEGIVEL_COMO_CLIENTE.md`
+
+Na reautorização real, o seletor **Portfólio empresarial** exibiu **Quoron** desabilitado com a mensagem literal:
+
+`This Meta Business Account owns the app`
+
+O diálogo selecionou **Criar um portfólio empresarial** e, ao avançar, passou a pedir dados para uma nova empresa/novos ativos, inclusive nome, e-mail, país e site.
+
+Interpretação vigente: neste fluxo/configuração, o portfólio que possui o app não pode ocupar também o papel de portfólio cliente integrado. Criar `Quoron 1` seria contorno incorreto e não está autorizado.
+
+Status do gate: **BLOQUEADO — DECISÃO ARQUITETURAL/DE FIXTURE NECESSÁRIA**.
 
 ## 8. Próxima ação autorizada
 
-Próximo a agir: **fundador no navegador**.
+Próximo a agir: **fundador no navegador, apenas para encerrar o fluxo inválido**.
 
-1. abrir `http://localhost:3000/conta`;
-2. clicar **Atualizar autorização**;
-3. no Facebook Login for Business usar o portfólio **Quoron**, a Página **Quoron** e o Instagram **@goquoron**;
-4. concluir o consentimento;
-5. ao retornar ao localhost, **não clicar ainda em Usar esta conta**;
-6. informar ao GPT que voltou ao localhost; o GPT deve auditar imediatamente o novo token no Supabase.
+- clicar **Cancelar** no diálogo atual da Meta;
+- não criar novo portfólio, não preencher nome/site e não mover ativos.
 
-Escopos mínimos esperados para prosseguir:
-
-- `pages_show_list`;
-- `instagram_basic`.
-
-Também esperamos, para preparar leitura de Insights:
-
-- `pages_read_engagement`;
-- `instagram_manage_insights`.
-
-Depois da auditoria do token, o GPT decide se a seleção real de `@goquoron` e as sondas read-only podem prosseguir.
+Depois disso, **GPT** deve decidir o modelo correto de teste/onboarding separando os papéis de empresa provedora/dona do app e empresa cliente que conecta ativos. Nenhum novo OAuth está autorizado antes dessa decisão.
 
 ## 9. Continua NÃO autorizado
 
-- desconectar a conexão real durante este gate;
+- criar `Quoron 1` ou outro portfólio apenas para contornar o gate;
+- inventar site/domínio para o formulário;
+- mover Página Quoron ou `@goquoron` entre portfólios por tentativa;
+- transferir a propriedade do app por tentativa;
+- trocar BISU por User Access Token sem decisão arquitetural;
+- desconectar a conexão real atual;
 - remover novamente a integração em Apps conectados;
-- repetir OAuth por outro caminho que não **Atualizar autorização**;
+- repetir OAuth antes da decisão deste gate;
 - Claude alterar painel Meta;
 - apagar a configuração histórica da 003A;
 - criar novo Meta App ID;
