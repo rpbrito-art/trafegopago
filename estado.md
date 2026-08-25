@@ -35,9 +35,9 @@ Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
 PR: **#12 draft**.
 
-HEAD de código auditado: `9991ab9b8e22c549bb52b9a0ea7b03ee09f309f8`
+HEAD atual auditado: `872d777a929f4be12567d9a7b9e9fa89bac00dfb`
 
-Última CI de código auditado: `32779213462` — verde em install, lint, typecheck, Edge Functions, testes e build.
+Última CI auditada: `32792662569` — verde em install, lint, typecheck, Edge Functions, testes e build.
 
 Executado/auditado na 003B até aqui:
 
@@ -47,6 +47,7 @@ Executado/auditado na 003B até aqui:
 - RLS/grants/funções de seleção auditados;
 - descoberta/seleção, capabilities e UX implementadas;
 - Correção 003B-01 fail-closed metadata + membership: **EXECUTADA, AUDITADA E APROVADA**;
+- Correção 003B-03 reautorização de conexão ativa: **EXECUTADA, AUDITADA E APROVADA**;
 - ainda **não promovido**.
 
 ## 4. Produto — centralidade de mídia paga corrigida
@@ -110,7 +111,7 @@ O fundador habilitou o setup com Facebook Login e salvou `instagram_basic` + `in
 
 A configuração externa está, portanto, preparada para novo consentimento. O token já emitido não ganha novos escopos retroativamente.
 
-## 6. Conexão real atual — PRESERVAR
+## 6. Conexão real atual — PRESERVAR ATÉ O NOVO CONSENTIMENTO
 
 Conexão real atual:
 
@@ -121,54 +122,56 @@ Conexão real atual:
 - `instagram_accounts`: 0 linhas;
 - `ad_accounts`: 0 linhas.
 
-Essa conexão deve permanecer intacta até a reautorização controlada.
+Auditoria independente após a execução da 003B-03 confirmou que o Claude não alterou essa conexão, não apagou token e não executou OAuth por engano.
 
-## 7. Correção 003B-03 — AUTORIZADA, AGUARDANDO EXECUÇÃO
+## 7. Correção 003B-03 — AUDITADA E APROVADA
 
 Correção: `rodadas/gpt/CORRECAO_003B_03_REAUTORIZACAO_CONEXAO_ATIVA.md`
 
 Autorização: `rodadas/gpt/AUTORIZACAO_003B_03_REAUTORIZACAO_CONEXAO_ATIVA.md`
 
-Status: **AUTORIZADA PELO FUNDADOR — AGUARDANDO EXECUÇÃO DO CLAUDE**.
+Auditoria: `rodadas/gpt/AUDITORIA_003B_03_REAUTORIZACAO_CONEXAO_ATIVA.md`
 
-Diagnóstico técnico já feito pelo GPT:
+Status: **EXECUTADA, AUDITADA E APROVADA — GATE HUMANO DE REAUTORIZAÇÃO LIBERADO**.
 
-- o backend **já suporta** reautorização sobre conexão viva;
-- `startMetaAuthorization` cria nova intenção sem destruir a conexão atual;
-- `completeMetaAuthorization` só retoma a conexão depois que a troca de `code` por token já teve sucesso;
-- `begin_meta_connection` reutiliza a linha viva e preserva o token anterior ao entrar em `PENDING`;
-- `activate_meta_connection` substitui token + escopos + identidade + status atomicamente;
-- não é necessária migration nem endpoint novo.
+Resultado:
 
-Delta autorizado:
-
-- no estado `permissao-faltando`, renderizar `MetaConnectButton` com rótulo **Atualizar autorização**;
-- ajustar a mensagem em linguagem de negócio;
-- reutilizar integralmente o fluxo OAuth/backend existente;
-- adicionar os testes definidos na correção;
-- não alterar backend, RPC ou migration por conveniência.
-
-Se o Claude provar um bloqueio real no backend que exija mudança arquitetural, deve parar em `DECISÃO ARQUITETURAL NECESSÁRIA — AGUARDANDO GPT`.
+- `permissao-faltando` oferece **Atualizar autorização**;
+- usa `MetaConnectButton` + `connectMetaAction` canônicos;
+- preserva linguagem de negócio;
+- não sugere desconectar;
+- nenhum backend, RPC ou migration foi alterado;
+- testes focados e regressão verdes;
+- CI `32792662569` verde em todas as etapas.
 
 ## 8. Próxima ação autorizada
 
-Próximo a agir: **fundador → Claude Code**.
+Próximo a agir: **fundador no navegador**.
 
-Na janela do Claude Code aberta na pasta do projeto, executar:
+1. abrir `http://localhost:3000/conta`;
+2. clicar **Atualizar autorização**;
+3. no Facebook Login for Business usar o portfólio **Quoron**, a Página **Quoron** e o Instagram **@goquoron**;
+4. concluir o consentimento;
+5. ao retornar ao localhost, **não clicar ainda em Usar esta conta**;
+6. informar ao GPT que voltou ao localhost; o GPT deve auditar imediatamente o novo token no Supabase.
 
-`/proxima`
+Escopos mínimos esperados para prosseguir:
 
-Isso deve fazer o Claude ler este `estado.md`, abrir a Correção 003B-03 autorizada, implementar somente o botão/mensagem/testes e parar em **AGUARDANDO AUDITORIA GPT**.
+- `pages_show_list`;
+- `instagram_basic`.
 
-Depois da execução do Claude, o fundador deve apenas informar ao GPT: **Claude terminou**.
+Também esperamos, para preparar leitura de Insights:
 
-Nenhum novo OAuth real deve ser feito antes da auditoria GPT dessa correção.
+- `pages_read_engagement`;
+- `instagram_manage_insights`.
+
+Depois da auditoria do token, o GPT decide se a seleção real de `@goquoron` e as sondas read-only podem prosseguir.
 
 ## 9. Continua NÃO autorizado
 
-- desconectar a conexão real atual;
+- desconectar a conexão real durante este gate;
 - remover novamente a integração em Apps conectados;
-- repetir OAuth manualmente antes da Correção 003B-03 ser executada e auditada;
+- repetir OAuth por outro caminho que não **Atualizar autorização**;
 - Claude alterar painel Meta;
 - apagar a configuração histórica da 003A;
 - criar novo Meta App ID;
@@ -183,7 +186,6 @@ Nenhum novo OAuth real deve ser feito antes da auditoria GPT dessa correção.
 
 - harmonização dos canônicos antigos com `PAID_MEDIA_CANONICAL.md` antes da próxima rodada substantiva pós-003B;
 - revisar onboarding final para não depender de configurações manuais desnecessárias no painel Meta;
-- melhorar a mensagem `Falta uma autorização` para explicar a capacidade faltante em linguagem de negócio — incluído na Correção 003B-03;
 - logger Next dev registra URL do callback com `code`/`state`: tratar redaction antes de produção;
 - leaked-password protection antes de produção;
 - SMTP/domínio de produção;
