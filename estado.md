@@ -35,7 +35,7 @@ Branch: `claude/rodada-003b-meta-asset-discovery-selection`
 
 PR: **#12 draft**.
 
-HEAD auditado: `872d777a929f4be12567d9a7b9e9fa89bac00dfb`
+HEAD auditado do código de produto: `872d777a929f4be12567d9a7b9e9fa89bac00dfb`
 
 CI auditada: `32792662569` — verde.
 
@@ -47,6 +47,7 @@ Executado/auditado até aqui:
 - descoberta/seleção, capabilities e UX implementadas;
 - Correção 003B-01 fail-closed metadata + membership: **EXECUTADA, AUDITADA E APROVADA**;
 - Correção 003B-03 reautorização de conexão ativa: **EXECUTADA, AUDITADA E APROVADA**;
+- investigação 003B-05 A/B/C/E: **EXECUTADA E AUDITADA**; faltou a prova direta da Page prevista no mandato atualizado;
 - 003B ainda **não promovida**.
 
 ## 4. Produto — mídia paga
@@ -108,9 +109,7 @@ Conexão `655da6e6-9056-456d-a81d-5e2570da5faf`:
 - `instagram_accounts`: 0;
 - `ad_accounts`: 0.
 
-O GPT confirmou no Supabase que o OAuth USER passou com todos os escopos mínimos esperados.
-
-Resultado: `rodadas/gpt/RESULTADO_003B_05_OAUTH_USER_PAGINAS_ZERO.md`.
+O GPT reconfirmou no Supabase após a investigação que a conexão permanece ACTIVE com os mesmos escopos e identidade.
 
 ## 7. Gates E2E
 
@@ -138,61 +137,38 @@ Status: **EM ANDAMENTO — NÃO É DECISÃO ARQUITETURAL DEFINITIVA**.
 
 Provado:
 
-`configuração USER → OAuth real → token ACTIVE → escopos mínimos corretos`
+- token válido, tipo USER, do app corrente e da identidade esperada;
+- escopos mínimos corretos;
+- `/me/accounts?fields=id,name,tasks` → HTTP 200, 0 itens;
+- `/me/accounts?fields=id,name,tasks,instagram_business_account` → HTTP 200, 0 itens;
+- portanto o vazio nasce no próprio edge `/me/accounts`, não na expansão do Instagram;
+- `/me/adaccounts` → HTTP 200, 3 contas, logo o token não está globalmente cego;
+- `granular_scopes` sem `target_ids` não explica sozinho o comportamento, porque `ads_read` também veio sem `target_ids` e ainda enumera Ad Accounts.
 
-Bloqueio:
-
-- 003B chama `GET /me/accounts?fields=id,name,instagram_business_account`;
-- resposta efetiva trouxe zero Pages (`pagesFound=0`);
-- a UX mostrou `Falta a Página do seu negócio`;
-- isso não prova inexistência da Página, apenas que `/me/accounts` não a devolveu.
+Relatório executado: `rodadas/claude/RELATORIO_INVESTIGACAO_003B_05_PAGE_ZERO.md`.
 
 ### 7.5 Hipótese de acesso insuficiente à Página — REPROVADA
 
-Em 2026-08-25 o fundador apresentou duas provas visuais oficiais da Meta:
+Em 2026-08-25 o fundador apresentou duas provas visuais oficiais da Meta mostrando `Rafael Brito — Acesso total` à Page Quoron, inclusive atribuição direta em Business Settings.
 
-1. tela **Acesso à Página** da Página Quoron:
-   - `Rafael Brito — Acesso total` em `Pessoas com controle total`;
-2. **Business Settings → Contas → Páginas → Quoron**:
-   - Page **Quoron**, ID **`1356474050873300`**;
-   - propriedade: **Quoron**;
-   - `1 pessoa está atribuída a essa Página do Facebook`;
-   - `Rafael Brito (You) — Acesso total`.
+Portanto não alterar acesso da Página.
 
-Portanto não há mais ambiguidade: o perfil usado no OAuth está **diretamente atribuído à Page Quoron com acesso total**. A hipótese de que `/me/accounts` está vazio por falta de atribuição ou nível de acesso está **REPROVADA**. Não alterar acesso da Página.
+## 8. Próxima ação autorizada — COMPLEMENTAÇÃO READ-ONLY MÍNIMA
 
-A documentação oficial Meta/Postman continua mostrando User Access Token + `/me/accounts` como caminho para listar Pages gerenciadas; logo o vazio exige diagnóstico técnico do token/edge, não mais tentativa manual de permissões da Página.
+Próximo a agir: **Claude Code**.
 
-## 8. Próxima ação autorizada — INVESTIGAÇÃO JÁ EM EXECUÇÃO
+Mandato: `rodadas/gpt/COMPLEMENTO_003B_05_PAGE_DIRECT_READONLY.md`.
 
-Próximo a agir: **Claude Code, investigação read-only já iniciada**.
+Executar **somente** a prova direta da Page conhecida `1356474050873300`:
 
-Mandato: `rodadas/gpt/INVESTIGACAO_003B_05_PAGE_ZERO_GRANULAR_SCOPES.md`.
+1. `GET /1356474050873300?fields=id,name`;
+2. apenas se a primeira retornar HTTP 200, `GET /1356474050873300?fields=id,name,instagram_business_account`.
 
-Objetivo do mandato atualizado: sem mutações, provar:
+Não repetir `debug_token`, `/me`, `/me/accounts` ou `/me/adaccounts`.
 
-1. `debug_token`: validade/tipo/scopes e `granular_scopes/target_ids` sanitizados;
-2. identidade `GET /me?fields=id,name`;
-3. comparar `/me/accounts?fields=id,name,tasks` com `/me/accounts?fields=id,name,tasks,instagram_business_account`;
-4. testar diretamente a Page conhecida `1356474050873300` com `GET /{page-id}?fields=id,name` e, se permitido, expansão `instagram_business_account`;
-5. usar `/me/adaccounts?fields=id,name,account_status` como controle independente de `ads_read`.
+Objetivo: distinguir entre token que não consegue ler diretamente a Page e token que lê a Page, mas cujo `/me/accounts` não a enumera.
 
-### Estado de execução no momento do handoff
-
-O Claude Code **já estava rodando** quando o fundador trouxe a segunda prova visual da Page e quando o GPT atualizou o mandato com o item 4 (prova direta do Page ID).
-
-Consequência: a execução atual **pode não conter** a prova direta da Page `1356474050873300`.
-
-Regra:
-
-- **não interromper** a execução atual;
-- quando Claude terminar, primeiro localizar e auditar o relatório produzido;
-- **não mandar `/proxima` novamente automaticamente**;
-- verificar se A/B/C/E já explicam o problema;
-- se a prova direta da Page estiver ausente e ainda for necessária, executar somente a complementação read-only, sem repetir toda a investigação;
-- só depois considerar correção ou decisão arquitetural.
-
-Handoff micro detalhado: `rodadas/gpt/HANDOFF_CHAT_20260825_003B05_USER_TOKEN_PAGE_ZERO.md`.
+Depois entregar relatório curto em `rodadas/claude/` e parar aguardando auditoria GPT.
 
 ## 9. Continua NÃO autorizado
 
@@ -200,7 +176,7 @@ Handoff micro detalhado: `rodadas/gpt/HANDOFF_CHAT_20260825_003B05_USER_TOKEN_PA
 - remover BISU;
 - adicionar `business_management` ou `ads_management` por tentativa;
 - mexer no acesso da Página Quoron;
-- novo OAuth antes do resultado da investigação;
+- novo OAuth antes da conclusão/auditoria da complementação;
 - associar o app E2E ao portfólio Quoron só para BISU;
 - substituir definitivamente o app oficial;
 - criar/mover Page, Instagram, portfólio ou Ad Account;
@@ -214,7 +190,8 @@ Handoff micro detalhado: `rodadas/gpt/HANDOFF_CHAT_20260825_003B05_USER_TOKEN_PA
 
 ## 10. Pendências
 
-- se USER passar, decidir ciclo de vida/renovação/reautorização/revogação/Ads e segurança antes de promover arquitetura;
+- após a prova direta da Page, decidir a causa/caminho arquitetural com base em evidência;
+- se USER for adotado, decidir ciclo de vida/renovação/reautorização/revogação/Ads e segurança antes de promover arquitetura;
 - decidir Page Access Token só se houver prova material de necessidade;
 - corrigir UX que hoje afirma ausência de Page quando a API apenas devolve lista vazia;
 - harmonizar canônicos de mídia paga pós-003B;
