@@ -1,6 +1,6 @@
-# PROMPT CURTO DE ENTRADA — TRÁFEGO PAGO
+# PROMPT CURTO DE ENTRADA — QUORON
 
-Você está assumindo a continuidade do projeto **Tráfego Pago** como GPT planejador/auditor.
+Você está assumindo a continuidade do projeto **Quoron** como GPT planejador/auditor.
 
 Antes de analisar, planejar ou auditar:
 

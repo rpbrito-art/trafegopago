@@ -26,7 +26,15 @@ export type BusinessProfileSummary = {
   primaryOffer: string;
   averageTicketMinor: number | null;
   currency: string;
-  targetAudience: string;
+  /**
+   * `null` quando ainda não foi informado.
+   *
+   * Preservar a ausência importa: convertê-la em `""` faria a UI mostrar um
+   * campo vazio como se fosse um valor, e apagaria a diferença entre "o
+   * negócio não tem público definido" e "o público é uma string vazia"
+   * (auditoria 004B §6.2).
+   */
+  targetAudience: string | null;
   differentiators: string | null;
   knownObjections: string | null;
   acquisitionGoal: string | null;
@@ -136,7 +144,7 @@ function toProfileSummary(row: ProfileRow): BusinessProfileSummary {
         ? row.average_ticket_minor
         : null,
     currency: asText(row.currency) ?? "BRL",
-    targetAudience: asText(row.target_audience) ?? "",
+    targetAudience: asText(row.target_audience),
     differentiators: asText(row.differentiators),
     knownObjections: asText(row.known_objections),
     acquisitionGoal: asText(row.acquisition_goal),

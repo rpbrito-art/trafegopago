@@ -44,6 +44,33 @@ export function ObjectiveSection({ state }: { state: ObjectiveState }) {
     );
   }
 
+  // Negócio existe, mas não está acessível. Distinto de "sem organização": ali
+  // o convite é criar um negócio, aqui isso criaria um segundo tenant por
+  // engano (auditoria 004B §6.1).
+  if (state.kind === "negocio-indisponivel") {
+    return (
+      <Bloco tom="atencao" titulo="Seu negócio precisa de atenção">
+        <p className="text-sm text-amber-900">
+          Não conseguimos acessar seu negócio agora. Verifique sua conta antes
+          de definir o objetivo.
+        </p>
+      </Bloco>
+    );
+  }
+
+  // Mais de um negócio e nenhum seletor ainda. Mostrar o objetivo de um deles
+  // seria mostrar o de um negócio que a pessoa não escolheu.
+  if (state.kind === "multiplos-negocios") {
+    return (
+      <Bloco tom="atencao" titulo="Sua conta tem mais de um negócio">
+        <p className="text-sm text-amber-900">
+          Ainda não é possível escolher qual negócio recebe o objetivo. Assim
+          que a escolha existir, você define um objetivo para cada um.
+        </p>
+      </Bloco>
+    );
+  }
+
   if (state.kind === "sem-objetivo") {
     return (
       <Bloco titulo="Qual é o seu objetivo agora?">

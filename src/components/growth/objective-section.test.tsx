@@ -157,6 +157,37 @@ describe("com objetivo definido", () => {
   });
 });
 
+describe("contexto de organização ambíguo ou indisponível", () => {
+  it("negócio indisponível não convida a criar outro", () => {
+    // Esse convite criaria um segundo tenant por engano.
+    const texto = textOf(render({ kind: "negocio-indisponivel" }));
+
+    expect(texto).toContain("Verifique sua conta");
+    expect(texto).not.toContain("Criar meu negócio");
+    expect(texto).not.toContain("Definir meu objetivo");
+  });
+
+  it("mais de um negócio explica sem oferecer escolha implícita", () => {
+    const texto = textOf(render({ kind: "multiplos-negocios", quantidade: 2 }));
+
+    expect(texto).toContain("mais de um negócio");
+    expect(texto).not.toContain("Definir meu objetivo");
+    expect(texto).not.toContain("Alterar objetivo");
+  });
+
+  it("nenhum dos dois expõe id, papel ou contagem técnica", () => {
+    for (const estado of [
+      { kind: "negocio-indisponivel" } as const,
+      { kind: "multiplos-negocios", quantidade: 2 } as const,
+    ]) {
+      const texto = textOf(render(estado));
+
+      expect(texto).not.toContain(ORG);
+      expect(texto).not.toMatch(/owner|admin|organization_id|membership/i);
+    }
+  });
+});
+
 describe("demais estados", () => {
   it("sem organização, o próximo passo é criar o negócio", () => {
     const texto = textOf(render({ kind: "sem-organizacao" }));
@@ -176,6 +207,8 @@ describe("demais estados", () => {
       { kind: "sem-objetivo", organizationId: ORG, podeDefinir: true },
       { kind: "definido", organizationId: ORG, objetivo: OBJETIVO, podeAlterar: true },
       { kind: "sem-organizacao" },
+      { kind: "negocio-indisponivel" },
+      { kind: "multiplos-negocios", quantidade: 2 },
       { kind: "erro-tecnico" },
     ];
 

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { ROUTES } from "@/lib/auth/routes";
 import { requireUser } from "@/lib/auth/session";
+import { resolveOrganizationContext } from "@/lib/business/organization-context";
 import {
   isDestinationType,
   isObjectiveType,
@@ -34,9 +35,13 @@ const MAX_DETALHE = 280;
  *
  * - a identidade vem de `requireUser()`, que verifica o JWT server-side;
  * - o papel é lido pela RPC, da tabela de membership, não do formulário;
- * - a organização é resolvida aqui a partir da membership do próprio usuário,
- *   nunca de um campo do POST. Aceitar `organizationId` do cliente seria
- *   entregar a chave do tenant a quem envia o formulário.
+ * - a organização é resolvida no servidor, nunca de um campo do POST. Aceitar
+ *   `organizationId` do cliente seria entregar a chave do tenant a quem envia o
+ *   formulário.
+ *
+ * E a resolução **falha fechada**: em conta com mais de um negócio, ou com o
+ * negócio indisponível, a RPC não é chamada. Escolher com `.limit(1)` gravaria
+ * o objetivo num negócio que o usuário não selecionou (auditoria 004B §6.1).
  *
  * A action é alcançável sem passar pela UI. Renderizar o formulário só para
  * owner/admin não é autorização — a verificação dentro da RPC é.
@@ -80,21 +85,34 @@ export async function setGrowthObjectiveAction(
 
   const supabase = createSupabasePrivilegedClient();
 
-  // A organização vem da membership do usuário, resolvida no servidor.
-  const { data: memberships, error: erroMembership } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("user_id", user.id)
-    .eq("status", "ACTIVE")
-    .limit(1);
+  const contexto = await resolveOrganizationContext({
+    supabase,
+    userId: user.id,
+  });
 
-  if (erroMembership) return { message: ERRO_GENERICO };
+  if (contexto.kind === "erro-tecnico") return { message: ERRO_GENERICO };
 
-  const organizationId = (memberships ?? [])[0]?.organization_id;
-
-  // Sem organização ativa não há objetivo a definir; o próximo passo é criar o
+  // Sem organização não há objetivo a definir; o próximo passo é criar o
   // negócio.
-  if (!organizationId) redirect(ROUTES.account);
+  if (contexto.kind === "sem-organizacao") redirect(ROUTES.account);
+
+  if (contexto.kind === "organizacao-indisponivel") {
+    return {
+      message:
+        "Seu negócio não está disponível no momento. Verifique sua conta antes de definir o objetivo.",
+    };
+  }
+
+  // Nenhuma mutação em contexto ambíguo. A mensagem não revela id, papel nem
+  // nome de organização — só diz o que está acontecendo.
+  if (contexto.kind === "multiplas-organizacoes") {
+    return {
+      message:
+        "Sua conta participa de mais de um negócio. Ainda não é possível escolher qual deles receberá o objetivo.",
+    };
+  }
+
+  const organizationId = contexto.organizationId;
 
   const { error } = await supabase.rpc("set_active_growth_objective", {
     p_user_id: user.id,

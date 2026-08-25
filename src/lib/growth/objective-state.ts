@@ -1,5 +1,6 @@
 import "server-only";
 
+import { resolveOrganizationContext } from "@/lib/business/organization-context";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import {
@@ -17,11 +18,20 @@ import {
  * `service_role` e filtrar em TypeScript trocaria uma garantia do banco por uma
  * condição que qualquer refatoração futura pode apagar sem erro visível
  * (`SECURITY_MODEL.md` §4, §5) — mesmo raciocínio de `business/account.ts`.
+ *
+ * Qual negócio está sendo lido vem de `resolveOrganizationContext()`, e não de
+ * `ativas[0]`. Em contexto ambíguo o objetivo **não é consultado**: mostrar o
+ * objetivo de um negócio escolhido pela ordem do banco é pior do que não
+ * mostrar nada (auditoria 004B §6.1).
  */
 
 export type ObjectiveState =
   /** Sem organização ainda: o próximo passo é criar o negócio, não o objetivo. */
   | { kind: "sem-organizacao" }
+  /** O negócio existe, mas não está acessível agora. */
+  | { kind: "negocio-indisponivel" }
+  /** Mais de um negócio: sem seletor, nenhuma escolha implícita. */
+  | { kind: "multiplos-negocios"; quantidade: number }
   /** Estado válido de produto, não erro: orienta o próximo passo. */
   | { kind: "sem-objetivo"; organizationId: string; podeDefinir: boolean }
   | {
@@ -38,25 +48,25 @@ const PAPEIS_QUE_DEFINEM = ["owner", "admin"];
 export async function getObjectiveState(): Promise<ObjectiveState> {
   const supabase = await createSupabaseServerClient();
 
-  const { data: memberships, error: erroMembership } = await supabase
-    .from("organization_members")
-    .select("organization_id, role, status");
+  const contexto = await resolveOrganizationContext({ supabase });
 
-  // Falha técnica vira estado próprio, nunca lista vazia: confundir "não deu
-  // para saber" com "não existe" faria a tela oferecer criar um negócio a quem
-  // já tem um.
-  if (erroMembership) return { kind: "erro-tecnico" };
+  if (contexto.kind === "erro-tecnico") return { kind: "erro-tecnico" };
+  if (contexto.kind === "sem-organizacao") return { kind: "sem-organizacao" };
+  if (contexto.kind === "organizacao-indisponivel") {
+    return { kind: "negocio-indisponivel" };
+  }
+  if (contexto.kind === "multiplas-organizacoes") {
+    // Nenhuma consulta a `growth_objectives` acontece aqui: sem contexto
+    // inequívoco, qualquer objetivo exibido seria o de um negócio que o
+    // usuário não escolheu.
+    return { kind: "multiplos-negocios", quantidade: contexto.membershipCount };
+  }
 
-  const ativas = (memberships ?? []).filter((m) => m.status === "ACTIVE");
-
-  if (ativas.length === 0) return { kind: "sem-organizacao" };
-
-  const membership = ativas[0];
-  const organizationId = membership.organization_id as string;
+  const { organizationId } = contexto;
 
   // A UI esconde o botão para quem não pode; a autorização de verdade está na
   // RPC, que lê papel e status do banco. Esconder não é autorizar.
-  const podeDefinir = PAPEIS_QUE_DEFINEM.includes(String(membership.role));
+  const podeDefinir = PAPEIS_QUE_DEFINEM.includes(contexto.role);
 
   const { data, error } = await supabase
     .from("growth_objectives")

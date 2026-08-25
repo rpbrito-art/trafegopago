@@ -46,6 +46,20 @@ export default async function ObjetivoPage() {
         </p>
       ) : null}
 
+      {state.kind === "negocio-indisponivel" ? (
+        <p className="text-sm text-amber-900">
+          Não conseguimos acessar seu negócio agora. Verifique sua conta antes
+          de definir o objetivo.
+        </p>
+      ) : null}
+
+      {state.kind === "multiplos-negocios" ? (
+        <p className="text-sm text-amber-900">
+          Sua conta participa de mais de um negócio. Ainda não é possível
+          escolher qual deles recebe o objetivo.
+        </p>
+      ) : null}
+
       {state.kind === "sem-organizacao" ? (
         <div className="flex flex-col gap-3">
           <p className="text-sm text-neutral-700">
