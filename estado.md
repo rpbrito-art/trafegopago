@@ -28,7 +28,7 @@ Promovidas: **000–003A, 004A, 004B e 004C**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - última rodada promovida: **004C — Offer Catalog + Business Context Foundation**.
-- rodada corrente: **004D — Guided Growth Journey Foundation — EXECUTADA, AGUARDANDO AUDITORIA GPT**.
+- rodada corrente: **004D — Guided Growth Journey Foundation — EXECUTADA, AUDITADA E BLOQUEADA; CORREÇÃO 004D-01 AUTORIZADA**.
 
 ## 3. Promoção 004A — AI Foundation Core
 
@@ -121,7 +121,7 @@ A migration aplicada anteriormente `20260825210000_create_business_offers` não 
 A correção garante no banco:
 
 - `service_role` só pode atualizar `superseded_at` em `business_offer_versions`;
-- conteúdo de uma versão não pode ser reescrito em place;
+- conteúdo de uma versão não pode ser reescrito in place;
 - versão já superseded não pode ser alterada nem reativada;
 - alterar conteúdo junto com o supersede é recusado;
 - a única transição normal de UPDATE é `superseded_at: NULL -> timestamp`;
@@ -207,65 +207,46 @@ Status:
 
 Só retomar depois que o fundador informar que resolveu o problema do portfólio empresarial restrito ou que existe nova condição operacional comprovadamente utilizável. Antes de nova implementação, o GPT deve rever a documentação oficial Meta vigente e decidir a arquitetura comercial de onboarding.
 
-## 9. Rodada 004D — EXECUTADA, AGUARDANDO AUDITORIA
+## 9. Rodada 004D — EXECUTADA, AUDITADA E BLOQUEADA
 
 Mandato:
 
 `rodadas/gpt/RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`
 
-Branch: `claude/rodada-004d-guided-growth-journey`.
+Branch:
 
-Base: `main` em `b389e2d`, após a promoção da 004C.
+`claude/rodada-004d-guided-growth-journey`
 
-PR #16: **draft, open, não mergeada**, base `main`.
+PR #16: **draft, open, não mergeada**.
 
-HEAD com o delta completo: `a75e922`. Commits posteriores a este registro alteram apenas relatório e este arquivo; o PR #16 aponta para o HEAD final.
+HEAD auditado: `76435b8c5c461a35cc27298d6d2158e71aabb63d`.
 
-CI: `32892914249` — **success**, 902/902 testes, lint/typecheck/Edge Functions/build verdes.
+CI do HEAD auditado: `32893047965` — **success**; lint, typecheck, Edge Functions, testes e build verdes.
 
-Status: **004D EXECUTADA — AGUARDANDO AUDITORIA GPT**. Não promovida, não mergeada.
+Auditoria:
 
-Relatório: `rodadas/claude/RELATORIO_RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`.
+`rodadas/gpt/AUDITORIA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`
 
-### 9.1 Delta executado
+Veredito:
 
-- `growth_objectives` ganha `focus_type` (`BUSINESS|OFFER|NULL`) e `focus_offer_id`;
-- FK composta `(organization_id, focus_offer_id)` → `business_offers (organization_id, id)` impede foco cross-tenant pelo banco;
-- constraints amarram cada estado de foco a uma forma única; foco não confirmado continua sendo `NULL`;
-- o foco aponta para a identidade da oferta, nunca para uma versão;
-- `set_growth_objective_focus` server-only, `service_role`, owner/admin, organização e membership ACTIVE, idempotente, serializada **pela mesma chave** de `set_active_growth_objective`;
-- definir ou trocar foco arquiva a versão vigente e cria a próxima na mesma transação, preservando objetivo, jornada e sucesso;
-- oferta arquivada não pode virar foco, e arquivar a oferta não apaga o foco já registrado;
-- motor determinístico `decideJourneyStep()` puro, com nove estados e sem provider de IA;
-- `/inicio` como entrada autenticada guiada e `/foco` para a decisão humana;
-- destino padrão pós-autenticação passa a `/inicio`, com `PROTECTED_PREFIXES` e allowlist de redirect atualizados; `/conta` preservada;
-- `DATA_MODEL.md` e `TECHNICAL_SPEC.md` harmonizados.
+**004D EXECUTADA E AUDITADA, MAS NÃO APROVADA NEM PROMOVIDA.**
 
-### 9.2 Supabase remoto da 004D
+A maior parte do contrato foi aprovada: foco, tenant-safety, histórico pelo fluxo normal, motor determinístico, `/inicio`, `/foco`, redirects e ausência de Meta/IA real.
 
-Migration aplicada: `20260825230000_add_growth_objective_focus`, publicada na branch antes do `db push`.
+Bloqueio 004D-01:
 
-Snapshot independente:
+- `growth_objectives` é entidade versionada e histórica, mas `service_role` mantém `UPDATE` direto amplo;
+- prova remota independente confirmou `has_table_privilege(...,'UPDATE') = true`;
+- a tabela possui zero trigger customizada de imutabilidade;
+- portanto um caminho privilegiado futuro pode reescrever objetivo, jornada, sucesso ou foco históricos sem criar nova versão.
 
-- `focus_type` e `focus_offer_id` presentes e nullable;
-- três constraints de foco presentes;
-- índice de cobertura da FK criado;
-- RPC sem EXECUTE para anon/authenticated, com EXECUTE para service_role;
-- grants de `growth_objectives` inalterados: `authenticated` somente SELECT;
-- zero fixtures residuais;
-- advisors idênticos ao baseline, mais um INFO `unused_index` esperado em coluna nova e vazia.
+Correção autorizada:
 
-Esta migration **não deve ser reescrita**.
+`rodadas/gpt/CORRECAO_004D_01_IMUTABILIDADE_GROWTH_OBJECTIVES.md`
 
-### 9.3 Provas
+Regra crítica: **não reescrever migrations já aplicadas**. A correção deve ser aditiva.
 
-- `scripts/sql/growth-objective-focus-004d-proof.sql` → **32 casos, 32 passaram, 0 falharam**, transacional com rollback;
-- motor de condução, action de foco, tela do próximo passo, rotas e regressão de autenticação cobertos por testes novos/atualizados;
-- suíte local completa → **902/902** em 44 arquivos;
-- `tsc --noEmit` e `eslint` limpos;
-- CI final do PR: `32892914249` — success, 902/902.
-
-## 10. Continua NÃO autorizado fora do mandato 004D
+## 10. Continua NÃO autorizado fora da Correção 004D-01
 
 ### Meta
 
@@ -292,7 +273,7 @@ Esta migration **não deve ser reescrita**.
 - IA inferir automaticamente objetivo, foco ou próximo passo;
 - qualquer capacidade de IA executar gasto.
 
-### Produto fora da 004D
+### Produto fora da correção
 
 - seletor multi-organização;
 - Content Intelligence/Oportunidades;
@@ -310,7 +291,7 @@ Esta migration **não deve ser reescrita**.
 - múltiplos focos simultâneos;
 - e-commerce, estoque, SKU, pedidos ou pagamentos;
 - score de maturidade/gamificação;
-- qualquer capacidade substantiva além do escopo explícito da 004D.
+- qualquer capacidade substantiva além da imutabilidade de `growth_objectives`.
 
 ### Branding técnico externo
 
@@ -321,9 +302,22 @@ Esta migration **não deve ser reescrita**.
 
 ## 11. Próxima ação autorizada
 
-Próximo ator: **GPT auditor**.
+Próximo ator: **Claude Code**.
 
-Auditar a 004D na branch/PR indicados acima. Claude não promove, não mergeia e não declara a rodada aprovada.
+Executar somente a **Correção 004D-01** na mesma branch da 004D.
+
+Claude deve:
+
+1. atualizar a branch com a `main` documental sem perder o delta da 004D;
+2. ler `estado.md` e `rodadas/gpt/CORRECAO_004D_01_IMUTABILIDADE_GROWTH_OBJECTIVES.md`;
+3. criar migration aditiva, sem editar migrations aplicadas;
+4. reduzir UPDATE de `service_role` ao mínimo necessário para `status`/`archived_at`;
+5. adicionar guarda persistida de imutabilidade que permita apenas `ACTIVE/NULL -> ARCHIVED/timestamp` sem mudança de conteúdo;
+6. provar que `set_active_growth_objective` e `set_growth_objective_focus` continuam funcionando;
+7. manter PR #16 aberto, draft e não mergeado;
+8. finalizar em **CORREÇÃO 004D-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT**.
+
+Depois disso, o próximo ator volta a ser o **GPT auditor**.
 
 ## 12. Regra de continuidade
 
