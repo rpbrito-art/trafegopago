@@ -201,6 +201,7 @@ A sentinela pertence à fixture e à eval: não entra no prompt de produção ne
 | saída sem sentinela; caso sem o metadado | passam, sem regra artificial |
 | suíte local | **1015/1015** em 49 arquivos |
 | gates pagos | `e2e:review` e `eval:review` seguem parando com código 2 |
+| CI da correção | `32911186127` — success, 1015/1015 |
 
 Nenhuma migration foi criada e o banco remoto não foi tocado — a correção é inteiramente de lógica de avaliação, como o mandato delimitou.
 

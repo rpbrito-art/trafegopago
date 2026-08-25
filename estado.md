@@ -316,6 +316,8 @@ Mandato: `rodadas/gpt/CORRECAO_004E_03_EVAL_GATE_COMPLETION.md`.
 
 Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · PR #17 mantido aberto, draft, não mergeado.
 
+CI: `32911186127` — **success**, 1015/1015 testes, lint/typecheck/Edge Functions/build verdes.
+
 Status: **CORREÇÃO 004E-03 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**.
 
 Relatório: `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` §9.
