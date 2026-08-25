@@ -46,7 +46,7 @@ Alterados apenas onde havia conflito real: `MVP_CANONICAL.md` §§1–2, `IMPLEM
 | tipos | `npx tsc --noEmit` | limpo |
 | lint | `npx eslint` | limpo |
 | advisors | MCP Supabase, security e performance | zero novo achado do delta |
-| suíte completa | CI `32885622248` no PR #15 | **success**, 864/864, lint/typecheck/Edge Functions/build verdes |
+| suíte completa | CI `32885622248` e `32885781773` no PR #15 | **success**, 864/864, lint/typecheck/Edge Functions/build verdes |
 
 A prova SQL é transacional (`begin … rollback`) e a leitura acontece sob `set local role authenticated`, com `auth.uid()` simulado e consulta **sem filtro de organização** — quem restringe é a policy.
 
@@ -74,6 +74,6 @@ Sem vínculo `offer_id` em `growth_objectives`, sem SKU/estoque/pedido, sem pers
 
 ## 7. Handoff
 
-Branch `claude/rodada-004c-offer-catalog-business-context`, HEAD publicado em `origin`. PR #15, draft, base `main`. CI `32885622248` — success. `estado.md` da branch em **EXECUTADA — AGUARDANDO AUDITORIA GPT**. Working tree limpa.
+Branch `claude/rodada-004c-offer-catalog-business-context`, HEAD publicado em `origin`. PR #15, draft, base `main`, apontando para o HEAD final. CI verde nos dois commits: `32885622248` (delta) e `32885781773` (só documentação). `estado.md` da branch em **EXECUTADA — AGUARDANDO AUDITORIA GPT**. Working tree limpa.
 
 Nenhuma pendência técnica. Próximo ator: **GPT auditor**.

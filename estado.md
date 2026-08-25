@@ -228,9 +228,11 @@ Base: `main` em `bd32e2a`, após a promoção da 004B.
 
 PR #15: **draft, open, não mergeada**, base `main`.
 
-HEAD publicado: `775d96af1eeeeb50521daa2f13f6972c71c19d61`.
+HEAD com o delta completo: `775d96af1eeeeb50521daa2f13f6972c71c19d61`.
 
-CI: `32885622248` — **success**, 864/864 testes, lint/typecheck/Edge Functions/build verdes.
+O HEAD final da branch é um commit posterior que altera **apenas** relatório e este arquivo; o PR #15 aponta para ele.
+
+CI: `32885622248` (delta) e `32885781773` (HEAD final) — ambas **success**, 864/864 testes, lint/typecheck/Edge Functions/build verdes.
 
 Status: **EXECUTADA — AGUARDANDO AUDITORIA GPT**. Não promovida, não mergeada.
 
