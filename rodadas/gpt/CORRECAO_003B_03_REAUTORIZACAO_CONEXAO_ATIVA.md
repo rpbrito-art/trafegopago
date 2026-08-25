@@ -1,6 +1,6 @@
 # CORREÇÃO 003B-03 — REAUTORIZAÇÃO DE CONEXÃO META ATIVA
 
-Status: **PLANEJADA — AGUARDANDO AUTORIZAÇÃO EXPLÍCITA DO FUNDADOR**
+Status: **AUTORIZADA PELO FUNDADOR — AGUARDANDO EXECUÇÃO DO CLAUDE**
 Data: 2026-08-24
 Rodada pai: **003B — Meta Asset Discovery & Selection**
 
@@ -41,7 +41,7 @@ A lacuna está na UI: `MetaAssetsSection`, no estado `permissao-faltando`, mostr
 
 Permitir que uma conexão Meta já `ACTIVE`, porém com capacidade incompleta, seja reautorizada pelo mesmo fluxo seguro já existente, sem revogação/desconexão prévia.
 
-## 4. Delta autorizado se o fundador aprovar
+## 4. Delta autorizado
 
 ### 4.1 UI
 
@@ -96,12 +96,12 @@ Somente depois de o GPT auditar e aprovar esta correção:
 
 ## 6. Preservações e proibições
 
-Até nova autorização explícita:
+Durante a execução:
 
 - **não desconectar** a conexão real atual;
 - não remover integração em Apps conectados;
 - não apagar token/Vault;
-- não repetir OAuth manualmente fora do botão corrigido;
+- não repetir OAuth manualmente antes da auditoria GPT da correção;
 - não criar novo Meta App;
 - não migrar para Instagram Login/`instagram_business_*`;
 - não criar campanha nem gasto;
