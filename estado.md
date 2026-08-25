@@ -24,179 +24,128 @@ Promovidas: **000–003A, 004A, 004B, 004C e 004D**.
 - Fase 1 — Supabase, Auth e Tenancy: **ENCERRADA**.
 - Fase 2 — Operations, Audit, Queues e Segurança Base: **ENCERRADA**.
 - Fase 3 — Meta Connection Foundation: **EM ANDAMENTO / 003B ESTACIONADA / GATE EXTERNO PENDENTE**.
-- Fase 6 — AI Foundation: **EM ANDAMENTO; 004A FOUNDATION CORE PROMOVIDA; 004E PRIMEIRO PROVIDER/FEATURE REAL AUTORIZADA, AINDA NÃO EXECUTADA**.
+- Fase 6 — AI Foundation: **EM ANDAMENTO; 004A FOUNDATION CORE PROMOVIDA; 004E AINDA NÃO PROMOVIDA**.
 - Growth Context / Branding Quoron: **004B PROMOVIDA**.
 - Offer Catalog / Business Context: **004C PROMOVIDA**.
 - Guided Growth Journey / Focus Foundation: **004D PROMOVIDA**.
 - última rodada promovida: **004D — Guided Growth Journey Foundation**.
-- rodada corrente: **004E — Declared Context Review + First Real AI — PLANEJADA E AUTORIZADA, AINDA NÃO EXECUTADA**.
+- rodada corrente: **004E — Declared Context Review + First Real AI — IMPLEMENTADA ATÉ GATE, AUDITADA E BLOQUEADA ANTES DA CREDENCIAL PAGA; CORREÇÃO 004E-01 AUTORIZADA**.
 
-## 3. Promoção 004A — AI Foundation Core
+## 3. Promoções recentes incorporadas
+
+### 004A — AI Foundation Core
 
 PR #13 mergeada em `da2862135eab6897fc44ae361da1298c7071a11f`.
 
 Incorporado:
 
 - catálogo interno de providers/modelos/preços;
-- contrato `AI Task` sem feature escolher provider/modelo;
+- contrato `AI Task` desacoplado de provider/modelo;
 - Router server-only;
 - structured output validado;
 - ledger `ai_runs` auditável;
-- custo com precisão fixa;
-- ledger/custo fail-closed;
-- coerência provider → model → price version;
-- vigência de modelos/preços;
+- custo com precisão fixa e versão de preço;
 - RLS/ACL server-only;
-- fake adapter somente em teste.
+- fake adapter apenas em teste.
 
-Ainda não existe provider real, API key, SDK, chamada paga, fallback real, tool calling, embeddings/RAG ou feature de IA de negócio no estado promovido até a 004D.
+No estado promovido até 004D ainda não há chamada paga de IA.
 
-## 4. Promoção 004B — Quoron Branding + Growth Context
+### 004B — Quoron Branding + Growth Context
 
-PR #14 mergeada.
-
-Merge: `8d9abea9fd8e18a8c9ad08052694aa09f03a31e0`.
-
-Auditoria: `rodadas/gpt/AUDITORIA_FINAL_004B_QUORON_GROWTH_CONTEXT.md`.
+PR #14 mergeada em `8d9abea9fd8e18a8c9ad08052694aa09f03a31e0`.
 
 Incorporado:
 
-- Quoron consolidado como marca ativa;
-- onboarding inicial reduzido a quatro campos essenciais;
-- `target_audience` e `acquisition_goal` podem ser nulos sem perda de dado existente;
-- `growth_objectives` separada de `business_profiles`;
-- um único objetivo ACTIVE por organização, histórico preservado e troca idempotente/serializada;
-- escrita server-side owner/admin e RLS de leitura;
-- rota `/objetivo` com linguagem de negócio;
-- resultado desejado separado de observabilidade real;
-- multi-organização fail-closed.
+- marca Quoron;
+- onboarding inicial reduzido;
+- `growth_objectives` versionado;
+- objetivo/jornada/sucesso separados do perfil;
+- RLS e multi-org fail-closed.
 
-## 5. Promoção 004C — Offer Catalog + Business Context
+### 004C — Offer Catalog + Business Context
 
-Mandato: `rodadas/gpt/RODADA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`.
+PR #15 mergeada em `bafdc7a327ec9f67ab99065b4cb1405a5695a57c`.
 
-PR #15: **MERGEADA**.
+Incorporado:
 
-HEAD final reauditorado: `0339bfb1b5fc1060e108fb73a0c4a5cad399584a`.
+- `business_offers` + `business_offer_versions`;
+- preço estruturado em unidade menor inteira;
+- histórico imutável;
+- edição por supersede + nova versão;
+- browser sem escrita;
+- `/ofertas` em linguagem simples.
 
-Merge: `bafdc7a327ec9f67ab99065b4cb1405a5695a57c`.
+Correção 004C-01 protege imutabilidade no banco. Provas: 25/25 + regressão 51/51.
 
-CI final do HEAD do PR: `32888062131` — **success**.
+### 004D — Guided Growth Journey Foundation
 
-CI pós-merge na `main`: `32889061946` — **success**; lint, typecheck, Edge Functions, testes e build verdes.
+PR #16 mergeada em `678c78cc9f9fc29b276d534c46ef4375277a2bd4`.
 
-Auditoria inicial: `rodadas/gpt/AUDITORIA_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`.
+Auditoria final: `rodadas/gpt/AUDITORIA_FINAL_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`.
 
-Correção: `rodadas/gpt/CORRECAO_004C_01_IMUTABILIDADE_VERSOES_OFERTA.md`.
+Incorporado:
 
-Auditoria final: `rodadas/gpt/AUDITORIA_FINAL_004C_OFFER_CATALOG_BUSINESS_CONTEXT.md`.
+- foco atual `BUSINESS | OFFER | NULL`;
+- foco versionado e tenant-safe;
+- `/inicio` como entrada autenticada guiada;
+- `/foco` para decisão humana;
+- motor determinístico `decideJourneyStep()` sem IA;
+- memória estratégica de `growth_objectives` protegida contra reescrita privilegiada.
 
-Veredito:
+Provas da correção 004D-01: 30/30 + regressão 32/32.
 
-**004C EXECUTADA, CORRIGIDA, REAUDITADA, APROVADA E PROMOVIDA.**
-
-### 5.1 Incorporado
-
-- `business_offers` como identidade estável da oferta;
-- `business_offer_versions` como conteúdo versionado;
-- FK composta tenant-safe entre versão e oferta;
-- uma única versão corrente por oferta;
-- edição material preserva a versão anterior e cria nova versão;
-- reenvio idêntico idempotente;
-- dinheiro em unidade menor inteira, sem float;
-- formas de preço estruturadas e constraints de coerência;
-- criação/edição/arquivamento server-side com owner/admin, organização e membership ACTIVE;
-- RLS de leitura; browser sem escrita;
-- multi-organização fail-closed;
-- rota `/ofertas` em português simples;
-- `business_profiles.primary_offer` preservado apenas como sugestão editável, sem conversão automática para fato estruturado.
-
-### 5.2 Correção 004C-01 — memória histórica protegida
-
-Migration aditiva:
-
-- `20260825220000_enforce_offer_version_immutability`.
-
-A migration aplicada anteriormente `20260825210000_create_business_offers` não foi reescrita.
-
-A correção garante no banco:
-
-- `service_role` só pode atualizar `superseded_at` em `business_offer_versions`;
-- conteúdo de uma versão não pode ser reescrito in place;
-- versão já superseded não pode ser alterada nem reativada;
-- alterar conteúdo junto com o supersede é recusado;
-- a única transição normal de UPDATE é `superseded_at: NULL -> timestamp`;
-- trigger faz a invariante valer inclusive contra caminho privilegiado que ignore grants.
-
-Provas específicas: **25/25** na correção e **51/51** na regressão da 004C.
-
-## 6. Visão de produto canônica
+## 4. Visão de produto canônica
 
 Canônico: `docs/01-produto/AGENTIC_PRODUCT_CANONICAL.md`.
 
-Tese central vigente:
+Tese central:
 
 **Quoron é um agente de inteligência de crescimento para profissionais liberais e pequenos negócios, operado por uma plataforma SaaS nativa.**
-
-O produto deve compreender progressivamente o negócio, observar evidências reais, confrontar declarado x observado, diagnosticar, ensinar, recomendar, pedir decisão humana quando necessária, executar o autorizado, medir e aprender.
 
 Fluxo conceitual:
 
 `compreender → observar → confrontar → diagnosticar → ensinar → recomendar → decidir → executar → medir → aprender → próximo passo`
 
-Leis complementares:
+Leis vigentes:
 
 - a complexidade pertence ao sistema, não ao usuário;
 - o usuário não precisa dominar marketing digital para usar o Quoron;
-- o sistema deve ensinar o necessário para preservar soberania humana sobre decisões do negócio;
-- aprendizagem deve permanecer baseada em evidência, separando fato, interpretação e hipótese.
+- o sistema ensina o necessário para preservar soberania humana;
+- aprendizagem material deve ter evidência e separar fato, interpretação e hipótese.
 
-## 7. Rodada 003B — ESTACIONADA, NÃO PROMOVIDA
+## 5. Rodada 003B — ESTACIONADA, NÃO PROMOVIDA
 
 Branch: `claude/rodada-003b-meta-asset-discovery-selection`.
 
-PR #12: draft, open, não mergeada.
+PR #12: draft/open/não mergeada.
 
 HEAD conhecido: `053bc7ca3f25b53954579df30bce598894e718dd`.
 
 CI: `32859795018` — success.
 
-### 7.1 Defeito Meta comprovado
+Defeito comprovado com o mesmo User Access Token válido:
 
-Com o mesmo User Access Token válido:
-
-- `debug_token`: `is_valid=true`, `type=USER`;
+- `debug_token`: válido / USER;
 - `/me?fields=id,name` → 200;
 - `/me?fields=client_business_id` → 400 / code 190;
 - `/me?fields=id,client_business_id` → 400 / code 190.
 
-O classifier compartilhado da 003B não pode inferir saúde/tipo da credencial por `client_business_id` desse modo.
+O classifier da 003B não pode inferir saúde/tipo da credencial por `client_business_id` desse modo.
 
-A arquitetura BISU/System User preservada na 003B continua evidência técnica, não arquitetura comercial definitiva.
+Restrição operacional Meta:
 
-### 7.2 Restrição operacional Meta
-
-Fatos confirmados:
-
-- limite atual de dois Meta Business Portfolios atingido;
+- limite atual de dois Business Portfolios atingido;
 - portfolio bloqueado/inutilizável: `Bizzman5po`;
-- `Bizzman5po` e `BizzManiq1` são identidades distintas;
-- `BizzManiq1` não deve ser tratado como bloqueado nem como cliente BISU sem prova;
-- Quoron possui o app canônico e apareceu inelegível como cliente do próprio app no fluxo BISU observado.
+- `Bizzman5po` e `BizzManiq1` são distintos;
+- não criar terceiro portfolio;
+- não excluir `Bizzman5po` por tentativa;
+- não usar portfolio de terceiro;
+- não alterar app/scopes/configuração por tentativa;
+- não promover 003B sem E2E real.
 
-Continua proibido por tentativa:
-
-- criar terceiro portfolio;
-- excluir `Bizzman5po`;
-- usar empresa/portfolio de terceiro;
-- alterar app/configuração/scopes;
-- promover 003B sem E2E BISU real.
-
-## 8. Onboarding Meta guiado — requisito central, execução bloqueada
+## 6. Onboarding Meta guiado — requisito canônico, execução bloqueada
 
 Canônico: `docs/01-produto/META_ONBOARDING_CANONICAL.md`.
-
-A experiência futura deve esconder do pequeno negócio a complexidade técnica da Meta sempre que possível.
 
 Princípio:
 
@@ -206,147 +155,118 @@ Status:
 
 **REQUISITO CANÔNICO / PLANEJADO, MAS NÃO AUTORIZADO PARA IMPLEMENTAÇÃO E BLOQUEADO PELO GATE EXTERNO META.**
 
-Só retomar depois que o fundador informar que resolveu o problema do portfólio empresarial restrito ou que existe nova condição operacional comprovadamente utilizável. Antes de nova implementação, o GPT deve rever a documentação oficial Meta vigente e decidir a arquitetura comercial de onboarding.
+Quando o fundador informar que o problema do portfolio restrito foi resolvido, GPT deve primeiro rever documentação oficial Meta vigente e decidir a arquitetura comercial antes de nova rodada.
 
-## 9. Promoção 004D — Guided Growth Journey Foundation
-
-Mandato:
-
-`rodadas/gpt/RODADA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`
-
-PR #16: **MERGEADA**.
-
-HEAD final reauditorado:
-
-`fbf85ba1a6c88d8f72b5a915bf35a45e20a919a3`
-
-Merge:
-
-`678c78cc9f9fc29b276d534c46ef4375277a2bd4`
-
-CI final do HEAD do PR: run `32897103131` — **success**.
-
-CI pós-merge na `main`: run `32897948005` — **success**; lint, typecheck, Edge Functions, testes e build verdes.
-
-Auditoria inicial:
-
-`rodadas/gpt/AUDITORIA_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`
-
-Correção obrigatória:
-
-`rodadas/gpt/CORRECAO_004D_01_IMUTABILIDADE_GROWTH_OBJECTIVES.md`
-
-Auditoria final:
-
-`rodadas/gpt/AUDITORIA_FINAL_004D_GUIDED_GROWTH_JOURNEY_FOUNDATION.md`
-
-Veredito:
-
-**004D EXECUTADA, CORRIGIDA, REAUDITADA, APROVADA E PROMOVIDA.**
-
-### 9.1 Incorporado
-
-- `growth_objectives` passa a registrar `focus_type` e `focus_offer_id`;
-- foco pode ser uma oferta específica ou o negócio como um todo;
-- foco ainda não confirmado permanece `NULL`, sem inferência automática;
-- FK composta impede foco cross-tenant;
-- foco aponta para a identidade estável da oferta;
-- escolha/troca de foco preserva histórico por supersede + nova versão;
-- oferta arquivada não pode virar novo foco;
-- arquivar oferta não apaga o foco histórico;
-- mudança do próprio objetivo exige nova confirmação de foco;
-- motor determinístico `decideJourneyStep()` define o próximo passo sem IA;
-- `/inicio` vira a entrada autenticada guiada inicial;
-- `/foco` registra a decisão humana sobre prioridade;
-- destino padrão pós-auth passa a `/inicio`;
-- multi-organização continua fail-closed;
-- nenhuma integração Meta, provider real de IA, Ads ou CRM foi introduzida.
-
-### 9.2 Correção 004D-01 — memória estratégica protegida
-
-Migration aditiva:
-
-`20260825240000_enforce_growth_objective_immutability`
-
-A migration `20260825230000_add_growth_objective_focus` e migrations anteriores não foram reescritas.
-
-A correção garante no banco:
-
-- `service_role` não possui mais UPDATE amplo em `growth_objectives`;
-- o servidor só pode atualizar `status` e `archived_at` no supersede legítimo;
-- trigger `growth_objectives_immutable` protege a linha inclusive contra caminho privilegiado que ignore grants;
-- objetivo, jornada, sucesso, foco, tenant, autoria e datas não podem ser reescritos in place;
-- linha arquivada não pode ser alterada nem reativada;
-- alterar conteúdo enquanto arquiva também é recusado;
-- a transição válida permanece `ACTIVE/NULL → ARCHIVED/timestamp`.
-
-Provas do Claude:
-
-- correção: **30/30**;
-- regressão 004D: **32/32**.
-
-Reauditoria GPT independente no Supabase remoto confirmou migration aplicada, perda do UPDATE amplo, atualização restrita às colunas de arquivamento, trigger presente e guarda indisponível ao browser.
-
-## 10. Rodada 004E — AUTORIZADA PARA EXECUÇÃO
+## 7. Rodada 004E — ESTADO CORRENTE
 
 Mandato:
 
 `rodadas/gpt/RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
 
-Status: **PLANEJADA E AUTORIZADA; AINDA NÃO EXECUTADA**.
-
-Branch sugerida:
+Branch:
 
 `claude/rodada-004e-declared-context-review-first-real-ai`
 
-Objetivo resumido:
+PR #17: **draft/open/não mergeada**.
 
-- criar primeira revisão por IA do **contexto declarado** do negócio, sem afirmar observação de mercado inexistente;
-- criar `/revisao` e integrar o próximo passo determinístico da 004D sem chamada automática de provider;
-- persistir artefato de revisão com snapshot/evidence refs/fingerprint/cache tenant-safe;
-- validar grounding e falhar fechado em referência inventada;
-- implementar controle de custo/abuso: ação explícita, cache e 3 chamadas não cacheadas por organização por hora;
-- inaugurar o primeiro provider real atrás do Router 004A;
-- provider autorizado: **Google Gemini Developer API, Paid Tier**;
-- modelo inicial autorizado: `gemini-2.5-flash-lite`;
-- usar SDK oficial `@google/genai` fixado em versão exata;
-- catalogar provider/modelo/preço por migration aditiva com preço oficial verificado em 2026-08-25;
-- executar prova E2E real apenas com dado sintético e ledger/custo auditáveis;
-- manter Meta, Ads, CRM, Content Intelligence e demais capacidades externas fora do escopo.
+HEAD auditado:
 
-### 10.1 Decisão de privacidade/custo
+`72510c595518aefe72301dd88b4e1362fb8d89b6`
 
-Para dados reais de clientes, **Free Tier do Gemini não é autorizado**. A documentação oficial vigente consultada pelo GPT informa que o Free Tier usa conteúdo para melhoria de produtos, enquanto o Paid Tier não.
+CI auditada:
 
-Preço Standard Paid verificado para `gemini-2.5-flash-lite`, por 1M tokens:
+`32904274001` — **success**; 973/973, lint, typecheck, Edge Functions e build verdes.
 
-- input: USD 0.10;
-- output: USD 0.40;
-- cached input: USD 0.01 quando aplicável.
+Relatório Claude:
 
-Se preço/modelo/documentação oficial mudar materialmente durante a execução, Claude deve parar e devolver a decisão ao GPT; não substituir silenciosamente.
+`rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
 
-### 10.2 Gate de credencial paga
+Auditoria GPT:
 
-Secret previsto: `GEMINI_API_KEY`, exclusivamente server-side.
+`rodadas/gpt/AUDITORIA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
 
-A disponibilidade atual de uma chave Paid Tier segura **ainda não foi presumida nem comprovada pelo GPT**.
+Veredito:
 
-Claude deve executar todo o delta que não dependa da chave. Quando chegar à prova paga real:
+**004E IMPLEMENTADA PARCIALMENTE E AUDITADA, MAS NÃO APROVADA NEM PROMOVIDA. CREDENCIAL PAGA AINDA BLOQUEADA.**
 
-- se a credencial segura já estiver disponível no runtime, executar somente a prova sintética prevista;
-- se não estiver, parar sem improvisar e registrar: **004E IMPLEMENTADA ATÉ GATE DE CREDENCIAL PAGA — AGUARDANDO AÇÃO GPT/FUNDADOR PARA PROVA E2E REAL**.
+### 7.1 O que já está correto
 
-Claude não deve pedir que o fundador cole chave em chat, GitHub, SQL ou comando compartilhado. O GPT conduz eventual ação manual.
+- task `DECLARED_BUSINESS_CONTEXT_REVIEW@v1`, tenant-scoped, Tier 1;
+- feature continua desacoplada de provider/modelo;
+- adapter nativo `@google/genai` 2.18.0, server-only;
+- provider `google_gemini` e modelo `gemini-2.5-flash-lite` catalogados;
+- preço Standard Paid catalogado: USD 0.10 input / 0.40 output / 0.01 cached input por 1M tokens;
+- snapshot declarado mínimo;
+- grounding por `evidenceRef` fail-closed;
+- `/revisao` com aviso estático de que não observou mercado/Instagram;
+- render não chama provider;
+- migration `20260825250000_create_declared_context_review` aplicada remotamente;
+- `declared_context_reviews` tenant-safe, browser sem escrita e imutável;
+- remoto confirmado com 1 provider, 1 modelo, 1 preço aberto e zero runs/reviews reais da task;
+- nenhuma chave foi configurada e nenhuma chamada Gemini real ocorreu.
 
-## 11. Continua NÃO autorizado fora do mandato 004E
+**A migration `20260825250000` já aplicada não pode ser reescrita.**
+
+### 7.2 Bloqueios da auditoria
+
+#### A — schema do provider
+
+O JSON Schema enviado por `responseJsonSchema` contém `maxLength` e `nullable`, keywords que não constam no subconjunto suportado pela documentação oficial atual do Gemini/SDK. A primeira chamada real pode ser rejeitada.
+
+#### B — concorrência/custo
+
+Fluxo atual `cache → count → provider → insert` não reserva atomicamente a chamada. Requisições concorrentes podem duplicar custo para o mesmo fingerprint ou ultrapassar o limite de 3/h.
+
+#### C — mensagem de custo falsa
+
+`requestContextReviewAction` afirma que “nada foi cobrado” quando uma revisão não fica pronta. Isso não é garantido após provider chamado, grounding/persistência falhos ou timeout. O SDK informa que abortar no cliente não necessariamente cancela processamento/cobrança no serviço.
+
+#### D — E2E incompleto
+
+`scripts/e2e-declared-context-review.mjs` chama diretamente o Router e não persiste `declared_context_reviews`, embora o §15 exija artefato real.
+
+#### E — eval incompleta
+
+As 12 fixtures atuais avaliam snapshot/fingerprint, não a resposta da task. Falta avaliar schema/refs/fatos externos/lacunas/tensões/prompt injection/linguagem da saída real.
+
+## 8. Correção 004E-01 — AUTORIZADA
+
+Mandato:
+
+`rodadas/gpt/CORRECAO_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`
+
+Objetivo:
+
+- corrigir JSON Schema para o subconjunto oficial do Gemini;
+- tornar cache + rate limit atômicos contra concorrência antes de qualquer chamada paga;
+- remover promessa falsa de ausência de cobrança;
+- preparar E2E que realmente persista artefato + prove cache;
+- preparar eval real das 12 fixtures;
+- manter **zero chamadas pagas** durante a correção.
+
+Se precisar de banco, criar migration aditiva nova; nunca editar `20260825250000` nem anteriores.
+
+Status esperado do Claude:
+
+**CORREÇÃO 004E-01 EXECUTADA — AGUARDANDO REAUDITORIA GPT ANTES DO GATE DE CREDENCIAL PAGA**.
+
+## 9. Continua NÃO autorizado
+
+### Gate pago 004E
+
+Até reauditoria GPT da 004E-01:
+
+- NÃO criar/configurar/usar `GEMINI_API_KEY` no projeto;
+- NÃO executar chamada Gemini real;
+- NÃO rodar eval paga;
+- NÃO rodar E2E pago;
+- NÃO mergear/promover PR #17.
 
 ### Meta
 
 - promover/mergear 003B;
 - iniciar importação/publicação real Instagram dependente da arquitetura bloqueada;
 - implementar onboarding Meta guiado antes da abertura do gate;
-- declarar USER ou BISU como arquitetura comercial definitiva sem nova decisão;
 - alterar scopes/app/Business Login Configuration;
 - criar/excluir/mover Business Portfolio;
 - transferir ativos;
@@ -357,37 +277,30 @@ Claude não deve pedir que o fundador cole chave em chat, GitHub, SQL ou comando
 
 - segundo provider real;
 - fallback real multi-provider;
-- provider/modelo escolhido diretamente por feature;
-- web search/grounding do provider;
+- web search/grounding externo;
 - tool calling;
 - embeddings/RAG;
 - geração real de copy/imagem;
-- análise de conteúdo/Instagram;
-- IA alterar automaticamente objetivo, foco, preço, oferta ou qualquer fato do negócio;
-- IA inferir automaticamente próximo passo estratégico material fora do contrato da revisão;
+- Content Intelligence;
+- IA alterar automaticamente objetivo, foco, preço ou oferta;
 - qualquer capacidade de IA executar gasto ou ação externa;
-- uso do Free Tier Gemini com dados reais de clientes.
+- Free Tier Gemini com dados reais de clientes.
 
-### Produto fora da 004E
+### Produto
 
 - seletor multi-organização;
-- Content Intelligence/Oportunidades;
 - personas/públicos observados;
-- crítica/geração real de conteúdo;
 - Financial Approval;
 - Ads/experimentos/scale;
 - CRM/leads;
 - WhatsApp/e-mail automatizado;
-- pesquisas com clientes;
-- conversões;
+- surveys/conversões;
 - Strategic Insights;
 - App Shell/Hoje definitivo;
 - notificações;
 - múltiplos focos simultâneos;
-- e-commerce, estoque, SKU, pedidos ou pagamentos;
-- score de maturidade/gamificação;
-- persistir automaticamente resposta à `nextQuestion` como novo fato do negócio;
-- qualquer nova capacidade substantiva além do mandato 004E.
+- e-commerce/estoque/SKU/pedidos/pagamentos;
+- score/gamificação.
 
 ### Branding técnico externo
 
@@ -396,36 +309,25 @@ Claude não deve pedir que o fundador cole chave em chat, GitHub, SQL ou comando
 - recriar/trocar Supabase project ref;
 - renomear/mover recursos Meta.
 
-## 12. Próxima ação autorizada
+## 10. Próxima ação autorizada
 
 Próximo ator: **Claude Code**.
 
-O fundador pode ativá-lo pelo fluxo normal do projeto (`/proxima`).
+Claude deve continuar no PR #17 e executar **somente**:
 
-Claude deve:
+`rodadas/gpt/CORRECAO_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`
 
-1. partir da `main` atualizada;
-2. ler `estado.md`;
-3. ler `rodadas/gpt/RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`;
-4. cumprir somente o READ SET obrigatório e abrir itens sob demanda quando houver dependência concreta;
-5. criar `claude/rodada-004e-declared-context-review-first-real-ai`;
-6. executar somente o delta autorizado;
-7. manter 003B/Meta intocados;
-8. nunca usar Free Tier com dado real de cliente;
-9. parar no gate da credencial paga se a prova E2E real não puder ser feita com secret seguro já disponível;
-10. finalizar com relatório, PR, CI e `estado.md` da branch no status real definido pelo mandato.
+A correção deve ser feita **sem disponibilizar chave Gemini e sem chamada paga**.
 
-Claude não deve promover nem mergear a rodada.
+Depois da correção, o próximo ator volta a ser o GPT para reauditoria. Somente após aprovação dessa reauditoria o GPT poderá orientar o fundador a criar/configurar a credencial Paid Tier e liberar a prova real.
 
-Depois da execução completa ou do gate de credencial, o próximo ator volta a ser o **GPT auditor/orquestrador**.
-
-## 13. Regra de continuidade
+## 11. Regra de continuidade
 
 - distinguir planejado, autorizado, executado, auditado, aprovado e promovido;
 - estado efetivamente incorporado = `main + estado.md + promoção real`;
+- migration remota não equivale a promoção;
 - não promover por relatório do Claude sem auditoria independente;
 - gate Meta não bloqueia desenvolvimento independente;
 - hipótese Meta não vira fato sem prova;
-- nomes de recursos Meta só recebem estado/função quando comprovados;
 - fundador não atua como barramento de contexto entre GPT e Claude;
 - ação manual externa deve ser explicada pelo GPT em linguagem simples, uma ação principal por vez.
