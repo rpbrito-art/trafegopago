@@ -87,34 +87,36 @@ Branch:
 
 PR #17: **draft/open/não mergeada**.
 
-HEAD reauditorado da 004E-05:
+HEAD reauditorado da 004E-06:
 
-`cc5b7b7ac0118613de1e7d86b376480565033642`
+`3ed3e586903aac9f31c5cb0bb57402a6619b1c9c`
 
 CI do HEAD:
 
-`32964016218` — **success**; install, lint, typecheck, Edge Functions, testes e build verdes.
+`32966958426` — **success**; install, lint, typecheck, Edge Functions, testes e build verdes.
 
 Status geral:
 
-**004E AINDA NÃO APROVADA NEM PROMOVIDA. 004E-05 FOI EXECUTADA E REAUDITADA, MAS O GATE ANTHROPIC CONTINUA FECHADO. 004E-06 ESTÁ AUTORIZADA.**
+**004E AINDA NÃO APROVADA NEM PROMOVIDA. 004E-06 FOI EXECUTADA, REAUDITADA E APROVADA PARA ABERTURA DO GATE ANTHROPIC CONTROLADO. E2E/EVAL REAIS AINDA PENDENTES.**
 
-### 5.1 Correções já concluídas
+### 5.1 Correções concluídas
 
 - 004E-01 — **EXECUTADA E REAUDITADA**.
 - 004E-02 — **EXECUTADA E REAUDITADA**.
 - 004E-03 — **EXECUTADA, REAUDITADA E APROVADA**.
-- 004E-04 — **EXECUTADA E REAUDITADA; TROCA GEMINI → ANTHROPIC APROVADA, GATE PAGO BLOQUEADO**.
-- 004E-05 — **EXECUTADA E REAUDITADA; stop_reason e custo de falha pós-resposta implementados, MAS AINDA BLOQUEADA POR REFUSAL OFICIAL COM OUTPUT ZERO**.
+- 004E-04 — **EXECUTADA E REAUDITADA; TROCA GEMINI → ANTHROPIC APROVADA**.
+- 004E-05 — **EXECUTADA E REAUDITADA; stop_reason e contabilização de falhas pós-resposta implementados**.
+- 004E-06 — **EXECUTADA, REAUDITADA E APROVADA PARA O GATE PAGO CONTROLADO**.
 
 Auditorias relevantes:
 
 - `rodadas/gpt/AUDITORIA_004E_04_SWITCH_FIRST_PROVIDER_TO_ANTHROPIC.md`;
-- `rodadas/gpt/AUDITORIA_004E_05_PAID_RESPONSE_ACCOUNTING.md`.
+- `rodadas/gpt/AUDITORIA_004E_05_PAID_RESPONSE_ACCOUNTING.md`;
+- `rodadas/gpt/AUDITORIA_004E_06_REFUSAL_ZERO_OUTPUT_ACCOUNTING.md`.
 
 ### 5.2 Estado efetivo do provider
 
-Migration aditiva aplicada remotamente:
+Migration aditiva já aplicada remotamente:
 
 `20260826120000_switch_first_provider_to_anthropic`
 
@@ -139,7 +141,7 @@ Verificação independente GPT confirmou no remoto:
 
 Portanto:
 
-**nenhuma chamada real Gemini ou Anthropic ocorreu e nenhum custo real de IA foi gerado até esta reauditoria.**
+**nenhuma chamada real Gemini ou Anthropic ocorreu e nenhum custo real de IA foi gerado até a aprovação deste gate.**
 
 ### 5.3 O que a 004E preserva
 
@@ -156,59 +158,48 @@ Portanto:
 - E2E preparado para persistência + ledger + custo + cache;
 - eval com 12 fixtures sintéticas, uma chamada por caso, sem retry automático;
 - produção usa somente adapter Anthropic;
-- `stop_reason` passou a ser tratado explicitamente na 004E-05;
-- falha pós-resposta pode carregar usage/custo para o run FAILED.
+- `stop_reason` tratado explicitamente;
+- falha pós-resposta pode carregar usage/custo para o run FAILED;
+- recusa com `output_tokens = 0` preserva usage;
+- `end_turn + output zero` nunca vira sucesso.
 
-## 6. BLOQUEIO ATUAL — 004E-06
+### 5.4 Dívida conhecida de billing em refusal pré-output
 
-A reauditoria da 004E-05 confirmou na documentação oficial Anthropic um caso que os testes não cobriram.
+A documentação Anthropic vigente esclarece:
 
-A Anthropic publica um exemplo normal de `refusal` com:
+- recusa antes de qualquer output: `usage` é informado, conta para rate limit, mas a solicitação não é cobrada;
+- recusa mid-stream: input e output já gerado são cobrados.
 
-- `stop_reason = refusal`;
-- `input_tokens = 412`;
-- `output_tokens = 0`;
-- HTTP 200.
+O ledger atual guarda `estimated_cost`. Para uma recusa pré-output com usage informativo, a regra genérica pode superestimar o custo real da fatura.
 
-O adapter atual exige `output_tokens > 0` para normalizar usage. Portanto, nesse caso real e cobrável:
+Decisão GPT:
 
-- o input consumido é conhecido;
-- o usage é descartado antes da classificação do stop reason;
-- o Router pode fechar o run FAILED sem registrar o custo conhecido de input.
+- **dívida explícita, não bloqueadora do primeiro E2E**;
+- preservar usage é obrigatório;
+- não tratar `estimated_cost` como `billed_cost` nesse caso;
+- se uma prova real retornar `refusal`, parar sem retry e devolver ao GPT para reconciliação antes de qualquer promoção.
 
-Correção autorizada:
+## 6. Gate Anthropic controlado — ABERTO
 
-`rodadas/gpt/CORRECAO_004E_06_REFUSAL_ZERO_OUTPUT_ACCOUNTING.md`
+Está autorizado somente o seguinte fluxo:
 
-Objetivo restrito:
+1. fundador disponibilizar `ANTHROPIC_API_KEY` **somente no ambiente local seguro**;
+2. a chave nunca pode aparecer no chat, GitHub, relatório, fixture, log ou documentação;
+3. depois da configuração local, Claude Code executa `npm run e2e:review` **uma única vez**;
+4. somente se o E2E passar, Claude Code executa `npm run eval:review` **uma única vez**;
+5. usar somente fixtures sintéticas versionadas;
+6. zero retry automático e zero retry manual;
+7. registrar run IDs, usage, custo estimado, resultado dos 12 casos e limpeza das fixtures;
+8. se E2E ou eval falhar, **parar imediatamente e não repetir chamada**;
+9. depois das provas, parar e devolver ao GPT para auditoria final da 004E.
 
-1. permitir `output_tokens = 0` como usage contábil de resposta anormal;
-2. preservar input/output conhecidos em `refusal`;
-3. registrar custo input-only no run FAILED;
-4. `end_turn + output zero` continua proibido como sucesso, mas precisa preservar usage conhecido;
-5. zero chamadas reais durante a correção;
-6. nenhuma migration/provider/modelo/preço/fallback.
+## 7. Continua NÃO autorizado
 
-## 7. Gate Anthropic — FECHADO
+### IA
 
-Até reauditoria GPT da 004E-06:
-
-- **NÃO disponibilizar `ANTHROPIC_API_KEY` ao projeto/Claude**;
-- NÃO executar chamada real Anthropic;
-- NÃO rodar `npm run e2e:review` com chave;
-- NÃO rodar `npm run eval:review` com chave;
-- NÃO retry/fallback;
-- NÃO mergear/promover PR #17;
-- NÃO pagar/ativar Gemini para a 004E.
-
-Os scripts podem ser executados somente sem chave para provar que o gate bloqueia antes de qualquer chamada externa.
-
-## 8. Continua NÃO autorizado
-
-### IA fora da 004E-06
-
-- segundo provider ativo;
-- fallback multi-provider;
+- merge/promover PR #17 antes da auditoria final;
+- segundo provider ativo/fallback multi-provider;
+- pagar/ativar Gemini para a 004E;
 - web search/grounding externo;
 - tool calling;
 - embeddings/RAG;
@@ -244,23 +235,15 @@ Os scripts podem ser executados somente sem chave para provar que o gate bloquei
 - e-commerce/estoque/SKU/pedidos/pagamentos;
 - score/gamificação.
 
-## 9. Próxima ação autorizada
+## 8. Próxima ação autorizada
 
-Próximo ator: **Claude Code**.
+Próximo ator: **fundador, orientado pelo GPT**.
 
-Claude deve continuar na mesma branch e no PR #17 e executar **somente**:
+Ação: disponibilizar `ANTHROPIC_API_KEY` apenas no arquivo local seguro do projeto, sem expor a chave ao chat ou ao repositório.
 
-`rodadas/gpt/CORRECAO_004E_06_REFUSAL_ZERO_OUTPUT_ACCOUNTING.md`
+Depois disso o próximo ator será **Claude Code**, exclusivamente para o E2E uma vez e, se ele passar, a eval uma vez. Claude não mergeia nem promove.
 
-Status esperado ao devolver:
-
-**CORREÇÃO 004E-06 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**.
-
-Claude não pede a chave, não faz chamada paga, não mergeia e não promove.
-
-Depois disso o próximo ator volta a ser GPT.
-
-## 10. Regra de continuidade
+## 9. Regra de continuidade
 
 - distinguir sempre planejado, autorizado, executado, auditado, aprovado e promovido;
 - estado incorporado = `main + estado.md + promoção real`;
