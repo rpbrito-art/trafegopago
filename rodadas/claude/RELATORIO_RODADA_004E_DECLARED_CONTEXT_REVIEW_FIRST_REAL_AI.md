@@ -282,6 +282,7 @@ A regra é econômica, não estética: se o Quoron sabe que houve consumo cobrá
 | Router: custo em run FAILED | `src/lib/ai/router.test.ts` — 54 casos |
 | suíte local | **1041/1041** em 49 arquivos |
 | gates pagos | `e2e:review` e `eval:review` param com código 2 |
+| CI da correção | `32963902551` — success, 1041/1041 |
 
 As fixtures do adapter passaram a incluir `stop_reason`, que faz parte da API e faltava nelas — sem isso, os testes do caminho normal descreviam uma resposta que a Messages API não produz.
 
