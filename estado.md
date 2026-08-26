@@ -315,21 +315,55 @@ Depois de a 004E-04 ser executada e reaudited, o GPT poderá abrir um novo gate 
 - e-commerce/estoque/SKU/pedidos/pagamentos;
 - score/gamificação.
 
-## 11. Próxima ação autorizada
+## 11. Correção 004E-04 — EXECUTADA
 
-Próximo ator: **Claude Code**.
+Mandato: `rodadas/gpt/CORRECAO_004E_04_SWITCH_FIRST_PROVIDER_TO_ANTHROPIC.md`.
 
-Claude deve continuar na mesma branch e PR #17 e executar **somente**:
+Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · PR #17 mantido aberto, draft, não mergeado.
 
-`rodadas/gpt/CORRECAO_004E_04_SWITCH_FIRST_PROVIDER_TO_ANTHROPIC.md`
+Status: **CORREÇÃO 004E-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**.
 
-A implementação deve ocorrer **sem disponibilizar chave Anthropic e sem qualquer chamada paga**.
+Relatório: `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` §10.
 
-Status esperado ao devolver:
+**Nenhuma chamada Anthropic real foi feita** e `ANTHROPIC_API_KEY` não foi adicionada a nenhum runtime. Nenhum custo Gemini foi gerado em momento algum.
 
-**CORREÇÃO 004E-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**.
+### 11.1 Delta executado
 
-Depois disso o próximo ator volta a ser GPT.
+- migration aditiva `20260826120000_switch_first_provider_to_anthropic`;
+- provider `anthropic_claude` e modelo `claude-haiku-4-5-20251001` catalogados no Tier 1, com 200K de contexto e 64K de saída;
+- preço Standard USD 1.00 input / 5.00 output por 1M tokens, com fonte oficial e data de verificação 2026-08-26; `cached_input_price_per_million` fica **NULL** porque o contrato de custo da 004A não decompõe leitura e criação de cache;
+- Gemini inelegível — provider e modelo `DISABLED`, vigência e preço aberto encerrados — e **preservado**: nada foi apagado;
+- adapter nativo com `@anthropic-ai/sdk@0.120.0` fixado, `maxRetries: 0` e timeout de 45s no cliente e na chamada;
+- structured output pelo mesmo JSON Schema versionado da task, sem tools, sem busca externa e sem thinking;
+- usage falha fechado em contagem ausente/zerada/inválida e em tokens de cache;
+- adapter Gemini e `@google/genai` removidos: nenhum segundo provider operacional fica escondido;
+- `AI_ARCHITECTURE.md`, roadmap e `.env.example` harmonizados;
+- E2E e eval migrados para `ANTHROPIC_API_KEY` e ainda bloqueados sem chave.
+
+**Nenhuma feature mudou.** A troca custou uma migration e um adapter, que é o que a indireção do Router existe para permitir.
+
+### 11.2 Supabase remoto
+
+Migration aplicada, aditiva e publicada antes do `db push`. Nenhuma anterior reescrita.
+
+Prova: `scripts/sql/anthropic-catalog-004e04-proof.sql` → **20 casos, 20 passaram, 0 falharam**, transacional com rollback e sem criar fixture. Ela reproduz o filtro de candidatos do Router e confirma que existe **um único** elegível Tier 1 — não confia no desempate alfabético. Confirma também: zero runs, zero revisões e zero tentativas reais.
+
+Advisors idênticos ao baseline.
+
+### 11.3 Provas locais
+
+- 25 casos do adapter Anthropic, incluindo ausência de chave, config do cliente real, usage inválido, cache inesperado e não vazamento de credencial em erro;
+- suíte completa **1018/1018** em 49 arquivos;
+- `tsc --noEmit` e `eslint` limpos;
+- `npm run e2e:review` e `npm run eval:review` param no gate com código 2.
+
+### 11.4 Próxima ação autorizada
+
+Próximo ator: **GPT auditor**.
+
+Reauditar a Correção 004E-04 no PR #17. **Somente após aprovação** o GPT pode abrir o gate para o fundador disponibilizar `ANTHROPIC_API_KEY` no ambiente local e executar as provas reais.
+
+Claude não promove, não mergeia e não pede a chave ao fundador.
 
 ## 12. Regra de continuidade
 

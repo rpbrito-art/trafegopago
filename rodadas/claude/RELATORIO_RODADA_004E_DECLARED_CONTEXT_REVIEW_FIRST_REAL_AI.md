@@ -4,7 +4,7 @@ Mandato: `rodadas/gpt/RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
 
 Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · base: `main` em `0ad811f`.
 
-Status: **CORREÇÃO 004E-03 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**.
+Status: **CORREÇÃO 004E-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**.
 
 Auditoria: `rodadas/gpt/AUDITORIA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` — cinco bloqueios. Correção: `rodadas/gpt/CORRECAO_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`, executada nesta mesma branch e registrada na §7 abaixo.
 
@@ -205,7 +205,47 @@ A sentinela pertence à fixture e à eval: não entra no prompt de produção ne
 
 Nenhuma migration foi criada e o banco remoto não foi tocado — a correção é inteiramente de lógica de avaliação, como o mandato delimitou.
 
-## 10. Handoff
+## 10. Correção 004E-04 — troca do primeiro provider real
+
+O nível pago do Gemini exigiria um pré-pagamento mínimo que o projeto não fará agora, e o fundador já tem crédito utilizável na Claude API. A troca aconteceu **antes de qualquer chamada real** — nenhum custo Gemini foi gerado em momento algum.
+
+### 10.1 O que a troca custou
+
+Uma migration e um adapter. **Nenhuma linha de feature mudou** — nem a task, nem o snapshot, nem o grounding, nem a reserva, nem `/revisao`. Essa é a demonstração prática do que `AI_ARCHITECTURE.md` §§4 e 20 existem para garantir: a feature envia uma `AI Task`, e o Router resolve provider/modelo pelo catálogo.
+
+### 10.2 Catálogo — migration aditiva `20260826120000`
+
+Anthropic catalogado: provider `anthropic_claude`, modelo `claude-haiku-4-5-20251001` no Tier 1, 200K de contexto e 64K de saída, preço Standard **USD 1.00 / 5.00** por 1M tokens. Confirmei cada um desses valores na documentação oficial durante a execução, incluindo o ID do modelo — Haiku 4.5 é anterior à geração de IDs sem data, e o Claude API ID dela é mesmo o snapshot datado.
+
+`cached_input_price_per_million` fica **NULL** de propósito: a Anthropic cobra leitura e criação de cache com preços distintos, e o contrato de custo da 004A tem um único campo para cache. Registrar um dos dois seria escolher qual metade da conta contar.
+
+Gemini virou inelegível sem ser apagado — provider e modelo em `DISABLED`, vigência e preço aberto encerrados, `retired_reason` registrado. As auditorias 004E-01 a 004E-03 documentaram aquela decisão; falsificar que ela nunca existiu apagaria a história.
+
+### 10.3 Adapter
+
+`@anthropic-ai/sdk@0.120.0` fixado; `@google/genai` e o adapter Gemini removidos, porque um segundo provider operacional escondido é pior do que nenhum.
+
+Structured output pelo **mesmo** JSON Schema versionado da task, via `output_config.format` com `type: "json_schema"` — duplicá-lo criaria duas verdades sobre a forma da resposta. Sem tools, sem busca externa, sem thinking.
+
+Duas garantias de custo previsível, no cliente **e** na chamada: `maxRetries: 0` e timeout de 45s. O SDK repete 2 vezes por padrão — numa chamada paga, cada retentativa é outra cobrança que o ledger registraria como uma execução só, e o teto de 3/h da organização passaria a valer três vezes menos do que diz. Há teste que constrói o cliente real e lê as duas propriedades: verificar só as opções da chamada não provaria a configuração do cliente.
+
+Usage falha fechado em contagem ausente, zerada, negativa ou fracionária — e **também quando o provider relata tokens de cache**, que o contrato de custo atual não consegue decompor.
+
+### 10.4 Provas
+
+| prova | resultado |
+| --- | --- |
+| `scripts/sql/anthropic-catalog-004e04-proof.sql` | **20 casos, 20 passaram, 0 falharam** |
+| adapter Anthropic | `src/lib/ai/adapters/anthropic.test.ts` — 25 casos |
+| suíte local | **1018/1018** em 49 arquivos |
+| advisors | idênticos ao baseline |
+| gates pagos | `e2e:review` e `eval:review` param com código 2 |
+
+A prova do catálogo não se contenta em ver Anthropic registrado: ela reproduz o filtro de `listarCandidatos()` e verifica que existe **um único** candidato Tier 1 elegível. Se Gemini continuasse elegível, a escolha ficaria por conta do desempate alfabético do Router — e `claude-...` vem antes de `gemini-...`, então passaria por acidente, não por decisão.
+
+Nenhuma chamada Anthropic real ocorreu, e `ANTHROPIC_API_KEY` não foi adicionada a lugar algum.
+
+## 11. Handoff
 
 Branch publicada; PR #17 mantido aberto, draft, base `main`, não mergeado.
 
@@ -213,10 +253,10 @@ Branch atualizada com a `main` documental por merge; único conflito em `estado.
 
 Migrations aplicadas nesta branch, nenhuma reescrita: `20260825250000`, `20260825260000`, `20260825270000` e `20260825280000`.
 
-`estado.md` da branch em **CORREÇÃO 004E-03 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE PAGO**. Working tree limpa.
+`estado.md` da branch em **CORREÇÃO 004E-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**. Working tree limpa.
 
-## 11. Pendências
+## 12. Pendências
 
-Uma, e continua sendo o gate: **prova E2E real paga e eval real**. Ambas dependem de `GEMINI_API_KEY` de projeto no Paid Tier, que continua ausente.
+Uma, e continua sendo o gate: **prova E2E real e eval real**. Ambas passam a depender de `ANTHROPIC_API_KEY`, que não foi disponibilizada.
 
-Próximo ator: **GPT auditor**, para reauditar a Correção 004E-03. Só depois da aprovação a credencial deve ser disponibilizada; então `npm run e2e:review` e `npm run eval:review` fecham a rodada.
+Próximo ator: **GPT auditor**, para reauditar a Correção 004E-04. Só depois da aprovação a credencial deve ser disponibilizada; então `npm run e2e:review` e `npm run eval:review` fecham a rodada.
