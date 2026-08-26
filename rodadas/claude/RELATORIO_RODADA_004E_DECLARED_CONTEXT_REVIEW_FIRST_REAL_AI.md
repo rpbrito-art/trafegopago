@@ -240,6 +240,7 @@ Usage falha fechado em contagem ausente, zerada, negativa ou fracionária — e 
 | suíte local | **1018/1018** em 49 arquivos |
 | advisors | idênticos ao baseline |
 | gates pagos | `e2e:review` e `eval:review` param com código 2 |
+| CI da correção | `32961823859` — success, 1018/1018 |
 
 A prova do catálogo não se contenta em ver Anthropic registrado: ela reproduz o filtro de `listarCandidatos()` e verifica que existe **um único** candidato Tier 1 elegível. Se Gemini continuasse elegível, a escolha ficaria por conta do desempate alfabético do Router — e `claude-...` vem antes de `gemini-...`, então passaria por acidente, não por decisão.
 
