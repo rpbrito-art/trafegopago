@@ -51,12 +51,12 @@ const MAX_RETRIES = 0;
 /**
  * Stop reasons desta task (Correção 004E-05 §4).
  *
- * A Messages API devolve `stop_reason` em toda resposta **HTTP 200**, e todas
- * elas são cobradas. Só `end_turn` significa que o modelo terminou o que foi
- * pedido; os demais descrevem uma resposta que existe, custou, e não serve:
+ * A Messages API devolve `stop_reason` em toda resposta **HTTP 200**. Só
+ * `end_turn` significa que o modelo terminou o que foi pedido; os demais
+ * descrevem uma resposta que existe, consumiu input, e não serve:
  *
- * - `refusal` — o classificador de segurança recusou. Vem como 200, é cobrado
- *   e pode não respeitar o schema;
+ * - `refusal` — o classificador de segurança recusou. Vem como 200, com
+ *   `content: []` e `output_tokens: 0`, e pode não respeitar o schema;
  * - `max_tokens` — a saída foi cortada no teto. O JSON pode até parsear e
  *   ainda assim estar incompleto;
  * - qualquer outro (`tool_use`, `pause_turn`, `stop_sequence`,
@@ -80,10 +80,25 @@ type AnthropicUsage = {
 /**
  * Normaliza o usage do provider para o contrato da 004A.
  *
- * `input_tokens` e `output_tokens` são obrigatórios e positivos: numa task que
- * envia prompt não vazio e exige JSON não vazio de volta, contagem ausente ou
- * zerada significa metadado não confiável, não chamada gratuita. Estimar por
- * tamanho de texto seria pior — colocaria ficção no ledger.
+ * Esta função responde **quanto a resposta consumiu**, não se ela serve. São
+ * perguntas diferentes, e confundi-las custava dinheiro: a versão anterior
+ * exigia `output_tokens > 0` aqui, então a recusa oficial da Anthropic — HTTP
+ * 200, `content: []`, `input_tokens: 412`, `output_tokens: 0` — tinha o usage
+ * descartado antes mesmo de o stop reason ser classificado, e o input
+ * consumido sumia do ledger (Correção 004E-06 §3).
+ *
+ * Por isso os dois campos têm regras distintas:
+ *
+ * - `input_tokens` continua obrigatório e `> 0`: o prompt desta task nunca é
+ *   vazio, então zero de input é metadado quebrado, não chamada de graça;
+ * - `output_tokens` aceita `0`, porque numa resposta anormal zero é um fato
+ *   conhecido sobre o consumo, não ausência de informação.
+ *
+ * Ausente, fracionário ou negativo continua inválido nos dois. Estimar token
+ * por tamanho de texto seria pior que falhar — colocaria ficção no ledger.
+ *
+ * Saída zero não vira sucesso: quem decide isso é `execute`, que tem o stop
+ * reason na mão.
  *
  * Tokens de cache **reprovam** nesta rodada. A Anthropic cobra leitura e
  * criação de cache com preços distintos, e o contrato de custo da 004A tem um
@@ -100,9 +115,12 @@ export function normalizarUsage(
   const input = usage.input_tokens;
   const output = usage.output_tokens;
 
-  for (const obrigatorio of [input, output]) {
-    if (typeof obrigatorio !== "number") return null;
-    if (!Number.isInteger(obrigatorio) || obrigatorio <= 0) return null;
+  if (typeof input !== "number" || !Number.isInteger(input) || input <= 0) {
+    return null;
+  }
+
+  if (typeof output !== "number" || !Number.isInteger(output) || output < 0) {
+    return null;
   }
 
   const cacheRead = usage.cache_read_input_tokens ?? 0;
@@ -115,8 +133,8 @@ export function normalizarUsage(
   if (cacheRead > 0 || cacheCreation > 0) return null;
 
   return {
-    inputTokens: input as number,
-    outputTokens: output as number,
+    inputTokens: input,
+    outputTokens: output,
     // `null`, e não `0`: sem caching habilitado, "não veio de cache" e "não sei
     // quanto veio" são a mesma coisa aqui, e o contrato reserva `null` para a
     // ausência de informação.
@@ -156,7 +174,7 @@ export function classificarErro(erro: unknown): AIErrorClass {
 /**
  * Traduz um `stop_reason` anormal para a taxonomia interna.
  *
- * `refusal` é rejeição do provider — a resposta existe, foi cobrada, e o
+ * `refusal` é rejeição do provider — a resposta existe, consumiu input, e o
  * conteúdo não pode ser usado. `max_tokens` é output incompleto, que é
  * literalmente uma falha de forma. O resto é comportamento que esta task não
  * pediu, e `UNKNOWN` diz exatamente isso: não sabemos o que aconteceu.
@@ -300,8 +318,15 @@ export function criarAnthropicAdapter(deps: {
         const latencyMs = agora() - inicio;
 
         // Usage primeiro, antes de qualquer decisão sobre o conteúdo: a partir
-        // daqui a chamada **já foi cobrada**, e toda falha precisa poder
-        // carregar o que ela custou.
+        // daqui a chamada **já consumiu tokens**, e toda falha precisa poder
+        // carregar o que ela consumiu.
+        //
+        // A tarifação exata de uma recusa é do provider, não nossa: a
+        // documentação vigente diz que recusa antes de qualquer output não é
+        // cobrada, e que recusa em meio a stream cobra o que já saiu. O ledger
+        // registra `estimated_cost` — estimativa a partir do consumo conhecido
+        // e do preço vigente. Registrar o consumo e deixar a fatura corrigir a
+        // estimativa é seguro; descartar o consumo, não.
         const usage = normalizarUsage(resposta.usage);
 
         // Sem usage confiável não há custo confiável, e o Router precisa saber
@@ -317,6 +342,14 @@ export function criarAnthropicAdapter(deps: {
             usage,
             latencyMs,
           };
+        }
+
+        // `end_turn` com saída zero: o provider diz que terminou normalmente e
+        // ao mesmo tempo que não produziu nada. Não é sucesso — esta task exige
+        // JSON não vazio de volta — mas o input foi consumido. Falha contábil
+        // com o usage conhecido, sem inventar output que não existiu.
+        if (usage.outputTokens === 0) {
+          return { ok: false, errorClass: "USAGE_INVALID", usage, latencyMs };
         }
 
         const output = extrairJson(resposta.content);

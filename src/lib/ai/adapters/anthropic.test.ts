@@ -51,6 +51,9 @@ function clienteQueResponde(
     content?: unknown;
     usage?: Record<string, number> | null;
     stop_reason?: string | null;
+    // A resposta real traz `stop_details` numa recusa. A fixture o carrega
+    // para que os testes de vazamento tenham o que não vazar.
+    stop_details?: unknown;
   },
   espiao?: (args: unknown, options?: unknown) => void,
 ): AnthropicClient {
@@ -99,15 +102,36 @@ describe("normalizarUsage", () => {
   });
 
   /**
-   * Numa task que envia prompt não vazio e exige JSON não vazio de volta,
-   * entrada ou saída zero são impossíveis: o metadado não é confiável, e
-   * registrar custo zero colocaria ficção no ledger.
+   * O prompt desta task nunca é vazio, então zero de input é metadado quebrado
+   * — não chamada de graça.
    */
-  it("recusa contagem zerada, negativa ou fracionária", () => {
+  it("recusa input zerado, negativo ou fracionário", () => {
     expect(normalizarUsage({ input_tokens: 0, output_tokens: 300 })).toBeNull();
-    expect(normalizarUsage({ input_tokens: 1200, output_tokens: 0 })).toBeNull();
     expect(normalizarUsage({ input_tokens: -1, output_tokens: 300 })).toBeNull();
+    expect(normalizarUsage({ input_tokens: 1.5, output_tokens: 300 })).toBeNull();
+  });
+
+  /**
+   * Correção 004E-06 §3.
+   *
+   * A recusa oficial da Anthropic chega com `output_tokens: 0` e input
+   * consumido. Zero aqui é fato conhecido sobre o consumo, não ausência de
+   * informação: descartá-lo apagava do ledger o input que a chamada gastou.
+   * Se essa resposta serve como sucesso é outra pergunta, e quem responde é
+   * `execute`.
+   */
+  it("aceita saída zero como consumo contábil", () => {
+    expect(normalizarUsage({ input_tokens: 412, output_tokens: 0 })).toEqual({
+      inputTokens: 412,
+      outputTokens: 0,
+      cachedTokens: null,
+    });
+  });
+
+  it("recusa output negativo, fracionário ou ausente", () => {
+    expect(normalizarUsage({ input_tokens: 1200, output_tokens: -1 })).toBeNull();
     expect(normalizarUsage({ input_tokens: 1200, output_tokens: 1.5 })).toBeNull();
+    expect(normalizarUsage({ input_tokens: 1200, output_tokens: null })).toBeNull();
   });
 
   /**
@@ -160,9 +184,9 @@ describe("classificarErro", () => {
 /**
  * Correção 004E-05 §4.
  *
- * Toda resposta HTTP 200 da Messages API traz `stop_reason` e **é cobrada**.
- * Só `end_turn` significa que o modelo terminou o que foi pedido; os demais
- * descrevem uma resposta que existe, custou e não serve. O adapter precisa
+ * Toda resposta HTTP 200 da Messages API traz `stop_reason`. Só `end_turn`
+ * significa que o modelo terminou o que foi pedido; os demais descrevem uma
+ * resposta que existe, consumiu input e não serve. O adapter precisa
  * distinguir os dois casos e, no segundo, entregar o usage para o run registrar
  * o que a chamada consumiu.
  */
@@ -252,6 +276,60 @@ describe("stop_reason na resposta paga", () => {
 
     expect(!resultado.ok && resultado.errorClass).toBe("UNKNOWN");
     expect(!resultado.ok && resultado.usage).toBeDefined();
+  });
+
+  /**
+   * Correção 004E-06 §5 — forma literal publicada pela Anthropic em
+   * `Refusals and fallback`: HTTP 200, `content: []`, `stop_reason: refusal`,
+   * `input_tokens: 412`, `output_tokens: 0`.
+   *
+   * Antes desta correção o usage era descartado por causa do output zero, e o
+   * input consumido não chegava ao run.
+   */
+  it("a recusa oficial com saída zero preserva o input consumido", async () => {
+    const resultado = await executarCom({
+      content: [],
+      stop_reason: "refusal",
+      stop_details: {
+        type: "refusal",
+        category: "cyber",
+        explanation: "This request was declined because it could enable cyber harm.",
+      },
+      usage: { input_tokens: 412, output_tokens: 0 },
+    });
+
+    expect(resultado.ok).toBe(false);
+    expect(!resultado.ok && resultado.errorClass).toBe("PROVIDER_REJECTED");
+    expect(!resultado.ok && resultado.usage).toEqual({
+      inputTokens: 412,
+      outputTokens: 0,
+      cachedTokens: null,
+    });
+
+    // Nem a categoria nem a explicação da recusa atravessam: são conteúdo
+    // produzido pelo provider sobre o input do cliente.
+    expect(JSON.stringify(resultado)).not.toMatch(/cyber|declined|refusal/i);
+  });
+
+  /**
+   * `end_turn` diz "terminei normalmente"; saída zero diz "não produzi nada".
+   * Juntos não podem virar sucesso — mas o input foi consumido e precisa ser
+   * registrado, sem que o adapter invente output.
+   */
+  it("end_turn com saída zero é falha contábil, não sucesso", async () => {
+    const resultado = await executarCom({
+      content: [],
+      stop_reason: "end_turn",
+      usage: { input_tokens: 412, output_tokens: 0 },
+    });
+
+    expect(resultado.ok).toBe(false);
+    expect(!resultado.ok && resultado.errorClass).toBe("USAGE_INVALID");
+    expect(!resultado.ok && resultado.usage).toEqual({
+      inputTokens: 412,
+      outputTokens: 0,
+      cachedTokens: null,
+    });
   });
 
   it("JSON inválido depois de end_turn preserva o usage cobrado", async () => {

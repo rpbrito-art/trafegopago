@@ -752,6 +752,66 @@ describe("falha cobrável registra custo", () => {
   });
 
   /**
+   * Correção 004E-06 §4 — a recusa oficial da Anthropic, com o preço do Haiku
+   * 4.5 vigente no catálogo (USD 1,00/MTok de input, USD 5,00/MTok de output).
+   *
+   * O ponto é aritmético e é o motivo da correção existir: saída zero zera a
+   * parcela de output, não a conta. O run precisa fechar com o input conhecido
+   * registrado — e com `PROVIDER_REJECTED`, para quem lê o ledger saber que
+   * houve recusa, não apenas gasto.
+   */
+  it("recusa com saída zero registra o custo do input consumido", async () => {
+    precos = [
+      preco({
+        inputPricePerMillion: "1.000000000000",
+        outputPricePerMillion: "5.000000000000",
+      }),
+    ];
+
+    const r = await router([
+      adapterFalhaComUsage("PROVIDER_REJECTED", {
+        inputTokens: 412,
+        outputTokens: 0,
+        cachedTokens: null,
+      }),
+    ]).run(PEDIDO);
+
+    expect(!r.ok && r.errorClass).toBe("PROVIDER_REJECTED");
+
+    expect(falhados).toHaveLength(1);
+    expect(falhados[0].errorClass).toBe("PROVIDER_REJECTED");
+    expect(falhados[0].inputTokens).toBe(412);
+    expect(falhados[0].outputTokens).toBe(0);
+    expect(falhados[0].currency).toBe("USD");
+
+    // 412 * 1,00/1M + 0 * 5,00/1M = 0,000412. Zero de output não é conta zero.
+    expect(falhados[0].estimatedCost).toBe("0.000412000000");
+    expect(Number(falhados[0].estimatedCost)).toBeGreaterThan(0);
+  });
+
+  /**
+   * `end_turn` com saída zero chega ao Router já classificado como
+   * `USAGE_INVALID` pelo adapter — nunca como sucesso. O Router não descarta o
+   * consumo por causa disso: o input foi gasto do mesmo jeito.
+   */
+  it("end_turn com saída zero não vira sucesso e ainda registra o input", async () => {
+    const r = await router([
+      adapterFalhaComUsage("USAGE_INVALID", {
+        inputTokens: 412,
+        outputTokens: 0,
+        cachedTokens: null,
+      }),
+    ]).run(PEDIDO);
+
+    expect(r.ok).toBe(false);
+    expect(concluidos).toHaveLength(0);
+    expect(falhados[0].errorClass).toBe("USAGE_INVALID");
+    expect(falhados[0].inputTokens).toBe(412);
+    expect(falhados[0].outputTokens).toBe(0);
+    expect(Number(falhados[0].estimatedCost)).toBeGreaterThan(0);
+  });
+
+  /**
    * Sem resposta confiável não há consumo conhecido. Inventar tokens aqui
    * poluiria a conta com uma chamada que talvez nem tenha chegado ao provider.
    */
