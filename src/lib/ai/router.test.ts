@@ -5,6 +5,7 @@ import { criarFakeAdapter } from "../../../test/support/fake-ai-adapter";
 import { criarAdapterRegistry } from "./adapter-registry";
 import type { AICatalog } from "./catalog";
 import type {
+  AIErrorClass,
   AIModelCandidate,
   AIPriceVersion,
   AITaskDefinition,
@@ -353,9 +354,18 @@ describe("adapter", () => {
     expect(falhados[0]?.errorClass).toBe("ADAPTER_NOT_REGISTERED");
   });
 
-  it("o registro de produção não tem nenhum adapter", async () => {
+  /**
+   * A 004A mantinha este registro vazio porque não havia provider real. A 004E
+   * registra o primeiro — e o que continua valendo é que ele seja **um**, com a
+   * chave que existe no catálogo: um adapter registrado sob chave que o
+   * catálogo não conhece nunca seria alcançado, e um provider do catálogo sem
+   * adapter falha em `ADAPTER_NOT_REGISTERED` depois de já ter aberto run.
+   */
+  it("o registro de produção tem exatamente o provider catalogado", async () => {
     const { PRODUCTION_ADAPTERS } = await import("./adapter-registry");
-    expect(PRODUCTION_ADAPTERS).toHaveLength(0);
+
+    expect(PRODUCTION_ADAPTERS).toHaveLength(1);
+    expect(PRODUCTION_ADAPTERS[0].providerKey).toBe("anthropic_claude");
   });
 });
 
@@ -659,15 +669,197 @@ describe("registro de tasks", () => {
     expect(() => criarTaskRegistry([TASK, TASK])).toThrow();
   });
 
-  it("o registro de produção nasce vazio", async () => {
+  /**
+   * A 004A não registrava task alguma: inventar uma feature só para ter o que
+   * registrar produziria política que ninguém pediu. A 004E traz a primeira
+   * task real, e o que se prova agora é que ela é uma só, versionada e de
+   * escopo tenant — uma task de contexto de negócio sem organização seria um
+   * vazamento esperando acontecer.
+   */
+  it("o registro de produção tem a task real, versionada e tenant-scoped", async () => {
     const { PRODUCTION_TASKS } = await import("./task-registry");
-    expect(PRODUCTION_TASKS).toHaveLength(0);
+
+    expect(PRODUCTION_TASKS).toHaveLength(1);
+
+    const task = PRODUCTION_TASKS[0];
+
+    expect(task.taskType).toBe("DECLARED_BUSINESS_CONTEXT_REVIEW");
+    expect(task.taskVersion).toBe("v1");
+    expect(task.scope).toBe("TENANT");
+    // Só Tier 1: a task é síntese do que já está estruturado, e permitir
+    // escalada compraria raciocínio caro para trabalho que não o exige.
+    expect(task.allowedTiers).toEqual([1]);
   });
 });
 
 // ---------------------------------------------------------------------------
 // Correção 004A-01 — sucesso exige prova
 // ---------------------------------------------------------------------------
+
+/**
+ * Correção 004E-05 §6.
+ *
+ * Uma resposta HTTP 200 é cobrada mesmo quando o produto não pode usá-la:
+ * recusa do modelo, saída truncada, JSON malformado. Se o run fechasse como
+ * falha sem tokens, a conta do mês teria chamadas pagas que o ledger não
+ * conhece — e é o ledger que sustenta qualquer afirmação sobre custo.
+ */
+describe("falha cobrável registra custo", () => {
+  /** Adapter que responde erro **com** usage: a chamada aconteceu e custou. */
+  function adapterFalhaComUsage(
+    errorClass: AIErrorClass,
+    usage = { inputTokens: 1000, outputTokens: 500, cachedTokens: null },
+  ) {
+    return {
+      providerKey: "fixture",
+      async execute() {
+        return { ok: false as const, errorClass, usage, latencyMs: 77 };
+      },
+    };
+  }
+
+  it("recusa do provider fecha o run com tokens, moeda e custo", async () => {
+    const r = await router([adapterFalhaComUsage("PROVIDER_REJECTED")]).run(PEDIDO);
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.errorClass).toBe("PROVIDER_REJECTED");
+
+    expect(falhados).toHaveLength(1);
+    expect(falhados[0].inputTokens).toBe(1000);
+    expect(falhados[0].outputTokens).toBe(500);
+    expect(falhados[0].currency).toBe("USD");
+    // 1000 * 0,15/1M + 500 * 0,60/1M = 0,00015 + 0,0003
+    expect(falhados[0].estimatedCost).toBe("0.000450000000");
+    expect(falhados[0].latencyMs).toBe(77);
+  });
+
+  /**
+   * A classe original precisa sobreviver ao registro do custo: quem lê o
+   * ledger tem de saber que houve recusa, não apenas que houve gasto.
+   */
+  it("preserva a classe de erro original ao registrar custo", async () => {
+    await router([adapterFalhaComUsage("OUTPUT_SCHEMA_INVALID")]).run(PEDIDO);
+
+    expect(falhados[0].errorClass).toBe("OUTPUT_SCHEMA_INVALID");
+    expect(falhados[0].estimatedCost).toBe("0.000450000000");
+  });
+
+  it("stop reason inesperado também registra o que consumiu", async () => {
+    await router([adapterFalhaComUsage("UNKNOWN")]).run(PEDIDO);
+
+    expect(falhados[0].errorClass).toBe("UNKNOWN");
+    expect(falhados[0].inputTokens).toBe(1000);
+  });
+
+  /**
+   * Correção 004E-06 §4 — a recusa oficial da Anthropic, com o preço do Haiku
+   * 4.5 vigente no catálogo (USD 1,00/MTok de input, USD 5,00/MTok de output).
+   *
+   * O ponto é aritmético e é o motivo da correção existir: saída zero zera a
+   * parcela de output, não a conta. O run precisa fechar com o input conhecido
+   * registrado — e com `PROVIDER_REJECTED`, para quem lê o ledger saber que
+   * houve recusa, não apenas gasto.
+   */
+  it("recusa com saída zero registra o custo do input consumido", async () => {
+    precos = [
+      preco({
+        inputPricePerMillion: "1.000000000000",
+        outputPricePerMillion: "5.000000000000",
+      }),
+    ];
+
+    const r = await router([
+      adapterFalhaComUsage("PROVIDER_REJECTED", {
+        inputTokens: 412,
+        outputTokens: 0,
+        cachedTokens: null,
+      }),
+    ]).run(PEDIDO);
+
+    expect(!r.ok && r.errorClass).toBe("PROVIDER_REJECTED");
+
+    expect(falhados).toHaveLength(1);
+    expect(falhados[0].errorClass).toBe("PROVIDER_REJECTED");
+    expect(falhados[0].inputTokens).toBe(412);
+    expect(falhados[0].outputTokens).toBe(0);
+    expect(falhados[0].currency).toBe("USD");
+
+    // 412 * 1,00/1M + 0 * 5,00/1M = 0,000412. Zero de output não é conta zero.
+    expect(falhados[0].estimatedCost).toBe("0.000412000000");
+    expect(Number(falhados[0].estimatedCost)).toBeGreaterThan(0);
+  });
+
+  /**
+   * `end_turn` com saída zero chega ao Router já classificado como
+   * `USAGE_INVALID` pelo adapter — nunca como sucesso. O Router não descarta o
+   * consumo por causa disso: o input foi gasto do mesmo jeito.
+   */
+  it("end_turn com saída zero não vira sucesso e ainda registra o input", async () => {
+    const r = await router([
+      adapterFalhaComUsage("USAGE_INVALID", {
+        inputTokens: 412,
+        outputTokens: 0,
+        cachedTokens: null,
+      }),
+    ]).run(PEDIDO);
+
+    expect(r.ok).toBe(false);
+    expect(concluidos).toHaveLength(0);
+    expect(falhados[0].errorClass).toBe("USAGE_INVALID");
+    expect(falhados[0].inputTokens).toBe(412);
+    expect(falhados[0].outputTokens).toBe(0);
+    expect(Number(falhados[0].estimatedCost)).toBeGreaterThan(0);
+  });
+
+  /**
+   * Sem resposta confiável não há consumo conhecido. Inventar tokens aqui
+   * poluiria a conta com uma chamada que talvez nem tenha chegado ao provider.
+   */
+  it("falha sem usage não inventa custo", async () => {
+    const adapter = criarFakeAdapter({
+      providerKey: "fixture",
+      desfecho: { tipo: "erro", errorClass: "PROVIDER_UNAVAILABLE" },
+    });
+
+    await router([adapter]).run(PEDIDO);
+
+    expect(falhados).toHaveLength(1);
+    expect(falhados[0].estimatedCost ?? null).toBeNull();
+    expect(falhados[0].inputTokens ?? null).toBeNull();
+  });
+
+  /**
+   * Usage veio, o custo não fechou. Registrar zero seria pior do que reportar a
+   * falha de cálculo: a classe passa a ser a do custo, que é o problema mais
+   * grave dos dois.
+   */
+  it("usage impossível não vira custo zero", async () => {
+    const adapter = {
+      providerKey: "fixture",
+      async execute() {
+        return {
+          ok: false as const,
+          errorClass: "PROVIDER_REJECTED" as const,
+          usage: { inputTokens: -5, outputTokens: 500, cachedTokens: null },
+          latencyMs: 10,
+        };
+      },
+    };
+
+    const r = await router([adapter]).run(PEDIDO);
+
+    expect(!r.ok && r.errorClass).toBe("USAGE_INVALID");
+    expect(falhados[0].estimatedCost ?? null).toBeNull();
+  });
+
+  it("sucesso continua registrando conclusão, não falha", async () => {
+    const r = await router([adapterOk()]).run(PEDIDO);
+
+    expect(r.ok).toBe(true);
+    expect(falhados).toHaveLength(0);
+    expect(concluidos).toHaveLength(1);
+  });
+});
 
 describe("o ledger é a condição do sucesso", () => {
   it("conclusão não confirmada não vira sucesso", async () => {

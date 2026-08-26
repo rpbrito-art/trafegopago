@@ -279,6 +279,20 @@ export type AIAdapterResult =
       ok: false;
       /** Já normalizado e sanitizado pelo adapter. */
       errorClass: AIErrorClass;
+      /**
+       * Usage da resposta que **já aconteceu** (Correção 004E-05 §5).
+       *
+       * Uma resposta HTTP 200 é cobrada mesmo quando o produto não pode
+       * aproveitá-la: recusa do modelo, saída truncada por `max_tokens`, JSON
+       * malformado. Sem este campo, o Router fecharia o run como falha sem
+       * tokens — e a conta do mês teria uma chamada paga que o ledger não
+       * conhece.
+       *
+       * `undefined` significa que não houve resposta confiável (erro de rede,
+       * autenticação, timeout). O adapter **nunca** inventa usage: só anexa o
+       * que passou por `normalizarUsage()`.
+       */
+      usage?: AIAdapterUsage;
       latencyMs?: number | null;
     };
 

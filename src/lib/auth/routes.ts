@@ -40,6 +40,14 @@ export const ROUTES = {
    */
   focus: "/foco",
   /**
+   * Revisão do contexto declarado.
+   *
+   * Primeira superfície do produto apoiada em provider real de IA. A revisão
+   * só é gerada por ação explícita — a página nunca chama o provider ao
+   * renderizar (Rodada 004E §9).
+   */
+  review: "/revisao",
+  /**
    * Objetivo atual do negócio.
    *
    * Próximo passo natural depois de criar o negócio: sem ele, o onboarding
@@ -89,6 +97,7 @@ export const PROTECTED_PREFIXES: readonly string[] = [
   ROUTES.offers,
   ROUTES.start,
   ROUTES.focus,
+  ROUTES.review,
 ];
 
 /**

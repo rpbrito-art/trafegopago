@@ -97,7 +97,9 @@ CI do HEAD:
 
 Status geral:
 
-**004E AINDA NÃO APROVADA NEM PROMOVIDA. 004E-05 FOI EXECUTADA E REAUDITADA, MAS O GATE ANTHROPIC CONTINUA FECHADO. 004E-06 ESTÁ AUTORIZADA.**
+**CORREÇÃO 004E-06 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC.**
+
+004E ainda não aprovada nem promovida. O gate Anthropic continua fechado e nenhuma chamada real ocorreu.
 
 ### 5.1 Correções já concluídas
 
@@ -105,7 +107,14 @@ Status geral:
 - 004E-02 — **EXECUTADA E REAUDITADA**.
 - 004E-03 — **EXECUTADA, REAUDITADA E APROVADA**.
 - 004E-04 — **EXECUTADA E REAUDITADA; TROCA GEMINI → ANTHROPIC APROVADA, GATE PAGO BLOQUEADO**.
-- 004E-05 — **EXECUTADA E REAUDITADA; stop_reason e custo de falha pós-resposta implementados, MAS AINDA BLOQUEADA POR REFUSAL OFICIAL COM OUTPUT ZERO**.
+- 004E-05 — **EXECUTADA E REAUDITADA; stop_reason e custo de falha pós-resposta implementados**.
+- 004E-06 — **EXECUTADA — AGUARDANDO REAUDITORIA GPT**. Recusa oficial com `output_tokens = 0` passou a preservar o input consumido, e o Router registra o custo input-only no run FAILED sem perder a classe de erro. `end_turn` + saída zero é falha contábil, nunca sucesso. Zero migration, zero mutação remota, zero chamada real.
+
+Relatório da 004E-06:
+
+`rodadas/claude/RELATORIO_CORRECAO_004E_06_REFUSAL_ZERO_OUTPUT_ACCOUNTING.md`
+
+Fato para o GPT decidir, registrado no §5 do relatório: a documentação oficial diz que recusa **antes de qualquer output** não é cobrada (só a mid-stream é), enquanto o mandato §2 afirmava que a recusa pode ser cobrada. O delta não muda por isso — preservar consumo conhecido é correto em qualquer hipótese, e o campo é `estimated_cost` —, mas a estimativa tende a superestimar nesse caso específico. Distinguir recusa cobrada de não cobrada no ledger é decisão de modelagem, não tomada aqui.
 
 Auditorias relevantes:
 
