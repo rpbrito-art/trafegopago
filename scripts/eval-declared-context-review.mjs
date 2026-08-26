@@ -22,7 +22,7 @@
  *
  * Não é chamado pela aplicação e usa somente dados sintéticos.
  *
- * Uso (com `GEMINI_API_KEY` e credenciais Supabase no ambiente):
+ * Uso (com `ANTHROPIC_API_KEY` e credenciais Supabase no ambiente):
  *   npm run eval:review
  */
 
@@ -54,12 +54,12 @@ carregarEnvLocal();
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SECRET = process.env.SUPABASE_SECRET_KEY;
 
-if (!process.env.GEMINI_API_KEY) {
+if (!process.env.ANTHROPIC_API_KEY) {
   console.error(
     [
       "GATE DE CREDENCIAL PAGA.",
       "",
-      "GEMINI_API_KEY não está disponível neste runtime. A eval real precisa de",
+      "ANTHROPIC_API_KEY não está disponível neste runtime. A eval real precisa de",
       "chave no Paid Tier e não roda sem ela.",
       "",
       "Nada foi chamado. Nenhum custo foi gerado.",

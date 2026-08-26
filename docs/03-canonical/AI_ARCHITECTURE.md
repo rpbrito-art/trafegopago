@@ -292,9 +292,11 @@ Não enviar telefone/e-mail/nome de lead para classificar motivo de perda se nã
 
 ## 20. Provider adapters
 
-Estado executado (Rodada 004E): o primeiro provider real é a **Google Gemini Developer API**, nível pago, com o modelo `gemini-2.5-flash-lite` no Tier 1. A chave vive em `GEMINI_API_KEY`, server-only. Não há segundo provider nem fallback real multi-provider — a Fase 6 permanece aberta.
+Estado executado (Rodada 004E): o primeiro provider real é a **Claude API da Anthropic**, com o modelo `claude-haiku-4-5-20251001` no Tier 1. A chave vive em `ANTHROPIC_API_KEY`, server-only. Não há segundo provider nem fallback real multi-provider — a Fase 6 permanece aberta.
 
-Isso não torna Google uma dependência de feature: a feature continua enviando uma `AI Task`, e o Router resolve provider/modelo pelo catálogo e pelas capacidades.
+A rodada chegou a catalogar o Google Gemini como primeiro provider; a troca aconteceu **antes de qualquer chamada real** (Correção 004E-04), e o registro Gemini permanece no catálogo como configuração histórica inelegível.
+
+Que a troca tenha custado uma migration e um adapter, e nenhuma linha de feature, é a demonstração prática de §§4 e 20: a feature envia uma `AI Task`, e o Router resolve provider/modelo pelo catálogo e pelas capacidades.
 
 Cada adapter implementa interface comum e traduz:
 

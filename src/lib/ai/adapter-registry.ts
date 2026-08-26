@@ -1,6 +1,6 @@
 import "server-only";
 
-import { geminiAdapter } from "./adapters/gemini";
+import { anthropicAdapter } from "./adapters/anthropic";
 import type { AIProviderAdapter } from "./contracts";
 
 /**
@@ -39,7 +39,12 @@ export function criarAdapterRegistry(
  * Registro de produção.
  *
  * A 004A o manteve vazio porque não havia provider real. A 004E registra o
- * primeiro: Google Gemini, nível pago, atrás do Router.
+ * primeiro: Anthropic Claude API, atrás do Router.
+ *
+ * A 004E chegou a preparar o Google Gemini, e a troca para Anthropic (Correção
+ * 004E-04) aconteceu **antes de qualquer chamada real**. Nenhum segundo
+ * provider fica operacional escondido aqui: fallback multi-provider é decisão
+ * de outra rodada.
  *
  * O fake determinístico continua existindo **apenas** no suporte de testes e é
  * injetado explicitamente — nunca alcançado a partir daqui. Cair em fake por
@@ -47,7 +52,7 @@ export function criarAdapterRegistry(
  * funcionar, produzindo respostas inventadas com custo zero. Sem chave, o
  * adapter falha com `PROVIDER_UNAVAILABLE` e o ledger registra.
  */
-export const PRODUCTION_ADAPTERS: readonly AIProviderAdapter[] = [geminiAdapter];
+export const PRODUCTION_ADAPTERS: readonly AIProviderAdapter[] = [anthropicAdapter];
 
 export const adapterRegistry: AIAdapterRegistry =
   criarAdapterRegistry(PRODUCTION_ADAPTERS);

@@ -364,7 +364,7 @@ describe("adapter", () => {
     const { PRODUCTION_ADAPTERS } = await import("./adapter-registry");
 
     expect(PRODUCTION_ADAPTERS).toHaveLength(1);
-    expect(PRODUCTION_ADAPTERS[0].providerKey).toBe("google_gemini");
+    expect(PRODUCTION_ADAPTERS[0].providerKey).toBe("anthropic_claude");
   });
 });
 

@@ -17,7 +17,7 @@
  * Dados 100% sintéticos, organização temporária removida por cascade ao final.
  * A chave nunca é impressa, nem em erro, nem em log.
  *
- * Uso (com `GEMINI_API_KEY` e credenciais Supabase no ambiente):
+ * Uso (com `ANTHROPIC_API_KEY` e credenciais Supabase no ambiente):
  *   npm run e2e:review
  */
 
@@ -53,15 +53,14 @@ carregarEnvLocal();
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SECRET = process.env.SUPABASE_SECRET_KEY;
 
-if (!process.env.GEMINI_API_KEY) {
+if (!process.env.ANTHROPIC_API_KEY) {
   console.error(
     [
       "GATE DE CREDENCIAL PAGA.",
       "",
-      "GEMINI_API_KEY não está disponível neste runtime.",
-      "A prova E2E exige uma chave de projeto no Paid Tier — o Free Tier não é",
-      "autorizado para dados de clientes, e esta prova roda pelo caminho",
-      "produtivo.",
+      "ANTHROPIC_API_KEY não está disponível neste runtime.",
+      "A prova E2E exige a credencial da Claude API. Esta prova roda pelo",
+      "caminho produtivo e usa somente fixtures sintéticas.",
       "",
       "Nada foi chamado. Nenhum custo foi gerado.",
     ].join("\n"),
@@ -210,7 +209,7 @@ try {
 
   verificar(
     "06 modelo usado é o catalogado",
-    modelo?.model_key === "gemini-2.5-flash-lite",
+    modelo?.model_key === "claude-haiku-4-5-20251001",
     modelo?.model_key,
   );
 
