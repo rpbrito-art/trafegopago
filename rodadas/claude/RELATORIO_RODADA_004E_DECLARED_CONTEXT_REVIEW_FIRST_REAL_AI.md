@@ -4,7 +4,7 @@ Mandato: `rodadas/gpt/RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
 
 Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · base: `main` em `0ad811f`.
 
-Status: **CORREÇÃO 004E-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**.
+Status: **CORREÇÃO 004E-05 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**.
 
 Auditoria: `rodadas/gpt/AUDITORIA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` — cinco bloqueios. Correção: `rodadas/gpt/CORRECAO_004E_01_PREPAID_SAFETY_PROVIDER_CONTRACT.md`, executada nesta mesma branch e registrada na §7 abaixo.
 
@@ -12,11 +12,13 @@ Auditoria: `rodadas/gpt/AUDITORIA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md`
 
 ## 1. Gate de credencial — o que falta
 
-`GEMINI_API_KEY` **não existe** em nenhum runtime alcançável: ambiente do processo, `.env.local` e secrets do repositório foram verificados por presença, sem leitura de valor.
+**A credencial vigente é `ANTHROPIC_API_KEY`**, desde a troca de provider da Correção 004E-04 (§10). Ela não existe em nenhum runtime alcançável — ambiente do processo, `.env.local` e secrets do repositório, todos verificados por presença, sem leitura de valor.
 
-Todo o delta que não depende da chave está executado, publicado e provado. A prova E2E real (§15) é a única pendência, e não foi improvisada: nenhuma chamada ao provider foi feita, nenhum custo foi gerado, nenhum fake substituiu o provider.
+`GEMINI_API_KEY` deixou de ser pendência: nenhum caminho produtivo a lê, e o Gemini nunca chegou a ser ativado nem cobrado. As seções §§1–9 abaixo descrevem o trabalho feito enquanto aquele era o provider previsto; ficam como estão porque as auditorias correspondentes se referem a elas.
 
-O runtime que precisa da variável é o servidor da aplicação (Next.js server-side) e, para a prova, o shell que roda `npm run e2e:review`. Nenhum segredo foi exposto nesta rodada. O GPT conduz a ação manual — este relatório não instrui o fundador.
+Todo o delta que não depende da chave está executado, publicado e provado. As provas E2E e de eval reais são a única pendência, e não foram improvisadas: nenhuma chamada ao provider foi feita, nenhum custo foi gerado, nenhum fake substituiu o provider.
+
+O runtime que precisa da variável é o servidor da aplicação (Next.js server-side) e, para as provas, o shell que roda `npm run e2e:review` e `npm run eval:review`. Nenhum segredo foi exposto. O GPT conduz a ação manual — este relatório não instrui o fundador.
 
 `scripts/e2e-declared-context-review.mjs` está versionado e pronto: sem a chave, ele para com código 2 e mensagem de gate, sem tentar nada.
 
@@ -246,7 +248,46 @@ A prova do catálogo não se contenta em ver Anthropic registrado: ela reproduz 
 
 Nenhuma chamada Anthropic real ocorreu, e `ANTHROPIC_API_KEY` não foi adicionada a lugar algum.
 
-## 11. Handoff
+## 11. Correção 004E-05 — contabilização de resposta paga
+
+A reauditoria da 004E-04 revalidou a documentação oficial e encontrou dois riscos antes da primeira chamada paga. Confirmei os dois na fonte durante a execução.
+
+### 11.1 O que a documentação diz
+
+Toda resposta da Messages API vem com `stop_reason`, em **HTTP 200**, e **é cobrada** — inclusive `refusal`, que o classificador de segurança devolve como resposta normal e que pode não respeitar o structured output; e `max_tokens`, que entrega saída truncada. As duas trazem `usage`.
+
+O adapter não olhava para `stop_reason`. Uma recusa com JSON plausível teria sido tratada como revisão válida; uma saída cortada no meio, também.
+
+### 11.2 Só `end_turn` segue
+
+`end_turn` é o único que passa pelo caminho normal. `refusal` vira `PROVIDER_REJECTED`; `max_tokens` vira `OUTPUT_SCHEMA_INVALID`, que é literalmente o que um output truncado é; qualquer outro — `tool_use`, `pause_turn`, `stop_sequence`, `model_context_window_exceeded`, ausente — vira `UNKNOWN`, porque esta task não usa tools nem stop sequences e nenhum deles deveria aparecer.
+
+Nada do texto da recusa nem de `stop_details` atravessa para o domínio ou para o ledger: o motivo de uma recusa é conteúdo do provider sobre o input do cliente, e o ledger guarda classe de erro, não narrativa.
+
+A documentação sugere fallback para outro modelo diante de `refusal`. **Não nesta rodada** — fallback multi-provider é decisão de outra rodada, e retry automático dobraria uma cobrança que o ledger registraria como uma só.
+
+### 11.3 Falha depois da resposta carrega o que custou
+
+`AIAdapterResult` passou a admitir `usage` também no ramo `ok: false`. O adapter normaliza o usage **antes** de decidir sobre o conteúdo — a partir do HTTP 200 a chamada já foi cobrada — e o anexa em toda falha pós-resposta: recusa, truncamento, JSON malformado. Erro sem resposta confiável (rede, autenticação, timeout) continua sem usage, e o adapter nunca inventa: só sobe o que passou por `normalizarUsage()`.
+
+No Router, uma falha com usage agora calcula o custo pela mesma versão de preço já resolvida para aquele run e registra tokens, moeda, custo e latência no `FAILED`, **preservando a classe de erro original**. Se o cálculo não fechar apesar do usage, a classe passa a ser a do custo — registrar zero seria pior do que reportar que o custo não pôde ser apurado.
+
+A regra é econômica, não estética: se o Quoron sabe que houve consumo cobrável e conhece usage e preço, o run precisa carregar esse custo. Um `FAILED` sem tokens faria a conta do mês ter chamadas que o ledger não conhece.
+
+### 11.4 Provas
+
+| prova | resultado |
+| --- | --- |
+| adapter: stop reasons e usage preservado | `src/lib/ai/adapters/anthropic.test.ts` — **42 casos** |
+| Router: custo em run FAILED | `src/lib/ai/router.test.ts` — 54 casos |
+| suíte local | **1041/1041** em 49 arquivos |
+| gates pagos | `e2e:review` e `eval:review` param com código 2 |
+
+As fixtures do adapter passaram a incluir `stop_reason`, que faz parte da API e faltava nelas — sem isso, os testes do caminho normal descreviam uma resposta que a Messages API não produz.
+
+Sem migration, sem tocar banco, catálogo, preço, provider, feature ou UI.
+
+## 12. Handoff
 
 Branch publicada; PR #17 mantido aberto, draft, base `main`, não mergeado.
 
@@ -254,10 +295,10 @@ Branch atualizada com a `main` documental por merge; único conflito em `estado.
 
 Migrations aplicadas nesta branch, nenhuma reescrita: `20260825250000`, `20260825260000`, `20260825270000` e `20260825280000`.
 
-`estado.md` da branch em **CORREÇÃO 004E-04 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**. Working tree limpa.
+`estado.md` da branch em **CORREÇÃO 004E-05 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**. Working tree limpa.
 
-## 12. Pendências
+## 13. Pendências
 
-Uma, e continua sendo o gate: **prova E2E real e eval real**. Ambas passam a depender de `ANTHROPIC_API_KEY`, que não foi disponibilizada.
+Uma, e continua sendo o gate: **prova E2E real e eval real**. Ambas dependem de `ANTHROPIC_API_KEY`, que não foi disponibilizada.
 
-Próximo ator: **GPT auditor**, para reauditar a Correção 004E-04. Só depois da aprovação a credencial deve ser disponibilizada; então `npm run e2e:review` e `npm run eval:review` fecham a rodada.
+Próximo ator: **GPT auditor**, para reauditar a Correção 004E-05. Só depois da aprovação a credencial deve ser disponibilizada; então `npm run e2e:review` e `npm run eval:review` fecham a rodada.

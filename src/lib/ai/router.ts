@@ -259,8 +259,50 @@ export function criarAIRouter(deps: AIRouterDeps) {
       }
 
       if (!resultado.ok) {
+        const latencyMs = resultado.latencyMs ?? null;
+
+        // Falha **antes** de haver resposta — rede, autenticação, timeout. Não
+        // há consumo conhecido, e inventar tokens poluiria a conta do mês com
+        // uma chamada que talvez nem tenha chegado ao provider.
+        if (!resultado.usage) {
+          return encerrarComFalha(resultado.errorClass, { latencyMs });
+        }
+
+        // Falha **depois** de uma resposta cobrada: recusa do modelo, saída
+        // truncada, JSON malformado. O produto não pode usar o resultado, mas
+        // o dinheiro saiu — e um run FAILED sem custo faria a contabilidade
+        // não fechar (Correção 004E-05 §6).
+        const custoDaFalha = calcularCusto({
+          usage: resultado.usage,
+          price: preco,
+        });
+
+        if (!custoDaFalha.ok) {
+          // Usage veio, o custo não fechou. Transformá-lo em zero seria pior do
+          // que registrar a falha de cálculo: a classe de erro passa a ser a do
+          // custo, que é o problema mais grave dos dois.
+          return encerrarComFalha(
+            custoDaFalha.motivo === "USAGE_INVALIDO"
+              ? "USAGE_INVALID"
+              : "COST_CALCULATION_FAILED",
+            {
+              latencyMs,
+              inputTokens: resultado.usage.inputTokens,
+              outputTokens: resultado.usage.outputTokens,
+              cachedTokens: resultado.usage.cachedTokens ?? null,
+            },
+          );
+        }
+
+        // A classe original é preservada: quem lê o ledger precisa saber que
+        // houve recusa ou truncamento, não apenas que custou.
         return encerrarComFalha(resultado.errorClass, {
-          latencyMs: resultado.latencyMs ?? null,
+          latencyMs,
+          inputTokens: resultado.usage.inputTokens,
+          outputTokens: resultado.usage.outputTokens,
+          cachedTokens: resultado.usage.cachedTokens ?? null,
+          estimatedCost: custoDaFalha.custo,
+          currency: custoDaFalha.currency,
         });
       }
 

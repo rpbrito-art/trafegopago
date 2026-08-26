@@ -254,21 +254,44 @@ Os scripts podem ser executados somente sem chave para provar que o gate bloquei
 - e-commerce/estoque/SKU/pedidos/pagamentos;
 - score/gamificação.
 
-## 9. Próxima ação autorizada
+## 9. Correção 004E-05 — EXECUTADA
 
-Próximo ator: **Claude Code**.
+Mandato: `rodadas/gpt/CORRECAO_004E_05_PAID_RESPONSE_ACCOUNTING.md`.
 
-Claude deve continuar na mesma branch e no PR #17 e executar **somente**:
+Branch: `claude/rodada-004e-declared-context-review-first-real-ai` · PR #17 mantido aberto, draft, não mergeado.
 
-`rodadas/gpt/CORRECAO_004E_05_PAID_RESPONSE_ACCOUNTING.md`
+Status: **CORREÇÃO 004E-05 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**.
 
-Status esperado ao devolver:
+Relatório: `rodadas/claude/RELATORIO_RODADA_004E_DECLARED_CONTEXT_REVIEW_FIRST_REAL_AI.md` §11.
 
-**CORREÇÃO 004E-05 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**.
+**Nenhuma chamada real foi feita** e `ANTHROPIC_API_KEY` continua ausente de todos os runtimes. Sem migration: o banco remoto não foi tocado.
 
-Claude não pede a chave, não faz chamada paga, não mergeia e não promove.
+### 9.1 Delta executado
 
-Depois disso o próximo ator volta a ser GPT.
+- `stop_reason` tratado explicitamente: **só `end_turn`** segue pelo caminho normal;
+- `refusal` → `PROVIDER_REJECTED`; `max_tokens` → `OUTPUT_SCHEMA_INVALID`; qualquer outro valor, inclusive ausente, → `UNKNOWN`;
+- nenhum deles persiste revisão, e nada do texto da recusa ou de `stop_details` atravessa para o domínio ou o ledger;
+- sem retry e sem fallback, apesar de a documentação sugerir fallback para recusa — é decisão de outra rodada;
+- `AIAdapterResult` passou a admitir `usage` no ramo de falha; o adapter normaliza o usage **antes** de decidir sobre o conteúdo e o anexa em toda falha pós-resposta;
+- erro sem resposta confiável continua sem usage, e o adapter nunca inventa: só sobe o que passa por `normalizarUsage()`;
+- o Router calcula o custo de uma falha com usage pela versão de preço já resolvida e registra tokens, moeda, custo e latência no run `FAILED`, **preservando a classe de erro original**;
+- se o cálculo não fechar apesar do usage, a classe passa a ser a do custo — nunca custo zero.
+
+### 9.2 Provas locais
+
+- adapter: **42 casos**, incluindo cada stop reason com usage preservado, usage inválido não anexado e ausência de vazamento de recusa/chave;
+- Router: 54 casos, incluindo custo reproduzível em `FAILED`, classe preservada, falha sem usage sem custo inventado e usage impossível sem virar zero;
+- suíte completa **1041/1041** em 49 arquivos;
+- `tsc --noEmit` e `eslint` limpos;
+- `npm run e2e:review` e `npm run eval:review` param no gate com código 2, sem chamar nada.
+
+### 9.3 Próxima ação autorizada
+
+Próximo ator: **GPT auditor**.
+
+Reauditar a Correção 004E-05 no PR #17. **Somente após aprovação** o GPT pode abrir o gate para o fundador disponibilizar `ANTHROPIC_API_KEY` e executar as provas reais.
+
+Claude não promove, não mergeia e não pede a chave ao fundador.
 
 ## 10. Regra de continuidade
 

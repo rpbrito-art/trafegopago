@@ -48,6 +48,28 @@ const TIMEOUT_MS = 45_000;
  */
 const MAX_RETRIES = 0;
 
+/**
+ * Stop reasons desta task (Correção 004E-05 §4).
+ *
+ * A Messages API devolve `stop_reason` em toda resposta **HTTP 200**, e todas
+ * elas são cobradas. Só `end_turn` significa que o modelo terminou o que foi
+ * pedido; os demais descrevem uma resposta que existe, custou, e não serve:
+ *
+ * - `refusal` — o classificador de segurança recusou. Vem como 200, é cobrado
+ *   e pode não respeitar o schema;
+ * - `max_tokens` — a saída foi cortada no teto. O JSON pode até parsear e
+ *   ainda assim estar incompleto;
+ * - qualquer outro (`tool_use`, `pause_turn`, `stop_sequence`,
+ *   `model_context_window_exceeded`) — esta task não usa tools, server tools
+ *   nem stop sequences, então nenhum deles deveria aparecer. Se aparecer, algo
+ *   mudou no provider e a resposta não é confiável.
+ *
+ * A documentação sugere fallback para outro modelo diante de `refusal`. Não
+ * nesta rodada: fallback multi-provider é decisão de outra rodada, e retry
+ * automático dobraria uma cobrança que o ledger registraria como uma só.
+ */
+const STOP_REASON_NORMAL = "end_turn";
+
 type AnthropicUsage = {
   input_tokens?: number | null;
   output_tokens?: number | null;
@@ -127,6 +149,27 @@ export function classificarErro(erro: unknown): AIErrorClass {
   if (typeof status === "number" && status >= 500) return "PROVIDER_UNAVAILABLE";
 
   if (erro instanceof Error && erro.name === "AbortError") return "TIMEOUT";
+
+  return "UNKNOWN";
+}
+
+/**
+ * Traduz um `stop_reason` anormal para a taxonomia interna.
+ *
+ * `refusal` é rejeição do provider — a resposta existe, foi cobrada, e o
+ * conteúdo não pode ser usado. `max_tokens` é output incompleto, que é
+ * literalmente uma falha de forma. O resto é comportamento que esta task não
+ * pediu, e `UNKNOWN` diz exatamente isso: não sabemos o que aconteceu.
+ *
+ * Nada do texto da recusa, nem `stop_details`, atravessa: o motivo de uma
+ * recusa é conteúdo produzido pelo provider sobre o input do cliente, e o
+ * ledger guarda classe de erro, não narrativa.
+ */
+export function classificarStopReason(
+  stopReason: string | null | undefined,
+): AIErrorClass {
+  if (stopReason === "refusal") return "PROVIDER_REJECTED";
+  if (stopReason === "max_tokens") return "OUTPUT_SCHEMA_INVALID";
 
   return "UNKNOWN";
 }
@@ -256,16 +299,37 @@ export function criarAnthropicAdapter(deps: {
 
         const latencyMs = agora() - inicio;
 
+        // Usage primeiro, antes de qualquer decisão sobre o conteúdo: a partir
+        // daqui a chamada **já foi cobrada**, e toda falha precisa poder
+        // carregar o que ela custou.
         const usage = normalizarUsage(resposta.usage);
 
         // Sem usage confiável não há custo confiável, e o Router precisa saber
         // disso antes de concluir a execução.
         if (!usage) return { ok: false, errorClass: "USAGE_INVALID", latencyMs };
 
+        const stopReason = resposta.stop_reason;
+
+        if (stopReason !== STOP_REASON_NORMAL) {
+          return {
+            ok: false,
+            errorClass: classificarStopReason(stopReason),
+            usage,
+            latencyMs,
+          };
+        }
+
         const output = extrairJson(resposta.content);
 
         if (output === null) {
-          return { ok: false, errorClass: "OUTPUT_SCHEMA_INVALID", latencyMs };
+          // O provider respondeu e cobrou; o conteúdo é que não serve. O usage
+          // sobe junto para o run registrar o custo do que aconteceu.
+          return {
+            ok: false,
+            errorClass: "OUTPUT_SCHEMA_INVALID",
+            usage,
+            latencyMs,
+          };
         }
 
         // O output sobe como `unknown`: quem o transforma em tipo é o schema da

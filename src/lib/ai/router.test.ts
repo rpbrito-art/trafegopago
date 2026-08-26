@@ -5,6 +5,7 @@ import { criarFakeAdapter } from "../../../test/support/fake-ai-adapter";
 import { criarAdapterRegistry } from "./adapter-registry";
 import type { AICatalog } from "./catalog";
 import type {
+  AIErrorClass,
   AIModelCandidate,
   AIPriceVersion,
   AITaskDefinition,
@@ -694,6 +695,111 @@ describe("registro de tasks", () => {
 // ---------------------------------------------------------------------------
 // Correção 004A-01 — sucesso exige prova
 // ---------------------------------------------------------------------------
+
+/**
+ * Correção 004E-05 §6.
+ *
+ * Uma resposta HTTP 200 é cobrada mesmo quando o produto não pode usá-la:
+ * recusa do modelo, saída truncada, JSON malformado. Se o run fechasse como
+ * falha sem tokens, a conta do mês teria chamadas pagas que o ledger não
+ * conhece — e é o ledger que sustenta qualquer afirmação sobre custo.
+ */
+describe("falha cobrável registra custo", () => {
+  /** Adapter que responde erro **com** usage: a chamada aconteceu e custou. */
+  function adapterFalhaComUsage(
+    errorClass: AIErrorClass,
+    usage = { inputTokens: 1000, outputTokens: 500, cachedTokens: null },
+  ) {
+    return {
+      providerKey: "fixture",
+      async execute() {
+        return { ok: false as const, errorClass, usage, latencyMs: 77 };
+      },
+    };
+  }
+
+  it("recusa do provider fecha o run com tokens, moeda e custo", async () => {
+    const r = await router([adapterFalhaComUsage("PROVIDER_REJECTED")]).run(PEDIDO);
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.errorClass).toBe("PROVIDER_REJECTED");
+
+    expect(falhados).toHaveLength(1);
+    expect(falhados[0].inputTokens).toBe(1000);
+    expect(falhados[0].outputTokens).toBe(500);
+    expect(falhados[0].currency).toBe("USD");
+    // 1000 * 0,15/1M + 500 * 0,60/1M = 0,00015 + 0,0003
+    expect(falhados[0].estimatedCost).toBe("0.000450000000");
+    expect(falhados[0].latencyMs).toBe(77);
+  });
+
+  /**
+   * A classe original precisa sobreviver ao registro do custo: quem lê o
+   * ledger tem de saber que houve recusa, não apenas que houve gasto.
+   */
+  it("preserva a classe de erro original ao registrar custo", async () => {
+    await router([adapterFalhaComUsage("OUTPUT_SCHEMA_INVALID")]).run(PEDIDO);
+
+    expect(falhados[0].errorClass).toBe("OUTPUT_SCHEMA_INVALID");
+    expect(falhados[0].estimatedCost).toBe("0.000450000000");
+  });
+
+  it("stop reason inesperado também registra o que consumiu", async () => {
+    await router([adapterFalhaComUsage("UNKNOWN")]).run(PEDIDO);
+
+    expect(falhados[0].errorClass).toBe("UNKNOWN");
+    expect(falhados[0].inputTokens).toBe(1000);
+  });
+
+  /**
+   * Sem resposta confiável não há consumo conhecido. Inventar tokens aqui
+   * poluiria a conta com uma chamada que talvez nem tenha chegado ao provider.
+   */
+  it("falha sem usage não inventa custo", async () => {
+    const adapter = criarFakeAdapter({
+      providerKey: "fixture",
+      desfecho: { tipo: "erro", errorClass: "PROVIDER_UNAVAILABLE" },
+    });
+
+    await router([adapter]).run(PEDIDO);
+
+    expect(falhados).toHaveLength(1);
+    expect(falhados[0].estimatedCost ?? null).toBeNull();
+    expect(falhados[0].inputTokens ?? null).toBeNull();
+  });
+
+  /**
+   * Usage veio, o custo não fechou. Registrar zero seria pior do que reportar a
+   * falha de cálculo: a classe passa a ser a do custo, que é o problema mais
+   * grave dos dois.
+   */
+  it("usage impossível não vira custo zero", async () => {
+    const adapter = {
+      providerKey: "fixture",
+      async execute() {
+        return {
+          ok: false as const,
+          errorClass: "PROVIDER_REJECTED" as const,
+          usage: { inputTokens: -5, outputTokens: 500, cachedTokens: null },
+          latencyMs: 10,
+        };
+      },
+    };
+
+    const r = await router([adapter]).run(PEDIDO);
+
+    expect(!r.ok && r.errorClass).toBe("USAGE_INVALID");
+    expect(falhados[0].estimatedCost ?? null).toBeNull();
+  });
+
+  it("sucesso continua registrando conclusão, não falha", async () => {
+    const r = await router([adapterOk()]).run(PEDIDO);
+
+    expect(r.ok).toBe(true);
+    expect(falhados).toHaveLength(0);
+    expect(concluidos).toHaveLength(1);
+  });
+});
 
 describe("o ledger é a condição do sucesso", () => {
   it("conclusão não confirmada não vira sucesso", async () => {
