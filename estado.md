@@ -64,16 +64,6 @@ CI conhecida: `32859795018` — success.
 
 Gate externo permanece pendente por bloqueio do Business Portfolio Meta.
 
-Fatos relevantes já provados:
-
-- mesmo User Access Token válido;
-- `/me?fields=id,name` funciona;
-- leitura de `client_business_id` falha com code 190;
-- o classifier da 003B não pode inferir saúde/tipo da credencial por esse campo;
-- limite atual de dois Business Portfolios já atingido;
-- portfolio bloqueado/inutilizável: `Bizzman5po`;
-- `Bizzman5po` e `BizzManiq1` são distintos.
-
 Até nova decisão GPT baseada em documentação Meta vigente:
 
 - não criar terceiro portfolio;
@@ -97,30 +87,32 @@ Branch:
 
 PR #17: **draft/open/não mergeada**.
 
-HEAD final auditado da 004E-04:
+HEAD reauditorado da 004E-05:
 
-`22555677c86012bd16293e16bb3e1f3e78c15585`
+`cc5b7b7ac0118613de1e7d86b376480565033642`
 
-CI final do HEAD:
+CI do HEAD:
 
-`32961935875` — **success**; install, lint, typecheck, Edge Functions, testes e build verdes.
+`32964016218` — **success**; install, lint, typecheck, Edge Functions, testes e build verdes.
 
 Status geral:
 
-**004E AINDA NÃO APROVADA NEM PROMOVIDA. A TROCA GEMINI → ANTHROPIC FOI EXECUTADA E AUDITADA, MAS O GATE ANTHROPIC CONTINUA FECHADO ATÉ A CORREÇÃO 004E-05.**
+**004E AINDA NÃO APROVADA NEM PROMOVIDA. 004E-05 FOI EXECUTADA E REAUDITADA, MAS O GATE ANTHROPIC CONTINUA FECHADO. 004E-06 ESTÁ AUTORIZADA.**
 
 ### 5.1 Correções já concluídas
 
-- 004E-01 — **EXECUTADA E REAUDITADA**: schema do provider, reserva atômica/rate limit, mensagem de custo, E2E produtivo e harness real da eval.
-- 004E-02 — **EXECUTADA E REAUDITADA**: FK de tentativa/run, usage obrigatório e invariantes finais pré-pagas.
-- 004E-03 — **EXECUTADA, REAUDITADA E APROVADA**: tensão ancorada em todos os lados pertinentes e prompt injection com sentinela explícita.
-- 004E-04 — **EXECUTADA E REAUDITADA; TROCA DE PROVIDER APROVADA, GATE PAGO AINDA BLOQUEADO**.
+- 004E-01 — **EXECUTADA E REAUDITADA**.
+- 004E-02 — **EXECUTADA E REAUDITADA**.
+- 004E-03 — **EXECUTADA, REAUDITADA E APROVADA**.
+- 004E-04 — **EXECUTADA E REAUDITADA; TROCA GEMINI → ANTHROPIC APROVADA, GATE PAGO BLOQUEADO**.
+- 004E-05 — **EXECUTADA E REAUDITADA; stop_reason e custo de falha pós-resposta implementados, MAS AINDA BLOQUEADA POR REFUSAL OFICIAL COM OUTPUT ZERO**.
 
-Auditoria 004E-04:
+Auditorias relevantes:
 
-`rodadas/gpt/AUDITORIA_004E_04_SWITCH_FIRST_PROVIDER_TO_ANTHROPIC.md`
+- `rodadas/gpt/AUDITORIA_004E_04_SWITCH_FIRST_PROVIDER_TO_ANTHROPIC.md`;
+- `rodadas/gpt/AUDITORIA_004E_05_PAID_RESPONSE_ACCOUNTING.md`.
 
-### 5.2 Estado efetivo do provider após 004E-04
+### 5.2 Estado efetivo do provider
 
 Migration aditiva aplicada remotamente:
 
@@ -134,24 +126,20 @@ Não reescrever migrations 004E já aplicadas:
 - `20260825280000_fix_review_attempt_run_delete_action`;
 - `20260826120000_switch_first_provider_to_anthropic`.
 
-Verificação independente GPT no Supabase remoto confirmou:
+Verificação independente GPT confirmou no remoto:
 
 - `anthropic_claude` = ACTIVE;
 - `claude-haiku-4-5-20251001` = ACTIVE / Tier 1;
-- capacidades: structured extraction, JSON Schema nativo, baixo custo e rápido;
-- contexto 200K; saída máxima do modelo 64K;
 - preço vigente: USD 1.00/M input e USD 5.00/M output;
-- cache price nulo nesta rodada;
-- `google_gemini` = DISABLED;
-- `gemini-2.5-flash-lite` = DISABLED e vigência/preço encerrados;
-- existe **um único candidato Tier 1 elegível** para a task atual: Anthropic Haiku 4.5;
+- `google_gemini` e `gemini-2.5-flash-lite` = DISABLED;
+- existe um único candidato Tier 1 elegível para a task atual: Anthropic Haiku 4.5;
 - `declared_context_review_attempts = 0`;
 - `declared_context_reviews = 0`;
 - `ai_runs` reais da task = 0.
 
 Portanto:
 
-**nenhuma chamada real Gemini ou Anthropic ocorreu e nenhum custo real de IA foi gerado até esta auditoria.**
+**nenhuma chamada real Gemini ou Anthropic ocorreu e nenhum custo real de IA foi gerado até esta reauditoria.**
 
 ### 5.3 O que a 004E preserva
 
@@ -167,41 +155,43 @@ Portanto:
 - artefato imutável e tenant-safe;
 - E2E preparado para persistência + ledger + custo + cache;
 - eval com 12 fixtures sintéticas, uma chamada por caso, sem retry automático;
-- prompt injection testado;
-- Gemini não permanece como segundo provider operacional escondido;
-- produção usa somente adapter Anthropic.
+- produção usa somente adapter Anthropic;
+- `stop_reason` passou a ser tratado explicitamente na 004E-05;
+- falha pós-resposta pode carregar usage/custo para o run FAILED.
 
-## 6. BLOQUEIO ATUAL — 004E-05
+## 6. BLOQUEIO ATUAL — 004E-06
 
-A reauditoria 004E-04 revalidou a documentação oficial Anthropic e encontrou um risco antes da primeira chamada paga.
+A reauditoria da 004E-05 confirmou na documentação oficial Anthropic um caso que os testes não cobriram.
 
-A Messages API devolve `stop_reason` em respostas HTTP 200. Em especial:
+A Anthropic publica um exemplo normal de `refusal` com:
 
-- `refusal` pode ser cobrado e não respeitar o schema;
-- `max_tokens` pode entregar output truncado/incompleto.
+- `stop_reason = refusal`;
+- `input_tokens = 412`;
+- `output_tokens = 0`;
+- HTTP 200.
 
-O adapter atual não trata `stop_reason` explicitamente.
+O adapter atual exige `output_tokens > 0` para normalizar usage. Portanto, nesse caso real e cobrável:
 
-Além disso, o contrato atual do adapter carrega `usage` somente em `ok: true`. Se o provider já respondeu e a falha acontece depois — por refusal, truncamento ou JSON inválido — o Router pode fechar o run como FAILED sem tokens/custo mesmo quando o consumo é conhecido.
-
-Isso precisa ser corrigido antes de disponibilizar a chave.
+- o input consumido é conhecido;
+- o usage é descartado antes da classificação do stop reason;
+- o Router pode fechar o run FAILED sem registrar o custo conhecido de input.
 
 Correção autorizada:
 
-`rodadas/gpt/CORRECAO_004E_05_PAID_RESPONSE_ACCOUNTING.md`
+`rodadas/gpt/CORRECAO_004E_06_REFUSAL_ZERO_OUTPUT_ACCOUNTING.md`
 
 Objetivo restrito:
 
-1. somente `end_turn` segue pelo caminho normal;
-2. `refusal`, `max_tokens` e stop reasons inesperados falham fechado;
-3. falhas pós-resposta preservam usage confiável;
-4. Router registra custo em run FAILED quando usage + preço forem conhecidos;
-5. nenhuma chamada real durante a correção;
-6. nenhuma nova migration/provider/modelo/preço/fallback.
+1. permitir `output_tokens = 0` como usage contábil de resposta anormal;
+2. preservar input/output conhecidos em `refusal`;
+3. registrar custo input-only no run FAILED;
+4. `end_turn + output zero` continua proibido como sucesso, mas precisa preservar usage conhecido;
+5. zero chamadas reais durante a correção;
+6. nenhuma migration/provider/modelo/preço/fallback.
 
 ## 7. Gate Anthropic — FECHADO
 
-Até reauditoria GPT da 004E-05:
+Até reauditoria GPT da 004E-06:
 
 - **NÃO disponibilizar `ANTHROPIC_API_KEY` ao projeto/Claude**;
 - NÃO executar chamada real Anthropic;
@@ -215,7 +205,7 @@ Os scripts podem ser executados somente sem chave para provar que o gate bloquei
 
 ## 8. Continua NÃO autorizado
 
-### IA fora da 004E-05
+### IA fora da 004E-06
 
 - segundo provider ativo;
 - fallback multi-provider;
@@ -260,11 +250,11 @@ Próximo ator: **Claude Code**.
 
 Claude deve continuar na mesma branch e no PR #17 e executar **somente**:
 
-`rodadas/gpt/CORRECAO_004E_05_PAID_RESPONSE_ACCOUNTING.md`
+`rodadas/gpt/CORRECAO_004E_06_REFUSAL_ZERO_OUTPUT_ACCOUNTING.md`
 
 Status esperado ao devolver:
 
-**CORREÇÃO 004E-05 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**.
+**CORREÇÃO 004E-06 EXECUTADA — AGUARDANDO REAUDITORIA GPT PARA ABERTURA DO GATE ANTHROPIC**.
 
 Claude não pede a chave, não faz chamada paga, não mergeia e não promove.
 
